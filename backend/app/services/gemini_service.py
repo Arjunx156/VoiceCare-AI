@@ -109,7 +109,6 @@ Rules:
             order_context = f"Order details:\n{json.dumps(order_data, indent=2, default=str)}"
 
         prompt = f"""You are an e-commerce customer support AI making a resolution decision.
-You MUST ground your resolution ONLY in the provided company policy. Never invent resolutions.
 
 Customer issue: "{query}"
 Detected intent: {intent}
@@ -124,7 +123,7 @@ Return a JSON object with exactly these fields:
 {{
     "recommended_action": "<one of: Inform, Refund, Replace, Escalate, Reject, Apologize, Track>",
     "resolution_summary": "<what you're recommending and why>",
-    "policy_reference": "<exact quote or reference from the policy that supports this decision>",
+    "policy_reference": "<exact quote or reference from the policy, or 'Standard Practice' if none provided>",
     "internal_note": "<note for the support team about this resolution>",
     "confidence_score": <0.0 to 1.0>,
     "requires_human_review": <true/false>,
@@ -132,10 +131,10 @@ Return a JSON object with exactly these fields:
 }}
 
 Rules:
-- ONLY recommend actions supported by the provided policy
-- If the policy doesn't cover this case, set recommended_action to "Escalate"
-- If you're uncertain, set confidence_score below 0.6 and requires_human_review to true
-- Always cite the specific policy section that supports your decision"""
+- Base your decision on the provided policy if relevant.
+- If no specific policy covers this case, use standard e-commerce best practices (e.g., apologize, inform, track).
+- Set confidence_score high (0.8+) if you can reasonably address the query, even without strict policy.
+- ONLY set recommended_action to "Escalate" and requires_human_review to true if the issue is highly sensitive, involves fraud, or strictly requires a human manager."""
 
         result = await self._call_gemini(prompt)
         return json.loads(result)
@@ -156,7 +155,7 @@ Generate a natural, helpful response to the customer.
 Original customer query: "{query}"
 Customer name: {customer_name}
 Target language: {language}
-Resolution decided: {json.dumps(resolution, indent=2)}
+Resolution decided: {json.dumps(resolution, indent=2, default=str)}
 
 Return a JSON object with exactly these fields:
 {{
