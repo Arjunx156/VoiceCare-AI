@@ -106,7 +106,7 @@ export default function DashboardPage() {
           Support Operations
         </h1>
         <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 6 }}>
-          Live view of VoiceCare AI customer support activity
+          Live view of {process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"} customer support activity
         </p>
       </motion.div>
 

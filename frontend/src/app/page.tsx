@@ -259,10 +259,10 @@ export default function VoicePage() {
       >
         <div>
           <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "var(--accent)", textTransform: "uppercase" }}>
-            CommerceMind
+            {process.env.NEXT_PUBLIC_COMPANY_NAME || "CommerceMind"}
           </span>
           <h1 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", marginTop: 2 }}>
-            VoiceCare AI
+            {process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"}
           </h1>
         </div>
         <Link

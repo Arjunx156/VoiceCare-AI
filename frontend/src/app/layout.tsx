@@ -8,8 +8,11 @@ const inter = Inter({
   display: "swap",
 });
 
+const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME || "CommerceMind";
+const appName = process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI";
+
 export const metadata: Metadata = {
-  title: "CommerceMind VoiceCare AI — Voice-First Customer Support",
+  title: `${companyName} ${appName} — Voice-First Customer Support`,
   description:
     "Speak your language, get resolved instantly. AI-powered voice support across 8 Indian languages for e-commerce.",
   keywords: [
