@@ -34,15 +34,28 @@ export default function EscalationsPage() {
   const [loading, setLoading]         = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     async function load() {
-      try { setEscalations(await getEscalations()); }
+      try { 
+        const data = await getEscalations();
+        if (mounted) setEscalations(data);
+      }
       catch (err) { console.error("Failed to load escalations:", err); }
-      finally { setLoading(false); }
+      finally { if (mounted) setLoading(false); }
     }
     load();
+
+    // Poll every 5 seconds for real-time updates
+    const intervalId = setInterval(load, 5000);
+
+    return () => {
+      mounted = false;
+      clearInterval(intervalId);
+    };
   }, []);
 
-  if (loading) {
+  if (loading && escalations.length === 0) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 256 }}>
         <div style={{
