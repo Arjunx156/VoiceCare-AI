@@ -220,7 +220,24 @@ class BhashiniService:
 
         except Exception as e:
             logger.error("tts_failed", error=str(e), language=target_language)
-            raise
+            # Fallback to free Google Translate TTS
+            logger.info("falling_back_to_gtts")
+            try:
+                import urllib.parse
+                import base64
+                safe_text = text[:200]
+                encoded_text = urllib.parse.quote(safe_text)
+                lang_code = target_language if target_language != "en" else "en"
+                url = f"https://translate.google.com/translate_tts?ie=UTF-8&total=1&idx=0&textlen={len(safe_text)}&client=tw-ob&q={encoded_text}&tl={lang_code}"
+                
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    response = await client.get(url)
+                    response.raise_for_status()
+                    audio_base64 = base64.b64encode(response.content).decode("utf-8")
+                    return audio_base64
+            except Exception as fallback_e:
+                logger.error("gtts_fallback_failed", error=str(fallback_e))
+                raise
 
     async def translate_text(
         self, text: str, source_lang: str, target_lang: str = "en"

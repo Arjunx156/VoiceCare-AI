@@ -39,7 +39,7 @@ class GeminiService:
         ),
     )
     async def _call_gemini(self, prompt: str, system_instruction: str = "") -> str:
-        """Make a Gemini API call with retry logic."""
+        """Make a Gemini API call with retry logic and Groq fallback."""
         try:
             response = self.model.generate_content(
                 prompt,
@@ -52,6 +52,27 @@ class GeminiService:
             return response.text
         except Exception as e:
             logger.error("gemini_call_failed", error=str(e))
+            if settings.groq_api_key:
+                logger.info("falling_back_to_groq_llm")
+                import httpx
+                try:
+                    async with httpx.AsyncClient(timeout=15.0) as client:
+                        resp = await client.post(
+                            "https://api.groq.com/openai/v1/chat/completions",
+                            headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+                            json={
+                                "model": "llama3-70b-8192",
+                                "messages": [{"role": "user", "content": prompt}],
+                                "temperature": 0.3,
+                                "response_format": {"type": "json_object"}
+                            }
+                        )
+                        if resp.status_code == 200:
+                            return resp.json()["choices"][0]["message"]["content"]
+                        else:
+                            logger.error("groq_fallback_failed", status=resp.status_code, text=resp.text)
+                except Exception as groq_err:
+                    logger.error("groq_fallback_exception", error=str(groq_err))
             raise
 
     def _parse_json(self, text: str) -> dict:
@@ -100,8 +121,22 @@ Rules:
 - If the customer mentions urgency or repeated complaints, set priority to Critical
 - Always provide a concise summary_english regardless of input language"""
 
-        result = await self._call_gemini(prompt)
-        return self._parse_json(result)
+        try:
+            result = await self._call_gemini(prompt)
+            return self._parse_json(result)
+        except Exception as e:
+            logger.error("analyze_intent_fallback", error=str(e))
+            return {
+                "intent": "general_inquiry",
+                "sub_intent": "user query fallback",
+                "sentiment": "Neutral",
+                "priority": "Medium",
+                "summary_english": query,
+                "requires_order_lookup": False,
+                "extracted_order_id": None,
+                "extracted_phone": None,
+                "extracted_name": None
+            }
 
     async def generate_resolution(
         self,
@@ -147,8 +182,20 @@ Rules:
 - Set confidence_score high (0.8+) if you can reasonably address the query, even without strict policy.
 - ONLY set recommended_action to "Escalate" and requires_human_review to true if the issue is highly sensitive, involves fraud, or strictly requires a human manager."""
 
-        result = await self._call_gemini(prompt)
-        return self._parse_json(result)
+        try:
+            result = await self._call_gemini(prompt)
+            return self._parse_json(result)
+        except Exception as e:
+            logger.error("generate_resolution_fallback", error=str(e))
+            return {
+                "recommended_action": "Inform",
+                "resolution_summary": "We are experiencing high traffic, but your request is noted.",
+                "policy_reference": "Standard Practice",
+                "internal_note": "AI rate limit hit, defaulted to basic resolution.",
+                "confidence_score": 0.8,
+                "requires_human_review": False,
+                "reason_for_action": "System fallback"
+            }
 
     async def generate_response(
         self,
@@ -184,8 +231,16 @@ Rules:
 - Keep the response conversational since it will be spoken aloud (TTS)
 - Don't use markdown, bullet points, or formatting — use natural spoken language"""
 
-        result = await self._call_gemini(prompt)
-        return self._parse_json(result)
+        try:
+            result = await self._call_gemini(prompt)
+            return self._parse_json(result)
+        except Exception as e:
+            logger.error("generate_response_fallback", error=str(e))
+            return {
+                "response_text": "I apologize, but I am currently experiencing technical difficulties processing your request. Please hold on or try again later.",
+                "response_english": "I apologize, but I am currently experiencing technical difficulties.",
+                "tone": "Apologetic"
+            }
 
 
 # Singleton
