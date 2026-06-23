@@ -204,6 +204,7 @@ class VoiceCarePipeline:
             state.requires_order_lookup = result.get("requires_order_lookup", False)
             state.extracted_order_id = result.get("extracted_order_id")
             state.extracted_phone = result.get("extracted_phone")
+            state.extracted_name = result.get("extracted_name")
 
             state.add_trace(
                 agent_name="Intent Analysis",
@@ -460,6 +461,10 @@ class VoiceCarePipeline:
         if state.confidence_score < 0.4:
             rules_triggered.append(f"Low AI confidence: {state.confidence_score:.2f}")
 
+        # Rule 6: LLM specifically recommended escalation
+        if state.recommended_action == "Escalate":
+            rules_triggered.append("LLM determined human escalation is required")
+
         if rules_triggered:
             state.is_escalated = True
             state.escalation_reason = "; ".join(rules_triggered)
@@ -486,7 +491,7 @@ class VoiceCarePipeline:
 
         try:
             query = state.transcript_original or state.transcript_english
-            customer_name = state.user_data.get("name", "Customer") if state.user_data else "Customer"
+            customer_name = state.user_data.get("name") if state.user_data else (state.extracted_name or "Customer")
 
             resolution_data = {
                 "recommended_action": state.recommended_action,
@@ -572,14 +577,24 @@ class VoiceCarePipeline:
             if state.user_data:
                 user_id = uuid.UUID(state.user_data["user_id"])
             else:
-                # Fallback to first seeded user if anonymous caller
-                result = await self.db.execute(select(User).limit(1))
-                first_user = result.scalar_one_or_none()
-                if first_user:
-                    user_id = first_user.user_id
+                if state.extracted_name or state.extracted_phone:
+                    phone_val = state.extracted_phone or f"temp-{uuid.uuid4().hex[:10]}"
+                    new_user = User(
+                        name=state.extracted_name or "Unknown Customer",
+                        phone=phone_val
+                    )
+                    self.db.add(new_user)
+                    await self.db.flush()
+                    user_id = new_user.user_id
                 else:
-                    # Should never happen if DB is seeded
-                    raise Exception("No users found in database. Please run DB seed.")
+                    # Fallback to first seeded user if anonymous caller
+                    result = await self.db.execute(select(User).limit(1))
+                    first_user = result.scalar_one_or_none()
+                    if first_user:
+                        user_id = first_user.user_id
+                    else:
+                        # Should never happen if DB is seeded
+                        raise Exception("No users found in database. Please run DB seed.")
 
             order_id = None
             if state.order_data:

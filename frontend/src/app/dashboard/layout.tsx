@@ -69,7 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </svg>
           </div>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>VoiceCare AI</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"}</p>
             <p style={{ fontSize: 10, color: "var(--text-muted)", letterSpacing: "0.04em" }}>Admin Dashboard</p>
           </div>
         </Link>

@@ -79,7 +79,8 @@ Return a JSON object with exactly these fields:
     "summary_english": "<brief English summary of the customer's issue>",
     "requires_order_lookup": <true/false>,
     "extracted_order_id": "<order ID if mentioned, null otherwise>",
-    "extracted_phone": "<phone number if mentioned, null otherwise>"
+    "extracted_phone": "<phone number if mentioned, null otherwise>",
+    "extracted_name": "<customer name if mentioned, null otherwise>"
 }}
 
 Rules:

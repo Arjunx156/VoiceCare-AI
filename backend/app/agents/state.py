@@ -48,6 +48,7 @@ class PipelineState(BaseModel):
     requires_order_lookup: bool = False
     extracted_order_id: Optional[str] = None
     extracted_phone: Optional[str] = None
+    extracted_name: Optional[str] = None
 
     # Stage 3: Order Lookup
     user_data: Optional[dict] = None
