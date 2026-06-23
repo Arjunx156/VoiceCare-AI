@@ -54,6 +54,17 @@ class GeminiService:
             logger.error("gemini_call_failed", error=str(e))
             raise
 
+    def _parse_json(self, text: str) -> dict:
+        """Safely parse JSON from Gemini, stripping markdown if present."""
+        text = text.strip()
+        if text.startswith("```json"):
+            text = text[7:]
+        if text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+        return json.loads(text.strip())
+
     async def analyze_intent(
         self, query: str, language: str, conversation_history: list = None
     ) -> dict:
@@ -90,7 +101,7 @@ Rules:
 - Always provide a concise summary_english regardless of input language"""
 
         result = await self._call_gemini(prompt)
-        return json.loads(result)
+        return self._parse_json(result)
 
     async def generate_resolution(
         self,
@@ -137,7 +148,7 @@ Rules:
 - ONLY set recommended_action to "Escalate" and requires_human_review to true if the issue is highly sensitive, involves fraud, or strictly requires a human manager."""
 
         result = await self._call_gemini(prompt)
-        return json.loads(result)
+        return self._parse_json(result)
 
     async def generate_response(
         self,
@@ -174,7 +185,7 @@ Rules:
 - Don't use markdown, bullet points, or formatting — use natural spoken language"""
 
         result = await self._call_gemini(prompt)
-        return json.loads(result)
+        return self._parse_json(result)
 
 
 # Singleton

@@ -202,7 +202,7 @@ export default function VoicePage() {
         setResponse(result);
         setSessionId(result.session_id);
         setIsComplete(true);
-        if (result.response_audio_base64) playAudioResponse(result.response_audio_base64);
+        playAudioResponse(result.response_audio_base64, result.response_text, selectedLanguage);
       } catch (err: any) {
         clearInterval(stageInterval);
         const msg: string = err.message || "Something went wrong. Please try again.";
@@ -220,9 +220,24 @@ export default function VoicePage() {
     [selectedLanguage, sessionId] // eslint-disable-line
   );
 
-  const playAudioResponse = (base64Audio: string) => {
-    const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
-    audio.play().catch(() => {});
+  const playAudioResponse = (base64Audio?: string, text?: string, lang?: string) => {
+    if (base64Audio) {
+      const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
+      audio.play().catch((e) => {
+        console.error("Audio playback failed", e);
+        if (text) playBrowserTTS(text, lang);
+      });
+    } else if (text) {
+      playBrowserTTS(text, lang);
+    }
+  };
+
+  const playBrowserTTS = (text: string, lang?: string) => {
+    if (window.speechSynthesis) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = LANG_TO_BCP47[lang || "en-US"] || "en-US";
+      window.speechSynthesis.speak(utterance);
+    }
   };
 
   const handleTextSubmit = (e: React.FormEvent) => {
