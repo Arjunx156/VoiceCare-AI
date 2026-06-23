@@ -28,12 +28,26 @@ structlog.configure(
 logger = structlog.get_logger()
 
 
+from app.services.chroma_service import get_chroma_service
+from data.policies.policy_documents import get_all_policies
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application startup and shutdown events."""
     logger.info("starting_app", environment=settings.environment)
     await init_db()
     logger.info("database_initialized")
+    
+    # Auto-seed ChromaDB if empty
+    try:
+        chroma = get_chroma_service()
+        if chroma.get_collection_count() == 0:
+            logger.info("seeding_chromadb_policies")
+            policies = get_all_policies()
+            chroma.ingest_policies(policies)
+    except Exception as e:
+        logger.error("chromadb_seeding_failed", error=str(e))
+        
     yield
     await close_db()
     logger.info("app_shutdown")
