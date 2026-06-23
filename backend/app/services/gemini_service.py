@@ -26,7 +26,7 @@ class GeminiService:
 
     def __init__(self):
         genai.configure(api_key=settings.gemini_api_key)
-        self.model = genai.GenerativeModel("gemini-2.5-flash-preview-05-20")
+        self.model = genai.GenerativeModel("gemini-2.5-flash")
 
     @retry(
         stop=stop_after_attempt(3),
