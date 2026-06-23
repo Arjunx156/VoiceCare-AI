@@ -1,0 +1,64 @@
+"""
+CommerceMind VoiceCare AI — Application Configuration
+Loads environment variables with validation via Pydantic Settings.
+"""
+
+from functools import lru_cache
+from typing import Optional
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Application configuration loaded from environment variables."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    # ---- App ----
+    app_name: str = "CommerceMind VoiceCare AI"
+    environment: str = "development"
+    log_level: str = "INFO"
+    backend_url: str = "http://localhost:8000"
+    frontend_url: str = "http://localhost:3000"
+
+    # ---- Database (Neon Postgres) ----
+    database_url: str = "postgresql+asyncpg://localhost/voicecare"
+    database_url_sync: str = "postgresql://localhost/voicecare"
+
+    # ---- Redis (Upstash) ----
+    redis_url: str = "redis://localhost:6379"
+
+    # ---- Gemini ----
+    gemini_api_key: str = ""
+
+    # ---- Bhashini ----
+    bhashini_user_id: str = ""
+    bhashini_api_key: str = ""
+    bhashini_pipeline_url: str = "https://dhruva-api.bhashini.gov.in/services/inference"
+
+    # ---- Chroma ----
+    chroma_persist_dir: str = "./chroma_data"
+
+    # ---- Auth ----
+    nextauth_secret: str = "dev-secret-change-in-production"
+    admin_email: str = "admin@voicecare.ai"
+    admin_password: str = "change_this_in_production"
+
+    # ---- Rate Limiting ----
+    gemini_max_retries: int = 3
+    gemini_base_delay: float = 1.0
+    bhashini_timeout: float = 30.0
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment == "production"
+
+
+@lru_cache()
+def get_settings() -> Settings:
+    """Cached settings singleton."""
+    return Settings()
