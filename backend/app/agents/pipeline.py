@@ -577,24 +577,14 @@ class VoiceCarePipeline:
             if state.user_data:
                 user_id = uuid.UUID(state.user_data["user_id"])
             else:
-                if state.extracted_name or state.extracted_phone:
-                    phone_val = state.extracted_phone or f"temp-{uuid.uuid4().hex[:10]}"
-                    new_user = User(
-                        name=state.extracted_name or "Unknown Customer",
-                        phone=phone_val
-                    )
-                    self.db.add(new_user)
-                    await self.db.flush()
-                    user_id = new_user.user_id
-                else:
-                    # Fallback to first seeded user if anonymous caller
-                    result = await self.db.execute(select(User).limit(1))
-                    first_user = result.scalar_one_or_none()
-                    if first_user:
-                        user_id = first_user.user_id
-                    else:
-                        # Should never happen if DB is seeded
-                        raise Exception("No users found in database. Please run DB seed.")
+                phone_val = state.extracted_phone or f"temp-{uuid.uuid4().hex[:10]}"
+                new_user = User(
+                    name=state.extracted_name or "Anonymous Customer",
+                    phone=phone_val
+                )
+                self.db.add(new_user)
+                await self.db.flush()
+                user_id = new_user.user_id
 
             order_id = None
             if state.order_data:
