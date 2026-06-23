@@ -1,0 +1,639 @@
+"""
+CommerceMind VoiceCare AI — LangGraph Agent Pipeline
+9-agent state machine: STT → Intent → Lookup → RAG → Resolution →
+Escalation → Response → TTS → Ticket
+Maps to only 3 real LLM calls — everything else is deterministic code.
+"""
+
+import json
+import time
+import uuid
+import structlog
+from datetime import datetime
+from typing import Optional, Callable, Awaitable
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from app.agents.state import PipelineState
+from app.services.gemini_service import get_gemini_service
+from app.services.bhashini_service import get_bhashini_service, LANGUAGE_CODES
+from app.services.chroma_service import get_chroma_service
+from app.services.redis_service import get_redis_service
+from app.db.models import (
+    User, Order, OrderItem, Shipment, Return, Refund, Payment,
+    VoiceSession, SupportTicket, SupportMessage, SupportResolution,
+    CustomerSentiment,
+)
+
+logger = structlog.get_logger()
+
+
+class VoiceCarePipeline:
+    """
+    The 9-agent pipeline orchestrator.
+    Each agent is a method that takes PipelineState, mutates it, and returns it.
+    """
+
+    def __init__(self, db: AsyncSession, on_stage_update: Callable = None):
+        self.db = db
+        self.gemini = get_gemini_service()
+        self.bhashini = get_bhashini_service()
+        self.chroma = get_chroma_service()
+        self.on_stage_update = on_stage_update  # WebSocket callback
+
+    async def _notify_stage(self, stage: int, message: str, is_complete: bool = False):
+        """Send stage update via WebSocket callback."""
+        if self.on_stage_update:
+            await self.on_stage_update({
+                "stage_number": stage,
+                "total_stages": 9,
+                "message": message,
+                "is_complete": is_complete,
+            })
+
+    # ================================================================
+    # Agent 1: Voice Intake (Bhashini STT) — deterministic/code
+    # ================================================================
+    async def agent_voice_intake(self, state: PipelineState) -> PipelineState:
+        """Convert audio to text using Bhashini STT, or pass through text input."""
+        start = time.time()
+        await self._notify_stage(1, "Listening...")
+
+        try:
+            if state.raw_audio_base64:
+                # Detect language and transcribe
+                lang_code = state.language_code or "hi"
+                transcript, detected_lang = await self.bhashini.speech_to_text(
+                    state.raw_audio_base64, lang_code
+                )
+                state.transcript_original = transcript
+                state.language_code = detected_lang
+
+                # Get language name
+                lang_names = {v: k for k, v in LANGUAGE_CODES.items()}
+                state.language_detected = lang_names.get(detected_lang, "Hindi")
+
+                # Translate to English for downstream processing
+                if detected_lang != "en":
+                    state.transcript_english = await self.bhashini.translate_text(
+                        transcript, detected_lang, "en"
+                    )
+                else:
+                    state.transcript_english = transcript
+            elif state.raw_text:
+                state.transcript_original = state.raw_text
+                state.transcript_english = state.raw_text
+                state.language_detected = "English"
+                state.language_code = "en"
+            else:
+                state.error = "No audio or text input provided"
+                state.has_error = True
+                return state
+
+            state.add_trace(
+                agent_name="Voice Intake",
+                stage_number=1,
+                input_summary=f"Audio: {'yes' if state.raw_audio_base64 else 'no'}, Text: {'yes' if state.raw_text else 'no'}",
+                output_summary=f"Transcript: {state.transcript_english[:100]}...",
+                decision="STT transcription" if state.raw_audio_base64 else "Text passthrough",
+                duration_ms=(time.time() - start) * 1000,
+            )
+        except Exception as e:
+            logger.error("voice_intake_failed", error=str(e))
+            state.error = f"Voice intake failed: {str(e)}"
+            state.has_error = True
+
+        return state
+
+    # ================================================================
+    # Agent 2: Intent + Sentiment + Priority (LLM Call 1)
+    # ================================================================
+    async def agent_intent_analysis(self, state: PipelineState) -> PipelineState:
+        """Analyze intent, sentiment, and priority using Gemini."""
+        start = time.time()
+        await self._notify_stage(2, "Understanding your issue...")
+
+        try:
+            query = state.transcript_english or state.transcript_original
+            result = await self.gemini.analyze_intent(
+                query=query,
+                language=state.language_detected,
+                conversation_history=state.conversation_history,
+            )
+
+            state.intent = result.get("intent", "general_inquiry")
+            state.sub_intent = result.get("sub_intent", "")
+            state.sentiment = result.get("sentiment", "Neutral")
+            state.priority = result.get("priority", "Medium")
+            state.summary_english = result.get("summary_english", query)
+            state.requires_order_lookup = result.get("requires_order_lookup", False)
+            state.extracted_order_id = result.get("extracted_order_id")
+            state.extracted_phone = result.get("extracted_phone")
+
+            state.add_trace(
+                agent_name="Intent Analysis",
+                stage_number=2,
+                input_summary=f"Query: {query[:100]}...",
+                output_summary=f"Intent: {state.intent}, Sentiment: {state.sentiment}, Priority: {state.priority}",
+                decision=f"Classified as {state.intent} with {state.priority} priority",
+                reasoning=f"Sentiment detected: {state.sentiment}",
+                duration_ms=(time.time() - start) * 1000,
+            )
+        except Exception as e:
+            logger.error("intent_analysis_failed", error=str(e))
+            state.intent = "general_inquiry"
+            state.sentiment = "Neutral"
+            state.priority = "Medium"
+            state.summary_english = state.transcript_english
+
+        return state
+
+    # ================================================================
+    # Agent 3: Order / Transaction Lookup (DB) — deterministic/code
+    # ================================================================
+    async def agent_order_lookup(self, state: PipelineState) -> PipelineState:
+        """Look up order, shipment, return, refund, payment data from Postgres."""
+        start = time.time()
+        await self._notify_stage(3, "Checking your order...")
+
+        try:
+            # Find user by phone
+            phone = state.phone or state.extracted_phone
+            if phone:
+                user_result = await self.db.execute(
+                    select(User).where(User.phone == phone)
+                )
+                user = user_result.scalar_one_or_none()
+
+                if user:
+                    state.user_data = {
+                        "user_id": str(user.user_id),
+                        "name": user.name,
+                        "phone": user.phone,
+                        "preferred_language": user.preferred_language,
+                        "customer_segment": user.customer_segment,
+                    }
+
+                    # Find order
+                    order_id = state.input_order_id or state.extracted_order_id
+                    if order_id:
+                        try:
+                            order_uuid = uuid.UUID(order_id)
+                            order_result = await self.db.execute(
+                                select(Order).where(
+                                    Order.order_id == order_uuid,
+                                    Order.user_id == user.user_id
+                                )
+                            )
+                            order = order_result.scalar_one_or_none()
+                        except (ValueError, Exception):
+                            order = None
+                    else:
+                        # Get most recent order
+                        order_result = await self.db.execute(
+                            select(Order)
+                            .where(Order.user_id == user.user_id)
+                            .order_by(Order.order_date.desc())
+                            .limit(1)
+                        )
+                        order = order_result.scalar_one_or_none()
+
+                    if order:
+                        state.order_data = {
+                            "order_id": str(order.order_id),
+                            "order_date": str(order.order_date),
+                            "status": order.status,
+                            "total_amount": float(order.total_amount),
+                        }
+
+                        # Shipment
+                        ship_result = await self.db.execute(
+                            select(Shipment).where(Shipment.order_id == order.order_id)
+                        )
+                        shipment = ship_result.scalar_one_or_none()
+                        if shipment:
+                            state.shipment_data = {
+                                "shipment_status": shipment.shipment_status,
+                                "courier_partner": shipment.courier_partner,
+                                "expected_delivery": str(shipment.expected_delivery_date),
+                                "actual_delivery": str(shipment.actual_delivery_date) if shipment.actual_delivery_date else None,
+                                "tracking_number": shipment.tracking_number,
+                            }
+
+                        # Return
+                        ret_result = await self.db.execute(
+                            select(Return).where(Return.order_id == order.order_id)
+                        )
+                        ret = ret_result.scalar_one_or_none()
+                        if ret:
+                            state.return_data = {
+                                "return_id": str(ret.return_id),
+                                "reason": ret.reason,
+                                "status": ret.status,
+                                "requested_at": str(ret.requested_at),
+                            }
+
+                            # Refund linked to return
+                            ref_result = await self.db.execute(
+                                select(Refund).where(Refund.return_id == ret.return_id)
+                            )
+                            refund = ref_result.scalar_one_or_none()
+                            if refund:
+                                state.refund_data = {
+                                    "refund_id": str(refund.refund_id),
+                                    "amount": float(refund.amount),
+                                    "status": refund.status,
+                                    "credited_at": str(refund.credited_at) if refund.credited_at else None,
+                                }
+
+                        # Payment
+                        pay_result = await self.db.execute(
+                            select(Payment).where(Payment.order_id == order.order_id)
+                        )
+                        payments = pay_result.scalars().all()
+                        if payments:
+                            state.payment_data = {
+                                "payments": [
+                                    {
+                                        "payment_id": str(p.payment_id),
+                                        "amount": float(p.amount),
+                                        "status": p.status,
+                                        "method": p.payment_method,
+                                        "date": str(p.transaction_date),
+                                    }
+                                    for p in payments
+                                ]
+                            }
+
+                        state.lookup_successful = True
+
+            state.add_trace(
+                agent_name="Order Lookup",
+                stage_number=3,
+                input_summary=f"Phone: {phone}, Order: {state.input_order_id or state.extracted_order_id}",
+                output_summary=f"Found: user={state.user_data is not None}, order={state.order_data is not None}",
+                decision="Data retrieved from Postgres" if state.lookup_successful else "No matching records",
+                duration_ms=(time.time() - start) * 1000,
+            )
+        except Exception as e:
+            logger.error("order_lookup_failed", error=str(e))
+            state.lookup_successful = False
+
+        return state
+
+    # ================================================================
+    # Agent 4: Policy RAG Retrieval (Chroma) — deterministic/code
+    # ================================================================
+    async def agent_policy_rag(self, state: PipelineState) -> PipelineState:
+        """Retrieve relevant policy documents from Chroma vector store."""
+        start = time.time()
+        await self._notify_stage(4, "Finding the right policy...")
+
+        try:
+            query = state.summary_english or state.transcript_english or ""
+            state.policy_context = self.chroma.get_policy_context(query, n_results=3)
+            state.retrieved_policies = self.chroma.query_policies(query, n_results=3)
+
+            state.add_trace(
+                agent_name="Policy RAG",
+                stage_number=4,
+                input_summary=f"Query: {query[:100]}...",
+                output_summary=f"Retrieved {len(state.retrieved_policies)} policy documents",
+                decision="Vector similarity search on policy collection",
+                duration_ms=(time.time() - start) * 1000,
+            )
+        except Exception as e:
+            logger.error("policy_rag_failed", error=str(e))
+            state.policy_context = "No policy documents available."
+
+        return state
+
+    # ================================================================
+    # Agent 5: Resolution Decision (LLM Call 2)
+    # ================================================================
+    async def agent_resolution(self, state: PipelineState) -> PipelineState:
+        """Generate resolution decision using Gemini — policy-grounded."""
+        start = time.time()
+        await self._notify_stage(5, "Determining the best resolution...")
+
+        try:
+            query = state.transcript_english or state.transcript_original
+            result = await self.gemini.generate_resolution(
+                query=query,
+                intent=state.intent,
+                order_data=state.order_data,
+                policy_context=state.policy_context or "",
+                sentiment=state.sentiment,
+            )
+
+            state.recommended_action = result.get("recommended_action", "Inform")
+            state.resolution_summary = result.get("resolution_summary", "")
+            state.policy_reference = result.get("policy_reference", "")
+            state.internal_note = result.get("internal_note", "")
+            state.confidence_score = result.get("confidence_score", 0.5)
+            state.requires_human_review = result.get("requires_human_review", False)
+
+            state.add_trace(
+                agent_name="Resolution",
+                stage_number=5,
+                input_summary=f"Intent: {state.intent}, Order: {state.order_data is not None}",
+                output_summary=f"Action: {state.recommended_action}, Confidence: {state.confidence_score}",
+                decision=f"Recommended: {state.recommended_action}",
+                reasoning=state.resolution_summary,
+                duration_ms=(time.time() - start) * 1000,
+            )
+        except Exception as e:
+            logger.error("resolution_failed", error=str(e))
+            state.recommended_action = "Escalate"
+            state.confidence_score = 0.0
+            state.internal_note = f"Resolution failed: {str(e)}"
+
+        return state
+
+    # ================================================================
+    # Agent 6: Escalation Check (Deterministic Rules) — code only
+    # ================================================================
+    async def agent_escalation_check(self, state: PipelineState) -> PipelineState:
+        """Check 5 deterministic escalation rules — no LLM call."""
+        start = time.time()
+        await self._notify_stage(6, "Checking if escalation needed...")
+
+        rules_triggered = []
+
+        # Rule 1: Angry or Very Angry sentiment
+        if state.sentiment in ("Angry", "Very Angry"):
+            rules_triggered.append("Angry customer detected")
+
+        # Rule 2: High-value order (>₹5000)
+        if state.order_data and state.order_data.get("total_amount", 0) > 5000:
+            if state.sentiment in ("Negative", "Angry", "Very Angry"):
+                rules_triggered.append("High-value order with negative sentiment")
+
+        # Rule 3: Refund delayed beyond SLA
+        if state.refund_data and state.refund_data.get("status") == "Pending":
+            rules_triggered.append("Refund delayed beyond SLA")
+
+        # Rule 4: Payment deducted but order not created
+        if state.intent == "payment_issue" and state.payment_data:
+            payments = state.payment_data.get("payments", [])
+            has_failed = any(p.get("status") == "Failed" for p in payments)
+            has_success = any(p.get("status") == "Success" for p in payments)
+            if has_failed or (has_success and state.order_data and state.order_data.get("status") == "Cancelled"):
+                rules_triggered.append("Payment deducted but order issue detected")
+
+        # Rule 5: Low AI confidence
+        if state.confidence_score < 0.6:
+            rules_triggered.append(f"Low AI confidence: {state.confidence_score:.2f}")
+
+        if rules_triggered:
+            state.is_escalated = True
+            state.escalation_reason = "; ".join(rules_triggered)
+            state.escalation_rules_triggered = rules_triggered
+
+        state.add_trace(
+            agent_name="Escalation Check",
+            stage_number=6,
+            input_summary=f"Sentiment: {state.sentiment}, Confidence: {state.confidence_score}",
+            output_summary=f"Escalated: {state.is_escalated}",
+            decision="ESCALATED" if state.is_escalated else "Not escalated",
+            reasoning=state.escalation_reason if state.is_escalated else "No escalation rules triggered",
+            duration_ms=(time.time() - start) * 1000,
+        )
+        return state
+
+    # ================================================================
+    # Agent 7: Response Generation (LLM Call 3)
+    # ================================================================
+    async def agent_response_generation(self, state: PipelineState) -> PipelineState:
+        """Generate final customer-facing response in their language."""
+        start = time.time()
+        await self._notify_stage(7, "Preparing your response...")
+
+        try:
+            query = state.transcript_original or state.transcript_english
+            customer_name = state.user_data.get("name", "Customer") if state.user_data else "Customer"
+
+            resolution_data = {
+                "recommended_action": state.recommended_action,
+                "resolution_summary": state.resolution_summary,
+                "policy_reference": state.policy_reference,
+                "is_escalated": state.is_escalated,
+                "escalation_reason": state.escalation_reason,
+                "order_data": state.order_data,
+                "shipment_data": state.shipment_data,
+                "refund_data": state.refund_data,
+            }
+
+            result = await self.gemini.generate_response(
+                query=query,
+                resolution=resolution_data,
+                language=state.language_detected,
+                customer_name=customer_name,
+            )
+
+            state.response_text = result.get("response_text", "")
+            state.response_english = result.get("response_english", "")
+            state.response_tone = result.get("tone", "Professional")
+
+            state.add_trace(
+                agent_name="Response Generation",
+                stage_number=7,
+                input_summary=f"Language: {state.language_detected}, Escalated: {state.is_escalated}",
+                output_summary=f"Response length: {len(state.response_text or '')} chars, Tone: {state.response_tone}",
+                decision=f"Generated {state.language_detected} response",
+                duration_ms=(time.time() - start) * 1000,
+            )
+        except Exception as e:
+            logger.error("response_generation_failed", error=str(e))
+            state.response_text = "I apologize, but I'm having trouble generating a response. Let me connect you with a human agent."
+            state.response_english = state.response_text
+            state.is_escalated = True
+
+        return state
+
+    # ================================================================
+    # Agent 8: Text-to-Speech (Bhashini TTS) — deterministic/code
+    # ================================================================
+    async def agent_tts(self, state: PipelineState) -> PipelineState:
+        """Convert response text to speech using Bhashini TTS."""
+        start = time.time()
+        await self._notify_stage(8, "Converting to speech...")
+
+        try:
+            if state.response_text and state.language_code != "en":
+                state.response_audio_base64 = await self.bhashini.text_to_speech(
+                    state.response_text, state.language_code
+                )
+            elif state.response_text:
+                # For English, use Bhashini TTS as well
+                state.response_audio_base64 = await self.bhashini.text_to_speech(
+                    state.response_text, "en"
+                )
+
+            state.add_trace(
+                agent_name="TTS",
+                stage_number=8,
+                input_summary=f"Text length: {len(state.response_text or '')} chars",
+                output_summary=f"Audio generated: {state.response_audio_base64 is not None}",
+                decision="Bhashini TTS conversion",
+                duration_ms=(time.time() - start) * 1000,
+            )
+        except Exception as e:
+            logger.error("tts_failed", error=str(e))
+            # TTS failure is non-fatal — text response still works
+
+        return state
+
+    # ================================================================
+    # Agent 9: Ticket Creation (DB) — deterministic/code
+    # ================================================================
+    async def agent_ticket_creation(self, state: PipelineState) -> PipelineState:
+        """Create support ticket, messages, and resolution in Postgres."""
+        start = time.time()
+        await self._notify_stage(9, "Creating your support ticket...")
+
+        try:
+            user_id = None
+            if state.user_data:
+                user_id = uuid.UUID(state.user_data["user_id"])
+
+            order_id = None
+            if state.order_data:
+                order_id = uuid.UUID(state.order_data["order_id"])
+
+            # Create voice session
+            session = VoiceSession(
+                session_id=uuid.UUID(state.session_id) if len(state.session_id) == 36 else uuid.uuid4(),
+                user_id=user_id,
+                language_detected=state.language_detected,
+                transcript_original=state.transcript_original,
+                transcript_english=state.transcript_english,
+                started_at=state.started_at,
+                ended_at=datetime.utcnow(),
+            )
+            self.db.add(session)
+
+            # Create ticket
+            ticket = SupportTicket(
+                user_id=user_id or uuid.uuid4(),
+                order_id=order_id,
+                session_id=session.session_id,
+                ticket_type=self._intent_to_ticket_type(state.intent),
+                priority=state.priority,
+                status="Escalated" if state.is_escalated else "Resolved",
+                language=state.language_detected,
+                sentiment=state.sentiment,
+                summary=state.summary_english,
+                escalated_at=datetime.utcnow() if state.is_escalated else None,
+                resolved_at=datetime.utcnow() if not state.is_escalated else None,
+            )
+            self.db.add(ticket)
+            await self.db.flush()
+
+            state.ticket_id = str(ticket.ticket_id)
+
+            # Create messages
+            customer_msg = SupportMessage(
+                ticket_id=ticket.ticket_id,
+                session_id=session.session_id,
+                sender_type="Customer",
+                message_text=state.transcript_original or "",
+                language=state.language_detected,
+            )
+            self.db.add(customer_msg)
+
+            ai_msg = SupportMessage(
+                ticket_id=ticket.ticket_id,
+                session_id=session.session_id,
+                sender_type="AI",
+                message_text=state.response_english or state.response_text or "",
+                language="English",
+            )
+            self.db.add(ai_msg)
+
+            # Create resolution
+            trace_json = json.dumps(
+                [step.model_dump(mode="json") for step in state.agent_trace],
+                default=str,
+            )
+            resolution = SupportResolution(
+                ticket_id=ticket.ticket_id,
+                recommended_action=state.recommended_action or "Inform",
+                policy_reference=state.policy_reference,
+                final_response_text=state.response_text or "",
+                internal_note=state.internal_note,
+                confidence_score=state.confidence_score,
+                agent_trace=trace_json,
+            )
+            self.db.add(resolution)
+
+            # Create sentiment record
+            sentiment_record = CustomerSentiment(
+                ticket_id=ticket.ticket_id,
+                sentiment_label=state.sentiment,
+                confidence_score=state.confidence_score,
+            )
+            self.db.add(sentiment_record)
+
+            await self.db.flush()
+            state.ticket_created = True
+
+            state.add_trace(
+                agent_name="Ticket Creation",
+                stage_number=9,
+                input_summary=f"User: {user_id}, Escalated: {state.is_escalated}",
+                output_summary=f"Ticket {state.ticket_id} created",
+                decision="Ticket persisted to Postgres",
+                duration_ms=(time.time() - start) * 1000,
+            )
+
+            await self._notify_stage(9, "Done!", is_complete=True)
+
+        except Exception as e:
+            logger.error("ticket_creation_failed", error=str(e))
+            state.error = f"Ticket creation failed: {str(e)}"
+
+        return state
+
+    # ================================================================
+    # Pipeline Executor
+    # ================================================================
+    async def run(self, state: PipelineState) -> PipelineState:
+        """Execute the full 9-agent pipeline sequentially."""
+        agents = [
+            self.agent_voice_intake,
+            self.agent_intent_analysis,
+            self.agent_order_lookup,
+            self.agent_policy_rag,
+            self.agent_resolution,
+            self.agent_escalation_check,
+            self.agent_response_generation,
+            self.agent_tts,
+            self.agent_ticket_creation,
+        ]
+
+        for agent in agents:
+            if state.has_error:
+                logger.error("pipeline_aborted", stage=state.current_stage, error=state.error)
+                break
+            state = await agent(state)
+
+        return state
+
+    @staticmethod
+    def _intent_to_ticket_type(intent: str) -> str:
+        """Map intent to ticket type."""
+        mapping = {
+            "order_status": "Delay",
+            "delivery_delay": "Delay",
+            "refund_status": "Refund",
+            "return_request": "Return",
+            "payment_issue": "Payment",
+            "damaged_product": "Complaint",
+            "wrong_product": "Complaint",
+            "cancellation": "Return",
+            "exchange": "Return",
+            "general_inquiry": "General",
+        }
+        return mapping.get(intent, "General")

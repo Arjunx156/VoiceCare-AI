@@ -1,0 +1,87 @@
+"""
+CommerceMind VoiceCare AI — FastAPI Application Entry Point
+"""
+
+import structlog
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import get_settings
+from app.core.database import init_db, close_db
+from app.api.voice import router as voice_router
+from app.api.tickets import router as tickets_router
+
+settings = get_settings()
+
+# Configure structured logging
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_log_level,
+        structlog.dev.ConsoleRenderer(),
+    ],
+    wrapper_class=structlog.stdlib.BoundLogger,
+    context_class=dict,
+    logger_factory=structlog.PrintLoggerFactory(),
+)
+
+logger = structlog.get_logger()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application startup and shutdown events."""
+    logger.info("starting_app", environment=settings.environment)
+    await init_db()
+    logger.info("database_initialized")
+    yield
+    await close_db()
+    logger.info("app_shutdown")
+
+
+app = FastAPI(
+    title="CommerceMind VoiceCare AI",
+    description="Voice-first multilingual e-commerce customer support",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        settings.frontend_url,
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://*.vercel.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Register routers
+app.include_router(voice_router)
+app.include_router(tickets_router)
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {
+        "status": "healthy",
+        "app": settings.app_name,
+        "environment": settings.environment,
+    }
+
+
+@app.get("/")
+async def root():
+    """Root endpoint."""
+    return {
+        "app": "CommerceMind VoiceCare AI",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health",
+    }
