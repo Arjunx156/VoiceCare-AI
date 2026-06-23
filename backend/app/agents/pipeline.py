@@ -65,6 +65,8 @@ class VoiceCarePipeline:
                 # Detect language and transcribe
                 lang_code = state.language_code or "hi"
                 try:
+                    """
+                    # --- BHASHINI STT (COMMENTED OUT FOR FUTURE USE) ---
                     transcript, detected_lang = await self.bhashini.speech_to_text(
                         state.raw_audio_base64, lang_code
                     )
@@ -84,6 +86,50 @@ class VoiceCarePipeline:
                         state.transcript_english = transcript
 
                     decision = "Bhashini STT transcription"
+                    """
+                    # --- GROQ WHISPER STT (FAST, FREE API) ---
+                    import base64
+                    import httpx
+                    from app.core.config import get_settings
+                    
+                    settings = get_settings()
+                    if not settings.groq_api_key:
+                        raise Exception("GROQ_API_KEY is not set. Please add it to your environment variables.")
+
+                    # Decode base64 audio
+                    # Strip data URI scheme if present
+                    audio_b64 = state.raw_audio_base64
+                    if "base64," in audio_b64:
+                        audio_b64 = audio_b64.split("base64,")[1]
+                    audio_bytes = base64.b64decode(audio_b64)
+                    
+                    async with httpx.AsyncClient() as client:
+                        # We use 'audio.webm' as a generic extension, Groq handles most formats automatically
+                        files = {"file": ("audio.webm", audio_bytes, "audio/webm")}
+                        data = {"model": "whisper-large-v3", "language": lang_code if lang_code != "en" else "en"}
+                        
+                        response = await client.post(
+                            "https://api.groq.com/openai/v1/audio/transcriptions",
+                            headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+                            files=files,
+                            data=data,
+                            timeout=15.0
+                        )
+                        response.raise_for_status()
+                        transcript = response.json().get("text", "")
+
+                    state.transcript_original = transcript
+                    state.language_code = lang_code
+
+                    # Get language name
+                    lang_names = {v: k for k, v in LANGUAGE_CODES.items()}
+                    state.language_detected = lang_names.get(lang_code, "Hindi")
+
+                    # Note: We rely on the downstream Gemini Agent (Agent 2) to handle English translation
+                    # if needed, since Groq Whisper STT only returns the original language transcription here.
+                    state.transcript_english = transcript 
+
+                    decision = "Groq Whisper STT transcription"
 
                 except Exception as bhashini_err:
                     logger.warning(

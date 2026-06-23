@@ -3,7 +3,9 @@
  * Handles all communication with the FastAPI backend.
  */
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+// When running in the browser, default to empty string to use relative paths (proxied by Next.js).
+// On the server, default to localhost:8000.
+const BACKEND_URL = typeof window !== "undefined" ? (process.env.NEXT_PUBLIC_BACKEND_URL || "") : (process.env.BACKEND_URL || "http://localhost:8000");
 
 export interface VoiceQueryRequest {
   text?: string;
@@ -164,6 +166,10 @@ export async function getHandoffNote(ticketId: string): Promise<HandoffNote> {
 }
 
 export function createWebSocket(sessionId: string): WebSocket {
-  const wsUrl = BACKEND_URL.replace("http", "ws");
+  let wsUrl = BACKEND_URL;
+  if (!wsUrl && typeof window !== "undefined") {
+    wsUrl = window.location.origin;
+  }
+  wsUrl = wsUrl.replace(/^http/, "ws");
   return new WebSocket(`${wsUrl}/api/voice/ws/${sessionId}`);
 }
