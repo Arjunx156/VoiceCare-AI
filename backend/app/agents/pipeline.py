@@ -596,6 +596,7 @@ class VoiceCarePipeline:
                 ended_at=datetime.utcnow(),
             )
             self.db.add(session)
+            await self.db.flush()
 
             # Create ticket
             ticket = SupportTicket(
