@@ -457,7 +457,7 @@ class VoiceCarePipeline:
                 rules_triggered.append("Payment deducted but order issue detected")
 
         # Rule 5: Low AI confidence
-        if state.confidence_score < 0.6:
+        if state.confidence_score < 0.4:
             rules_triggered.append(f"Low AI confidence: {state.confidence_score:.2f}")
 
         if rules_triggered:
