@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     """Application configuration loaded from environment variables."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -29,8 +29,6 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://localhost/voicecare"
     database_url_sync: str = "postgresql://localhost/voicecare"
 
-    # ---- Redis (Upstash) ----
-    redis_url: str = "redis://localhost:6379"
 
     # ---- Gemini ----
     gemini_api_key: str = ""

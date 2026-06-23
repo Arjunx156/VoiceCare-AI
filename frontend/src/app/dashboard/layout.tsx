@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * CommerceMind VoiceCare AI — Dashboard Layout
- * Sidebar navigation for admin pages.
+ * CommerceMind VoiceCare AI — Dashboard Layout v2
+ * Design brief: dark sidebar, accent active state (left border + accent text),
+ * no glassmorphism, editorial feel.
  */
 
 import Link from "next/link";
@@ -10,51 +11,74 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Overview", icon: "📊" },
-  { href: "/dashboard/tickets", label: "Tickets", icon: "🎫" },
-  { href: "/dashboard/escalations", label: "Escalations", icon: "🚨" },
-  { href: "/dashboard/analytics", label: "Analytics", icon: "📈" },
+  { href: "/dashboard",             label: "Overview",    icon: "overview" },
+  { href: "/dashboard/tickets",     label: "Tickets",     icon: "tickets" },
+  { href: "/dashboard/escalations", label: "Escalations", icon: "escalations" },
+  { href: "/dashboard/analytics",   label: "Analytics",   icon: "analytics" },
 ];
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+// Minimal SVG icons (no emojis — editorial clean)
+function NavIcon({ name, active }: { name: string; active: boolean }) {
+  const color = active ? "var(--accent)" : "var(--text-muted)";
+  if (name === "overview")
+    return <svg width="16" height="16" fill="none" viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1.5" fill={color}/><rect x="9" y="1" width="6" height="6" rx="1.5" fill={color} opacity=".5"/><rect x="1" y="9" width="6" height="6" rx="1.5" fill={color} opacity=".5"/><rect x="9" y="9" width="6" height="6" rx="1.5" fill={color} opacity=".3"/></svg>;
+  if (name === "tickets")
+    return <svg width="16" height="16" fill="none" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="2" stroke={color} strokeWidth="1.5"/><line x1="5" y1="7" x2="11" y2="7" stroke={color} strokeWidth="1.5" strokeLinecap="round"/><line x1="5" y1="10" x2="9" y2="10" stroke={color} strokeWidth="1.5" strokeLinecap="round"/></svg>;
+  if (name === "escalations")
+    return <svg width="16" height="16" fill="none" viewBox="0 0 16 16"><path d="M8 2L14 13H2L8 2Z" stroke={color} strokeWidth="1.5" strokeLinejoin="round"/><line x1="8" y1="7" x2="8" y2="10" stroke={color} strokeWidth="1.5" strokeLinecap="round"/><circle cx="8" cy="12" r="0.75" fill={color}/></svg>;
+  // analytics
+  return <svg width="16" height="16" fill="none" viewBox="0 0 16 16"><rect x="2" y="9" width="3" height="5" rx="1" fill={color} opacity=".5"/><rect x="6.5" y="6" width="3" height="8" rx="1" fill={color} opacity=".7"/><rect x="11" y="3" width="3" height="11" rx="1" fill={color}/></svg>;
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen flex" style={{ zIndex: 1, position: "relative" }}>
+    <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg-base)", position: "relative", zIndex: 1 }}>
       {/* Sidebar */}
       <aside
-        className="w-64 flex-shrink-0 flex flex-col p-4 gap-1"
         style={{
-          background: "var(--bg-secondary)",
+          width: 220,
+          flexShrink: 0,
+          display: "flex",
+          flexDirection: "column",
+          padding: "24px 0",
+          background: "var(--bg-panel)",
           borderRight: "1px solid var(--border-subtle)",
         }}
       >
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 px-3 py-4 mb-4">
+        <Link
+          href="/"
+          style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 20px 24px", textDecoration: "none" }}
+        >
+          {/* Mic mark */}
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
             style={{
-              background: "linear-gradient(135deg, var(--primary), var(--accent))",
+              width: 32, height: 32,
+              borderRadius: 10,
+              background: "var(--accent)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
             }}
           >
-            🎙️
+            <svg width="16" height="16" fill="white" viewBox="0 0 24 24">
+              <path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/>
+              <line x1="12" y1="19" x2="12" y2="23" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
           </div>
           <div>
-            <h2 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
-              VoiceCare AI
-            </h2>
-            <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-              Admin Dashboard
-            </p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>VoiceCare AI</p>
+            <p style={{ fontSize: 10, color: "var(--text-muted)", letterSpacing: "0.04em" }}>Admin Dashboard</p>
           </div>
         </Link>
 
-        {/* Navigation */}
-        <nav className="flex flex-col gap-1">
+        {/* Divider */}
+        <div className="divider" style={{ marginBottom: 12 }} />
+
+        {/* Nav */}
+        <nav style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 12px" }}>
           {NAV_ITEMS.map((item) => {
             const isActive =
               item.href === "/dashboard"
@@ -65,42 +89,70 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className="relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all"
                 style={{
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "9px 12px",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: isActive ? 600 : 400,
                   color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-                  background: isActive ? "var(--bg-card)" : "transparent",
+                  background: isActive ? "var(--bg-panel-raised)" : "transparent",
+                  textDecoration: "none",
+                  transition: "background 120ms, color 120ms",
                 }}
               >
+                {/* Active accent left border */}
                 {isActive && (
                   <motion.div
                     layoutId="activeNav"
-                    className="absolute left-0 w-1 h-6 rounded-r-full"
-                    style={{ background: "var(--primary)" }}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      width: 3,
+                      height: 20,
+                      borderRadius: "0 3px 3px 0",
+                      background: "var(--accent)",
+                    }}
+                    transition={{ type: "spring", stiffness: 320, damping: 32 }}
                   />
                 )}
-                <span>{item.icon}</span>
+                <NavIcon name={item.icon} active={isActive} />
                 <span>{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Bottom */}
-        <div className="mt-auto pt-4" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+        {/* Bottom — back to voice */}
+        <div style={{ marginTop: "auto", padding: "12px 12px 0" }}>
+          <div className="divider" style={{ marginBottom: 12 }} />
           <Link
             href="/"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all hover:opacity-80"
-            style={{ color: "var(--text-muted)" }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "9px 12px",
+              borderRadius: 10,
+              fontSize: 12,
+              color: "var(--text-muted)",
+              textDecoration: "none",
+              transition: "color 120ms",
+            }}
           >
-            <span>🎙️</span>
-            <span>Voice Interface</span>
+            <svg width="14" height="14" fill="none" viewBox="0 0 16 16">
+              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Voice Interface
           </Link>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto p-6">{children}</main>
+      <main style={{ flex: 1, overflow: "auto", padding: "32px 36px" }}>{children}</main>
     </div>
   );
 }

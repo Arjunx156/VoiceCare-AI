@@ -1,23 +1,24 @@
 "use client";
 
 /**
- * CommerceMind VoiceCare AI — Pipeline Status Stream
- * Animated real-time status display during pipeline processing.
+ * CommerceMind VoiceCare AI — Status Stream v2
+ * Design brief: numbered list 01–09, muted → accent numeral on active,
+ * staggered label fade, checkmark draw on complete.
  */
 
 import { motion, AnimatePresence } from "framer-motion";
 
-const STAGE_LABELS: Record<number, { label: string; icon: string }> = {
-  1: { label: "Listening...", icon: "🎙️" },
-  2: { label: "Understanding your issue...", icon: "🧠" },
-  3: { label: "Checking your order...", icon: "📦" },
-  4: { label: "Finding the right policy...", icon: "📋" },
-  5: { label: "Determining resolution...", icon: "⚖️" },
-  6: { label: "Checking escalation rules...", icon: "🔍" },
-  7: { label: "Preparing response...", icon: "💬" },
-  8: { label: "Converting to speech...", icon: "🔊" },
-  9: { label: "Creating your ticket...", icon: "🎫" },
-};
+const STAGES: { label: string }[] = [
+  { label: "Receiving audio" },
+  { label: "Understanding intent" },
+  { label: "Looking up order" },
+  { label: "Retrieving policy" },
+  { label: "Determining resolution" },
+  { label: "Checking escalation" },
+  { label: "Composing response" },
+  { label: "Converting to speech" },
+  { label: "Creating ticket" },
+];
 
 interface StatusStreamProps {
   currentStage: number;
@@ -25,95 +26,99 @@ interface StatusStreamProps {
   message?: string;
 }
 
-export default function StatusStream({
-  currentStage,
-  isComplete,
-  message,
-}: StatusStreamProps) {
+// SVG checkmark draw-on
+function Checkmark() {
   return (
-    <div className="w-full max-w-md mx-auto">
-      <AnimatePresence mode="wait">
-        {!isComplete && currentStage > 0 && (
-          <motion.div
-            key={currentStage}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            className="glass-card px-6 py-4"
-          >
-            <div className="flex items-center gap-4">
-              {/* Animated spinner */}
-              <div className="relative w-10 h-10 flex-shrink-0">
-                <motion.div
-                  className="absolute inset-0 rounded-full"
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+      <polyline
+        points="2,7 6,11 12,3"
+        stroke="#4CAF73"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="check-draw"
+      />
+    </svg>
+  );
+}
+
+export default function StatusStream({ currentStage, isComplete, message }: StatusStreamProps) {
+  if (currentStage === 0 && !isComplete) return null;
+
+  return (
+    <div className="w-full panel" style={{ padding: "20px 24px" }}>
+      {/* Eyebrow */}
+      <span className="eyebrow">
+        {isComplete ? "COMPLETE" : "PROCESSING"}
+      </span>
+
+      {/* Step list */}
+      <ol style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "10px" }}>
+        {STAGES.map((stage, idx) => {
+          const stepNum = idx + 1;
+          const isActive = stepNum === currentStage && !isComplete;
+          const isDone   = stepNum < currentStage || isComplete;
+          const isFuture = !isActive && !isDone;
+
+          return (
+            <li
+              key={stepNum}
+              style={{ display: "flex", alignItems: "center", gap: "12px" }}
+            >
+              {/* Numeral */}
+              <motion.span
+                animate={{
+                  color: isDone
+                    ? "#4CAF73"
+                    : isActive
+                    ? "#FF5A2B"
+                    : "#3A3A3A",
+                }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                style={{
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  fontVariantNumeric: "tabular-nums",
+                  width: "24px",
+                  flexShrink: 0,
+                  letterSpacing: "0.02em",
+                }}
+              >
+                {isDone ? <Checkmark /> : String(stepNum).padStart(2, "0")}
+              </motion.span>
+
+              {/* Label — fades in 80ms after numeral shift */}
+              <motion.span
+                animate={{
+                  opacity: isFuture ? 0.28 : 1,
+                  color: isActive ? "#F5F5F5" : isDone ? "#9A9A9A" : "#3A3A3A",
+                }}
+                transition={{ duration: 0.08, ease: "easeOut", delay: isActive ? 0.08 : 0 }}
+                style={{ fontSize: "13px", fontWeight: isActive ? 500 : 400 }}
+              >
+                {isActive && message ? message : stage.label}
+              </motion.span>
+
+              {/* Active pill progress indicator */}
+              {isActive && (
+                <motion.span
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  animate={{ opacity: 1, scaleX: 1 }}
                   style={{
-                    border: "2px solid rgba(99, 102, 241, 0.2)",
-                    borderTopColor: "#6366F1",
-                  }}
-                  animate={{ rotate: 360 }}
-                  transition={{
-                    duration: 1,
-                    repeat: Infinity,
-                    ease: "linear",
+                    marginLeft: "auto",
+                    height: "3px",
+                    width: "32px",
+                    borderRadius: "999px",
+                    background: "#FF5A2B",
+                    display: "block",
+                    transformOrigin: "left",
                   }}
                 />
-                <span className="absolute inset-0 flex items-center justify-center text-lg">
-                  {STAGE_LABELS[currentStage]?.icon || "⏳"}
-                </span>
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                  {message || STAGE_LABELS[currentStage]?.label || "Processing..."}
-                </p>
-                <div className="mt-2 flex gap-1.5">
-                  {Array.from({ length: 9 }, (_, i) => (
-                    <motion.div
-                      key={i}
-                      className="h-1 rounded-full flex-1"
-                      style={{
-                        background:
-                          i + 1 <= currentStage
-                            ? "var(--primary)"
-                            : "var(--border-subtle)",
-                      }}
-                      initial={i + 1 === currentStage ? { scaleX: 0 } : {}}
-                      animate={i + 1 === currentStage ? { scaleX: 1 } : {}}
-                      transition={{ duration: 0.5 }}
-                    />
-                  ))}
-                </div>
-                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                  Step {currentStage} of 9
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {isComplete && (
-          <motion.div
-            key="complete"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-card px-6 py-4 text-center"
-            style={{ borderColor: "rgba(16, 185, 129, 0.3)" }}
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 200 }}
-              className="text-3xl mb-2"
-            >
-              ✅
-            </motion.div>
-            <p className="text-sm font-medium" style={{ color: "var(--success)" }}>
-              Response ready!
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              )}
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }

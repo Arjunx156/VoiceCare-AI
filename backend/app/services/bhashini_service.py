@@ -64,6 +64,8 @@ class BhashiniService:
                 json=payload,
                 headers=headers,
             )
+            if response.status_code != 200:
+                logger.error("bhashini_pipeline_error", status_code=response.status_code, text=response.text, payload=payload)
             response.raise_for_status()
             return response.json()
 

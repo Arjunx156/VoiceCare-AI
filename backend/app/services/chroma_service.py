@@ -30,7 +30,7 @@ class ChromaService:
         # Create or get the policy collection
         self.collection = self.client.get_or_create_collection(
             name="policy_documents",
-            metadata={"description": "E-commerce company policy documents for RAG"},
+            metadata={"description": "E-commerce company policy documents for RAG"}
         )
 
     def add_policy(

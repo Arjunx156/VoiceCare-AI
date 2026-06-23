@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.agents.state import PipelineState
 from app.agents.pipeline import VoiceCarePipeline
 from app.schemas.schemas import VoiceQueryRequest, VoiceQueryResponse
-from app.services.redis_service import get_redis_service
+from app.services.memory_service import get_memory_service
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/voice", tags=["voice"])
@@ -38,8 +38,8 @@ async def process_voice_query(
     # Load conversation history from Redis if multi-turn
     if request.session_id:
         state.session_id = request.session_id
-        redis = await get_redis_service()
-        history = await redis.get_conversation_history(request.session_id)
+        memory = await get_memory_service()
+        history = await memory.get_conversation_history(request.session_id)
         state.conversation_history = history
 
     # Run the pipeline
@@ -49,12 +49,12 @@ async def process_voice_query(
     if state.has_error:
         raise HTTPException(status_code=500, detail=state.error)
 
-    # Store conversation turn in Redis
-    redis = await get_redis_service()
-    await redis.store_conversation_turn(
+    # Store conversation turn in memory
+    memory = await get_memory_service()
+    await memory.store_conversation_turn(
         state.session_id, "customer", state.transcript_original or request.text or ""
     )
-    await redis.store_conversation_turn(
+    await memory.store_conversation_turn(
         state.session_id, "ai", state.response_english or state.response_text or ""
     )
 
@@ -102,9 +102,10 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
                 )
 
                 # Load history
-                redis = await get_redis_service()
-                history = await redis.get_conversation_history(session_id)
-                state.conversation_history = history
+                if session_id:
+                    memory = await get_memory_service()
+                    history = await memory.get_conversation_history(session_id)
+                    state.conversation_history = history
 
                 pipeline = VoiceCarePipeline(db=db, on_stage_update=on_stage_update)
                 state = await pipeline.run(state)
@@ -124,10 +125,10 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
                 })
 
                 # Store turns
-                await redis.store_conversation_turn(
+                await memory.store_conversation_turn(
                     session_id, "customer", state.transcript_original or ""
                 )
-                await redis.store_conversation_turn(
+                await memory.store_conversation_turn(
                     session_id, "ai", state.response_english or ""
                 )
 

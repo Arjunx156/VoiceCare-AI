@@ -26,8 +26,9 @@ logger = structlog.get_logger()
 
 
 async def seed_database():
-    """Seed all tables with fictional demo data."""
-
+    """Create all tables and seed initial data."""
+    print("Starting database seeder...")
+    print("Connecting to Neon...")
     # Create tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -108,11 +109,14 @@ async def seed_database():
         print("✅ All database seeding complete!")
 
     # Ingest policies into Chroma
-    chroma = get_chroma_service()
-    policies = get_all_policies()
-    count = chroma.ingest_policies(policies)
-    print(f"✅ {count} policy documents ingested into Chroma")
-    print(f"   Chroma collection size: {chroma.get_collection_count()}")
+    try:
+        chroma = get_chroma_service()
+        policies = get_all_policies()
+        count = chroma.ingest_policies(policies)
+        print(f"✅ {count} policy documents ingested into Chroma")
+        print(f"   Chroma collection size: {chroma.get_collection_count()}")
+    except Exception as e:
+        print(f"⚠️ Warning: Failed to ingest into ChromaDB: {e}")
 
 
 if __name__ == "__main__":

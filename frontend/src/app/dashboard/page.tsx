@@ -1,29 +1,68 @@
 "use client";
 
 /**
- * CommerceMind VoiceCare AI — Dashboard Overview Page
+ * CommerceMind VoiceCare AI — Dashboard Overview v2
+ * Design brief: asymmetric two-column analytics, eyebrow labels,
+ * editorial escalation list-rows, no glassmorphism.
  */
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { getAnalytics, getEscalations, type AnalyticsOverview, type TicketSummary } from "@/lib/api";
 
+// Priority semantic colors (never --accent)
+const PRIORITY_COLOR: Record<string, string> = {
+  Critical: "var(--status-critical)",
+  High:     "var(--status-high)",
+  Medium:   "var(--status-medium)",
+  Low:      "var(--status-low)",
+};
+const PRIORITY_BG: Record<string, string> = {
+  Critical: "rgba(198,40,40,0.12)",
+  High:     "rgba(229,57,53,0.12)",
+  Medium:   "rgba(212,160,23,0.12)",
+  Low:      "rgba(76,175,115,0.12)",
+};
+
+function StatCard({ eyebrow, value, sub }: { eyebrow: string; value: string | number; sub?: string }) {
+  return (
+    <div
+      className="panel panel-hover"
+      style={{ padding: "20px 22px" }}
+    >
+      <span className="eyebrow">{eyebrow}</span>
+      <p
+        style={{
+          fontSize: 36,
+          fontWeight: 800,
+          color: "var(--text-primary)",
+          lineHeight: 1,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {value}
+      </p>
+      {sub && (
+        <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>{sub}</p>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
-  const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
+  const [analytics, setAnalytics]     = useState<AnalyticsOverview | null>(null);
   const [escalations, setEscalations] = useState<TicketSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]         = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const [analyticsData, escalationsData] = await Promise.all([
-          getAnalytics(),
-          getEscalations(),
-        ]);
-        setAnalytics(analyticsData);
-        setEscalations(escalationsData);
+        const [a, e] = await Promise.all([getAnalytics(), getEscalations()]);
+        setAnalytics(a);
+        setEscalations(e);
       } catch (err) {
-        console.error("Failed to load dashboard data:", err);
+        console.error("Dashboard load failed:", err);
       } finally {
         setLoading(false);
       }
@@ -33,165 +72,240 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-8 h-8 rounded-full"
-          style={{ border: "2px solid var(--border-subtle)", borderTopColor: "var(--primary)" }}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+        <div
+          style={{
+            width: 28, height: 28, borderRadius: "50%",
+            border: "2px solid var(--border-subtle)",
+            borderTopColor: "var(--accent)",
+            animation: "spin 1s linear infinite",
+          }}
         />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
-  const stats = [
-    { label: "Total Tickets", value: analytics?.total_tickets || 0, icon: "🎫", color: "var(--primary)" },
-    { label: "Open", value: analytics?.open_tickets || 0, icon: "📂", color: "var(--info)" },
-    { label: "Escalated", value: analytics?.escalated_tickets || 0, icon: "🚨", color: "var(--error)" },
-    { label: "Resolved", value: analytics?.resolved_tickets || 0, icon: "✅", color: "var(--success)" },
-    { label: "Resolution Rate", value: `${analytics?.resolution_rate || 0}%`, icon: "📊", color: "var(--accent)" },
-    { label: "Escalation Rate", value: `${analytics?.escalation_rate || 0}%`, icon: "⚠️", color: "var(--warning)" },
-  ];
+  const total    = analytics?.total_tickets || 0;
+  const open     = analytics?.open_tickets || 0;
+  const escalated= analytics?.escalated_tickets || 0;
+  const resolved = analytics?.resolved_tickets || 0;
+  const resRate  = analytics?.resolution_rate || 0;
+  const escRate  = analytics?.escalation_rate || 0;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
-          Dashboard
+    <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+      {/* Page header */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <span className="eyebrow">OVERVIEW</span>
+        <h1 style={{ fontSize: 32, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
+          Support Operations
         </h1>
-        <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
-          Live overview of VoiceCare AI support operations
+        <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 6 }}>
+          Live view of VoiceCare AI customer support activity
         </p>
-      </div>
+      </motion.div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {stats.map((stat, i) => (
+      {/* Stats — 4 primary + 2 rate */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
+        {[
+          { eyebrow: "TOTAL",      value: total,               sub: "all time" },
+          { eyebrow: "OPEN",       value: open,                sub: "awaiting resolution" },
+          { eyebrow: "ESCALATED",  value: escalated,           sub: "needs human" },
+          { eyebrow: "RESOLVED",   value: resolved,            sub: "closed" },
+          { eyebrow: "RESOLUTION", value: `${resRate}%`,       sub: "resolution rate" },
+          { eyebrow: "ESCALATION", value: `${escRate}%`,       sub: "escalation rate" },
+        ].map((s, i) => (
           <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
+            key={s.eyebrow}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="glass-card p-4"
+            transition={{ delay: i * 0.06, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">{stat.icon}</span>
-              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                {stat.label}
-              </span>
-            </div>
-            <p className="text-2xl font-bold" style={{ color: stat.color }}>
-              {stat.value}
-            </p>
+            <StatCard {...s} />
           </motion.div>
         ))}
       </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* By Language */}
-        <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-            Tickets by Language
-          </h3>
+      {/* Asymmetric two-column: large chart block + smaller stat cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
+
+        {/* Ticket volume by language — the larger block */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.36, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="panel"
+          style={{ padding: "24px 28px" }}
+        >
+          <span className="eyebrow">TICKET VOLUME</span>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
+            By Language
+          </h2>
           {analytics && Object.entries(analytics.tickets_by_language).length > 0 ? (
-            <div className="space-y-3">
-              {Object.entries(analytics.tickets_by_language).map(([lang, count]) => (
-                <div key={lang} className="flex items-center gap-3">
-                  <span className="text-xs w-20" style={{ color: "var(--text-secondary)" }}>
-                    {lang}
-                  </span>
-                  <div className="flex-1 h-2 rounded-full" style={{ background: "var(--border-subtle)" }}>
-                    <motion.div
-                      className="h-full rounded-full"
-                      style={{ background: "var(--primary)" }}
-                      initial={{ width: 0 }}
-                      animate={{
-                        width: `${(count / (analytics.total_tickets || 1)) * 100}%`,
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {Object.entries(analytics.tickets_by_language)
+                .sort(([, a], [, b]) => (b as number) - (a as number))
+                .map(([lang, count]) => (
+                  <div key={lang} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{ fontSize: 13, color: "var(--text-secondary)", width: 80, flexShrink: 0 }}>
+                      {lang}
+                    </span>
+                    <div
+                      style={{
+                        flex: 1, height: 6, borderRadius: 999,
+                        background: "var(--border-subtle)",
+                        overflow: "hidden",
                       }}
-                      transition={{ duration: 0.8 }}
-                    />
+                    >
+                      <motion.div
+                        style={{
+                          height: "100%", borderRadius: 999,
+                          background: "var(--accent)",
+                          transformOrigin: "left",
+                        }}
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: (count as number) / (total || 1) }}
+                        transition={{ duration: 0.8, ease: "easeOut", delay: 0.5 }}
+                      />
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 13, fontWeight: 700,
+                        color: "var(--text-primary)",
+                        width: 28, textAlign: "right",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      {count as number}
+                    </span>
                   </div>
-                  <span className="text-xs font-medium w-8 text-right" style={{ color: "var(--text-primary)" }}>
-                    {count}
+                ))}
+            </div>
+          ) : (
+            <p style={{ fontSize: 13, color: "var(--text-muted)" }}>No data yet</p>
+          )}
+        </motion.div>
+
+        {/* Right column: category breakdown */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.42, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="panel"
+          style={{ padding: "24px 22px" }}
+        >
+          <span className="eyebrow">BY CATEGORY</span>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
+            Ticket Types
+          </h2>
+          {analytics && Object.entries(analytics.tickets_by_category).length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {Object.entries(analytics.tickets_by_category).map(([cat, count]) => (
+                <div
+                  key={cat}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                >
+                  <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                    {cat.replace(/_/g, " ")}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 13, fontWeight: 700,
+                      color: "var(--text-primary)",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {count as number}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>No data yet</p>
+            <p style={{ fontSize: 13, color: "var(--text-muted)" }}>No data yet</p>
+          )}
+        </motion.div>
+      </div>
+
+      {/* Escalation Queue — editorial list rows */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="panel"
+        style={{ padding: "24px 28px" }}
+      >
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 20 }}>
+          <span className="eyebrow" style={{ marginBottom: 0 }}>ESCALATION QUEUE</span>
+          {escalations.length > 0 && (
+            <span style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
+              {escalations.length} ticket{escalations.length !== 1 ? "s" : ""} need{escalations.length === 1 ? "s" : ""} you
+            </span>
           )}
         </div>
 
-        {/* Escalation Queue */}
-        <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-            🚨 Escalation Queue ({escalations.length})
-          </h3>
-          {escalations.length > 0 ? (
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {escalations.slice(0, 5).map((ticket) => (
-                <div
-                  key={ticket.ticket_id}
-                  className="flex items-center gap-3 p-3 rounded-lg transition-all hover:opacity-80"
-                  style={{ background: "var(--bg-card)" }}
+        {escalations.length > 0 ? (
+          <div>
+            {escalations.slice(0, 6).map((ticket, i) => (
+              <Link key={ticket.ticket_id} href={`/dashboard/tickets/${ticket.ticket_id}`} style={{ textDecoration: "none" }}>
+                <motion.div
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.55 + i * 0.05 }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 16,
+                    padding: "14px 0",
+                    borderBottom: i < Math.min(escalations.length, 6) - 1 ? "1px solid var(--border-subtle)" : "none",
+                    cursor: "pointer",
+                  }}
+                  className="panel-hover"
                 >
-                  <span className="status-dot escalated" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate" style={{ color: "var(--text-primary)" }}>
+                  {/* Eyebrow + title */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--accent)", display: "block", marginBottom: 2 }}>
+                      {ticket.ticket_type || "SUPPORT"}
+                    </span>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {ticket.user_name}
                     </p>
-                    <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
-                      {ticket.summary || ticket.ticket_type}
-                    </p>
+                    {ticket.summary && (
+                      <p style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {ticket.summary}
+                      </p>
+                    )}
                   </div>
+
+                  {/* Priority tag */}
                   <span
-                    className="text-xs px-2 py-1 rounded-full"
                     style={{
-                      background: ticket.priority === "Critical" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)",
-                      color: ticket.priority === "Critical" ? "var(--error)" : "var(--warning)",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: "4px 10px",
+                      borderRadius: 999,
+                      background: PRIORITY_BG[ticket.priority] || "transparent",
+                      color: PRIORITY_COLOR[ticket.priority] || "var(--text-secondary)",
+                      flexShrink: 0,
                     }}
                   >
                     {ticket.priority}
                   </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-2xl mb-2">🎉</p>
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                No pending escalations
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* By Category */}
-      {analytics && Object.entries(analytics.tickets_by_category).length > 0 && (
-        <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-            Tickets by Category
-          </h3>
-          <div className="flex flex-wrap gap-3">
-            {Object.entries(analytics.tickets_by_category).map(([cat, count]) => (
-              <div
-                key={cat}
-                className="px-4 py-3 rounded-xl text-center"
-                style={{ background: "var(--bg-card)" }}
-              >
-                <p className="text-lg font-bold" style={{ color: "var(--accent)" }}>
-                  {count}
-                </p>
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  {cat}
-                </p>
-              </div>
+                </motion.div>
+              </Link>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div style={{ textAlign: "center", padding: "32px 0" }}>
+            <p style={{ fontSize: 32, marginBottom: 8 }}>🎉</p>
+            <p style={{ fontSize: 14, color: "var(--text-muted)" }}>No pending escalations</p>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 }

@@ -19,7 +19,7 @@ from app.agents.state import PipelineState
 from app.services.gemini_service import get_gemini_service
 from app.services.bhashini_service import get_bhashini_service, LANGUAGE_CODES
 from app.services.chroma_service import get_chroma_service
-from app.services.redis_service import get_redis_service
+from app.services.memory_service import get_memory_service
 from app.db.models import (
     User, Order, OrderItem, Shipment, Return, Refund, Payment,
     VoiceSession, SupportTicket, SupportMessage, SupportResolution,
@@ -64,28 +64,56 @@ class VoiceCarePipeline:
             if state.raw_audio_base64:
                 # Detect language and transcribe
                 lang_code = state.language_code or "hi"
-                transcript, detected_lang = await self.bhashini.speech_to_text(
-                    state.raw_audio_base64, lang_code
-                )
-                state.transcript_original = transcript
-                state.language_code = detected_lang
-
-                # Get language name
-                lang_names = {v: k for k, v in LANGUAGE_CODES.items()}
-                state.language_detected = lang_names.get(detected_lang, "Hindi")
-
-                # Translate to English for downstream processing
-                if detected_lang != "en":
-                    state.transcript_english = await self.bhashini.translate_text(
-                        transcript, detected_lang, "en"
+                try:
+                    transcript, detected_lang = await self.bhashini.speech_to_text(
+                        state.raw_audio_base64, lang_code
                     )
-                else:
-                    state.transcript_english = transcript
+                    state.transcript_original = transcript
+                    state.language_code = detected_lang
+
+                    # Get language name
+                    lang_names = {v: k for k, v in LANGUAGE_CODES.items()}
+                    state.language_detected = lang_names.get(detected_lang, "Hindi")
+
+                    # Translate to English for downstream processing
+                    if detected_lang != "en":
+                        state.transcript_english = await self.bhashini.translate_text(
+                            transcript, detected_lang, "en"
+                        )
+                    else:
+                        state.transcript_english = transcript
+
+                    decision = "Bhashini STT transcription"
+
+                except Exception as bhashini_err:
+                    logger.warning(
+                        "bhashini_stt_unavailable",
+                        error=str(bhashini_err),
+                        fallback="raw_text" if state.raw_text else "none",
+                    )
+                    # ── Graceful fallback ──────────────────────────────────────
+                    # If the caller also sent raw_text (e.g. typed query), use it.
+                    # Otherwise surface a clear error instead of a generic crash.
+                    if state.raw_text:
+                        state.transcript_original = state.raw_text
+                        state.transcript_english = state.raw_text
+                        state.language_detected = state.language_detected or "English"
+                        state.language_code = state.language_code or "en"
+                        decision = "Text fallback (Bhashini STT unavailable)"
+                    else:
+                        state.error = (
+                            "Voice recognition is temporarily unavailable. "
+                            "Please use the \"Switch to Text\" option to type your query."
+                        )
+                        state.has_error = True
+                        return state
+
             elif state.raw_text:
                 state.transcript_original = state.raw_text
                 state.transcript_english = state.raw_text
-                state.language_detected = "English"
-                state.language_code = "en"
+                state.language_detected = state.language_detected or "English"
+                state.language_code = state.language_code or "en"
+                decision = "Text input passthrough"
             else:
                 state.error = "No audio or text input provided"
                 state.has_error = True
@@ -95,8 +123,8 @@ class VoiceCarePipeline:
                 agent_name="Voice Intake",
                 stage_number=1,
                 input_summary=f"Audio: {'yes' if state.raw_audio_base64 else 'no'}, Text: {'yes' if state.raw_text else 'no'}",
-                output_summary=f"Transcript: {state.transcript_english[:100]}...",
-                decision="STT transcription" if state.raw_audio_base64 else "Text passthrough",
+                output_summary=f"Transcript: {(state.transcript_english or '')[:100]}...",
+                decision=decision,
                 duration_ms=(time.time() - start) * 1000,
             )
         except Exception as e:
@@ -497,6 +525,15 @@ class VoiceCarePipeline:
             user_id = None
             if state.user_data:
                 user_id = uuid.UUID(state.user_data["user_id"])
+            else:
+                # Fallback to first seeded user if anonymous caller
+                result = await self.db.execute(select(User).limit(1))
+                first_user = result.scalar_one_or_none()
+                if first_user:
+                    user_id = first_user.user_id
+                else:
+                    # Should never happen if DB is seeded
+                    raise Exception("No users found in database. Please run DB seed.")
 
             order_id = None
             if state.order_data:
@@ -516,7 +553,7 @@ class VoiceCarePipeline:
 
             # Create ticket
             ticket = SupportTicket(
-                user_id=user_id or uuid.uuid4(),
+                user_id=user_id,
                 order_id=order_id,
                 session_id=session.session_id,
                 ticket_type=self._intent_to_ticket_type(state.intent),

@@ -1,55 +1,55 @@
 @import "tailwindcss";
 
 /* ============================================================
-   CommerceMind VoiceCare AI — Design System
-   Premium dark-mode voice-first interface
+   CommerceMind VoiceCare AI — Design System v2
+   Dark, editorial, single warm accent.
+   Ref: 04_UI_UX_Design_Brief.md
    ============================================================ */
 
 :root {
-  /* Primary Palette */
-  --primary: #4F46E5;
-  --primary-light: #6366F1;
-  --primary-dark: #3730A3;
-  --accent: #06B6D4;
-  --accent-light: #22D3EE;
+  /* ---- Canvas ---- */
+  --bg-base:        #0B0B0C;
+  --bg-panel:       #161616;
+  --bg-panel-raised:#1E1E1F;
 
-  /* Surfaces */
-  --bg-primary: #0A0A0F;
-  --bg-secondary: #12121A;
-  --bg-card: #1A1A2E;
-  --bg-card-hover: #222240;
-  --bg-elevated: #16213E;
+  /* ---- Brand Accent (one, warm coral-orange) ---- */
+  --accent:         #FF5A2B;
+  --accent-dim:     rgba(255, 90, 43, 0.15);
+  --accent-border:  rgba(255, 90, 43, 0.3);
 
-  /* Glass */
-  --glass-bg: rgba(26, 26, 46, 0.6);
-  --glass-border: rgba(99, 102, 241, 0.15);
-  --glass-border-hover: rgba(99, 102, 241, 0.3);
+  /* ---- Text ---- */
+  --text-primary:   #F5F5F5;
+  --text-secondary: #9A9A9A;
+  --text-muted:     #5A5A5A;
 
-  /* Text */
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
-  --text-accent: #06B6D4;
+  /* ---- Borders / Depth (no shadows — only contrast + 1px) ---- */
+  --border-subtle:  #262626;
+  --border-raised:  #333333;
 
-  /* Status */
-  --success: #10B981;
-  --warning: #F59E0B;
-  --error: #EF4444;
-  --info: #3B82F6;
+  /* ---- Semantic Status Colors (never confused with --accent) ---- */
+  --status-low:     #4CAF73;      /* muted green */
+  --status-medium:  #D4A017;      /* amber */
+  --status-high:    #E53935;      /* more-red than accent, reads "alert" */
+  --status-critical:#C62828;      /* deep red */
+  --status-calm:    #607D8B;      /* grey-blue */
+  --status-angry:   #E53935;
 
-  /* Borders */
-  --border-subtle: rgba(148, 163, 184, 0.1);
-  --border-default: rgba(148, 163, 184, 0.15);
+  /* ---- Legacy aliases (keeps existing components working) ---- */
+  --primary:        #FF5A2B;
+  --primary-light:  #FF7B55;
+  --accent-light:   #FF7B55;
+  --success:        #4CAF73;
+  --warning:        #D4A017;
+  --error:          #E53935;
+  --info:           #607D8B;
+  --text-muted-old: #5A5A5A;
 
-  /* Shadows */
-  --shadow-glow: 0 0 40px rgba(79, 70, 229, 0.15);
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
-
-  /* Font */
+  /* ---- Font ---- */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-* {
+/* ---- Reset ---- */
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -58,93 +58,195 @@
 html {
   font-family: var(--font-sans);
   scroll-behavior: smooth;
+  /* Tabular numerals so live-updating numbers don't jitter */
+  font-variant-numeric: tabular-nums;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
-  background: var(--bg-primary);
+  background: var(--bg-base);
   color: var(--text-primary);
   min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Background gradient mesh */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background:
-    radial-gradient(ellipse at 20% 20%, rgba(79, 70, 229, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(99, 102, 241, 0.04) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
 }
 
 /* ---- Scrollbar ---- */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: var(--bg-base); }
+::-webkit-scrollbar-thumb  { background: var(--border-raised); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ============================================================
+   COMPONENT TOKENS
+   ============================================================ */
+
+/* ---- Panel (replaces glass-card) ---- */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
 }
-::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+.panel-raised {
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--border-raised);
+  border-radius: 18px;
 }
-::-webkit-scrollbar-thumb {
-  background: var(--text-muted);
-  border-radius: 3px;
+/* Hover lift: 2px + border brightens, no shadow */
+.panel-hover {
+  transition: transform 150ms ease-out, border-color 150ms ease-out;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+.panel-hover:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-raised);
 }
 
-/* ---- Glass Card Utility ---- */
+/* ---- Legacy glass-card alias (keeps old components building) ---- */
 .glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  transition: transform 150ms ease-out, border-color 150ms ease-out;
 }
 .glass-card:hover {
-  border-color: var(--glass-border-hover);
-  box-shadow: var(--shadow-glow);
+  transform: translateY(-2px);
+  border-color: var(--border-raised);
 }
 
-/* ---- Pulse animation for orb ---- */
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(79, 70, 229, 0.3), 0 0 60px rgba(79, 70, 229, 0.1);
-  }
-  50% {
-    box-shadow: 0 0 40px rgba(79, 70, 229, 0.5), 0 0 100px rgba(79, 70, 229, 0.2);
-  }
+/* ---- Pill Button ---- */
+.btn-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  transition: transform 150ms ease-out, filter 150ms ease-out;
+  white-space: nowrap;
+}
+.btn-pill:hover  { transform: scale(1.02); filter: brightness(1.1); }
+.btn-pill:active { transform: scale(0.98); }
+.btn-pill:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.btn-pill-accent {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-pill-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+.btn-pill-ghost:hover {
+  border-color: var(--border-raised);
+  color: var(--text-primary);
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+/* ---- Eyebrow Label ---- */
+.eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  display: block;
+  margin-bottom: 8px;
 }
 
-/* ---- Status indicator dots ---- */
+/* ---- Divider ---- */
+.divider {
+  height: 1px;
+  background: var(--border-subtle);
+  width: 100%;
+}
+
+/* ---- Status dots (semantic, not accent) ---- */
 .status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   display: inline-block;
+  flex-shrink: 0;
 }
-.status-dot.active {
-  background: var(--success);
-  box-shadow: 0 0 8px var(--success);
+.status-dot.active    { background: var(--status-low); }
+.status-dot.escalated { background: var(--status-high); }
+.status-dot.pending   { background: var(--status-medium); }
+.status-dot.open      { background: var(--info); }
+
+/* ---- Language Pill (trust bar) ---- */
+.lang-pill {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: color 150ms, border-color 150ms, background 150ms;
 }
-.status-dot.escalated {
-  background: var(--error);
-  box-shadow: 0 0 8px var(--error);
+.lang-pill.active {
+  color: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--accent-dim);
 }
-.status-dot.pending {
-  background: var(--warning);
-  box-shadow: 0 0 8px var(--warning);
+.lang-pill:hover:not(.active) {
+  border-color: var(--border-raised);
+  color: var(--text-primary);
+}
+
+/* ---- Record Button Active Ring ---- */
+@keyframes record-ring {
+  0%   { transform: scale(1);   opacity: 0.4; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+.record-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  border: 2px solid var(--accent);
+  animation: record-ring 1.2s ease-out infinite;
+  pointer-events: none;
+}
+
+/* ---- Orb container breathing ---- */
+@keyframes orb-breathe {
+  0%, 100% { transform: scale(1.0); }
+  50%       { transform: scale(1.04); }
+}
+
+/* ---- Status stream checkmark draw ---- */
+@keyframes check-draw {
+  from { stroke-dashoffset: 24; }
+  to   { stroke-dashoffset: 0; }
+}
+.check-draw {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: check-draw 300ms ease-out forwards;
+}
+
+/* ---- Fade-up entry (page loads) ---- */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fade-up 560ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.fade-up-delay-1 { animation-delay: 60ms; }
+.fade-up-delay-2 { animation-delay: 120ms; }
+.fade-up-delay-3 { animation-delay: 180ms; }
+.fade-up-delay-4 { animation-delay: 240ms; }
+
+/* ---- Reduced motion overrides ---- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

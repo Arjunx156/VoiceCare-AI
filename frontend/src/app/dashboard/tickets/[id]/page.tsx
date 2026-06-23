@@ -1,7 +1,10 @@
 "use client";
 
 /**
- * CommerceMind VoiceCare AI — Ticket Detail + Replay View
+ * CommerceMind VoiceCare AI — Ticket Detail v2
+ * Design brief: eyebrow + bold title header, pill tabs, inline panels,
+ * no glassmorphism, semantic status colors only, agent replay as numbered
+ * vertical timeline matching the 01-09 pipeline aesthetic.
  */
 
 import { useEffect, useState } from "react";
@@ -10,9 +13,30 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { getTicketDetail, getHandoffNote, type TicketDetail, type HandoffNote } from "@/lib/api";
 
+const PRIORITY_COLOR: Record<string, string> = {
+  Critical: "var(--status-critical)",
+  High:     "var(--status-high)",
+  Medium:   "var(--status-medium)",
+  Low:      "var(--status-low)",
+};
+const PRIORITY_BG: Record<string, string> = {
+  Critical: "rgba(198,40,40,0.12)",
+  High:     "rgba(229,57,53,0.12)",
+  Medium:   "rgba(212,160,23,0.12)",
+  Low:      "rgba(76,175,115,0.12)",
+};
+const STATUS_COLOR: Record<string, string> = {
+  Escalated: "var(--status-high)",
+  Resolved:  "var(--status-low)",
+  Open:      "var(--status-calm)",
+  "In Progress": "var(--status-medium)",
+  Closed:    "var(--text-muted)",
+};
+
 export default function TicketDetailPage() {
-  const params = useParams();
+  const params   = useParams();
   const ticketId = params.id as string;
+
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
   const [handoff, setHandoff] = useState<HandoffNote | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,10 +48,7 @@ export default function TicketDetailPage() {
         const data = await getTicketDetail(ticketId);
         setTicket(data);
         if (data.status === "Escalated") {
-          try {
-            const h = await getHandoffNote(ticketId);
-            setHandoff(h);
-          } catch {}
+          try { setHandoff(await getHandoffNote(ticketId)); } catch {}
         }
       } catch (err) {
         console.error("Failed to load ticket:", err);
@@ -40,68 +61,106 @@ export default function TicketDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-8 h-8 rounded-full"
-          style={{ border: "2px solid var(--border-subtle)", borderTopColor: "var(--primary)" }}
-        />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 256 }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: "50%",
+          border: "2px solid var(--border-subtle)", borderTopColor: "var(--accent)",
+          animation: "spin 1s linear infinite",
+        }} />
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
   }
 
   if (!ticket) {
     return (
-      <div className="text-center py-20">
-        <p className="text-2xl mb-2">🔍</p>
-        <p style={{ color: "var(--text-muted)" }}>Ticket not found</p>
+      <div style={{ textAlign: "center", padding: "80px 0" }}>
+        <p style={{ fontSize: 40, marginBottom: 12 }}>🔍</p>
+        <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Ticket not found</p>
+        <Link href="/dashboard/tickets" style={{ fontSize: 13, color: "var(--accent)", marginTop: 8, display: "inline-block" }}>
+          Back to tickets
+        </Link>
       </div>
     );
   }
 
   const tabs = [
-    { key: "detail", label: "Details" },
-    { key: "replay", label: "Agent Replay" },
+    { key: "detail",  label: "Details"      },
+    { key: "replay",  label: "Agent Replay"  },
     ...(ticket.status === "Escalated" ? [{ key: "handoff", label: "Handoff Note" }] : []),
   ];
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 820 }}
+    >
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
-        <Link href="/dashboard/tickets" className="hover:opacity-80">Tickets</Link>
-        <span>→</span>
-        <span style={{ color: "var(--text-secondary)" }}>{ticketId.substring(0, 8)}...</span>
-      </div>
+      <nav style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}>
+        <Link href="/dashboard" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Dashboard</Link>
+        <span>›</span>
+        <Link href="/dashboard/tickets" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Tickets</Link>
+        <span>›</span>
+        <span style={{ color: "var(--text-secondary)" }}>{ticketId.substring(0, 8)}…</span>
+      </nav>
 
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
         <div>
-          <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
+          <span className="eyebrow">{ticket.ticket_type || "SUPPORT"}</span>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
             {ticket.user_name}
           </h1>
-          <div className="flex items-center gap-3 mt-1">
-            <span className="text-xs" style={{ color: "var(--text-muted)" }}>{ticket.phone}</span>
-            <span className="text-xs px-2 py-0.5 rounded-full" style={{
-              background: ticket.status === "Escalated" ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.15)",
-              color: ticket.status === "Escalated" ? "var(--error)" : "var(--success)",
-            }}>{ticket.status}</span>
-            <span className="text-xs" style={{ color: "var(--text-muted)" }}>{ticket.language}</span>
-          </div>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
+            {ticket.phone} · {ticket.language}
+          </p>
+        </div>
+        {/* Status + priority badges */}
+        <div style={{ display: "flex", gap: 8, flexShrink: 0, paddingTop: 4 }}>
+          <span style={{
+            fontSize: 12, fontWeight: 600, padding: "5px 12px", borderRadius: 999,
+            background: PRIORITY_BG[ticket.priority] || "rgba(90,90,90,0.12)",
+            color: PRIORITY_COLOR[ticket.priority] || "var(--text-secondary)",
+          }}>
+            {ticket.priority}
+          </span>
+          <span style={{
+            fontSize: 12, fontWeight: 600, padding: "5px 12px", borderRadius: 999,
+            background: "rgba(96,125,139,0.12)",
+            color: STATUS_COLOR[ticket.status] || "var(--text-secondary)",
+          }}>
+            {ticket.status}
+          </span>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-lg" style={{ background: "var(--bg-card)" }}>
+      {/* Tab strip */}
+      <div style={{
+        display: "flex",
+        gap: 2,
+        background: "var(--bg-panel)",
+        border: "1px solid var(--border-subtle)",
+        padding: 4,
+        borderRadius: 999,
+        width: "fit-content",
+      }}>
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key as typeof activeTab)}
-            className="flex-1 px-4 py-2 text-sm rounded-md transition-all"
             style={{
-              background: activeTab === tab.key ? "var(--primary)" : "transparent",
+              padding: "7px 18px",
+              borderRadius: 999,
+              fontSize: 12,
+              fontWeight: activeTab === tab.key ? 600 : 400,
+              background: activeTab === tab.key ? "var(--accent)" : "transparent",
               color: activeTab === tab.key ? "#fff" : "var(--text-secondary)",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "var(--font-sans)",
+              transition: "background 140ms, color 140ms",
             }}
           >
             {tab.label}
@@ -109,63 +168,82 @@ export default function TicketDetailPage() {
         ))}
       </div>
 
-      {/* Tab Content */}
+      {/* ─── Details Tab ─── */}
       {activeTab === "detail" && (
-        <div className="space-y-4">
-          {/* Info Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Info grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
             {[
-              { label: "Type", value: ticket.ticket_type },
-              { label: "Priority", value: ticket.priority },
-              { label: "Sentiment", value: ticket.sentiment || "N/A" },
-              { label: "Confidence", value: ticket.confidence_score ? `${(ticket.confidence_score * 100).toFixed(0)}%` : "N/A" },
+              { eyebrow: "TYPE",       value: ticket.ticket_type },
+              { eyebrow: "PRIORITY",   value: ticket.priority },
+              { eyebrow: "SENTIMENT",  value: ticket.sentiment || "N/A" },
+              { eyebrow: "CONFIDENCE", value: ticket.confidence_score ? `${(ticket.confidence_score * 100).toFixed(0)}%` : "N/A" },
             ].map((item) => (
-              <div key={item.label} className="glass-card p-3">
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>{item.label}</p>
-                <p className="text-sm font-medium mt-1" style={{ color: "var(--text-primary)" }}>{item.value}</p>
+              <div key={item.eyebrow} className="panel" style={{ padding: "14px 16px" }}>
+                <span className="eyebrow">{item.eyebrow}</span>
+                <p style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{item.value}</p>
               </div>
             ))}
           </div>
 
-          {/* Summary & Resolution */}
-          <div className="glass-card p-5 space-y-4">
+          {/* Summary + AI response */}
+          <div className="panel" style={{ padding: "24px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
             <div>
-              <h3 className="text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>Issue Summary</h3>
-              <p className="text-sm" style={{ color: "var(--text-primary)" }}>{ticket.summary || "No summary"}</p>
+              <span className="eyebrow">ISSUE SUMMARY</span>
+              <p style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.6 }}>
+                {ticket.summary || "No summary available"}
+              </p>
             </div>
             {ticket.response_text && (
-              <div>
-                <h3 className="text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>AI Response</h3>
-                <p className="text-sm" style={{ color: "var(--text-primary)" }}>{ticket.response_text}</p>
-              </div>
+              <>
+                <div className="divider" />
+                <div>
+                  <span className="eyebrow">AI RESPONSE</span>
+                  <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                    {ticket.response_text}
+                  </p>
+                </div>
+              </>
             )}
             {ticket.policy_reference && (
-              <div>
-                <h3 className="text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>Policy Referenced</h3>
-                <p className="text-sm italic" style={{ color: "var(--text-secondary)" }}>{ticket.policy_reference}</p>
-              </div>
+              <>
+                <div className="divider" />
+                <div>
+                  <span className="eyebrow">POLICY REFERENCED</span>
+                  <p style={{ fontSize: 13, fontStyle: "italic", color: "var(--text-muted)" }}>
+                    {ticket.policy_reference}
+                  </p>
+                </div>
+              </>
             )}
           </div>
 
-          {/* Messages */}
+          {/* Conversation */}
           {ticket.messages.length > 0 && (
-            <div className="glass-card p-5">
-              <h3 className="text-xs font-semibold mb-3" style={{ color: "var(--text-muted)" }}>Conversation</h3>
-              <div className="space-y-3">
+            <div className="panel" style={{ padding: "24px" }}>
+              <span className="eyebrow">CONVERSATION</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {ticket.messages.map((msg, i) => (
                   <div
                     key={msg.message_id || i}
-                    className={`flex ${msg.sender_type === "Customer" ? "justify-start" : "justify-end"}`}
+                    style={{
+                      display: "flex",
+                      justifyContent: msg.sender_type === "Customer" ? "flex-start" : "flex-end",
+                    }}
                   >
                     <div
-                      className="max-w-[80%] px-4 py-2 rounded-2xl text-sm"
                       style={{
-                        background: msg.sender_type === "Customer" ? "var(--bg-card)" : "var(--primary)",
-                        color: msg.sender_type === "Customer" ? "var(--text-primary)" : "#fff",
+                        maxWidth: "78%",
+                        padding: "10px 14px",
+                        borderRadius: msg.sender_type === "Customer" ? "4px 18px 18px 18px" : "18px 4px 18px 18px",
+                        background: msg.sender_type === "Customer" ? "var(--bg-panel-raised)" : "var(--accent-dim)",
+                        border: msg.sender_type === "Customer" ? "1px solid var(--border-subtle)" : "1px solid var(--accent-border)",
                       }}
                     >
-                      <p className="text-[10px] font-medium mb-1 opacity-60">{msg.sender_type}</p>
-                      <p>{msg.message_text}</p>
+                      <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", marginBottom: 4, color: "var(--text-muted)" }}>
+                        {msg.sender_type.toUpperCase()}
+                      </p>
+                      <p style={{ fontSize: 13, color: "var(--text-primary)", lineHeight: 1.5 }}>{msg.message_text}</p>
                     </div>
                   </div>
                 ))}
@@ -175,54 +253,72 @@ export default function TicketDetailPage() {
         </div>
       )}
 
+      {/* ─── Agent Replay Tab ─── */}
       {activeTab === "replay" && (
-        <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-            🔄 Agent Decision Replay
-          </h3>
+        <div className="panel" style={{ padding: "24px" }}>
+          <span className="eyebrow">AGENT DECISION REPLAY</span>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 24 }}>
+            Pipeline Trace
+          </h2>
           {ticket.agent_trace.length > 0 ? (
-            <div className="space-y-4">
+            <div>
               {ticket.agent_trace.map((step, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, x: -20 }}
+                  initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="flex gap-4"
+                  transition={{ delay: i * 0.07 }}
+                  style={{ display: "flex", gap: 16, paddingBottom: 24, position: "relative" }}
                 >
-                  {/* Timeline dot */}
-                  <div className="flex flex-col items-center">
+                  {/* Vertical line */}
+                  {i < ticket.agent_trace.length - 1 && (
                     <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-                      style={{ background: "var(--primary)", color: "#fff" }}
-                    >
-                      {step.stage_number}
-                    </div>
-                    {i < ticket.agent_trace.length - 1 && (
-                      <div className="w-0.5 flex-1 mt-2" style={{ background: "var(--border-subtle)" }} />
-                    )}
+                      style={{
+                        position: "absolute",
+                        left: 15, top: 32,
+                        width: 1,
+                        bottom: 0,
+                        background: "var(--border-subtle)",
+                      }}
+                    />
+                  )}
+
+                  {/* Step number bubble */}
+                  <div
+                    style={{
+                      width: 32, height: 32, borderRadius: "50%",
+                      background: "var(--bg-panel-raised)",
+                      border: "1px solid var(--border-raised)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      flexShrink: 0,
+                      fontSize: 11, fontWeight: 700, fontVariantNumeric: "tabular-nums",
+                      color: "var(--accent)",
+                    }}
+                  >
+                    {String(step.stage_number).padStart(2, "0")}
                   </div>
+
                   {/* Content */}
-                  <div className="flex-1 pb-4">
-                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
                       {step.agent_name}
                     </p>
                     {step.decision && (
-                      <p className="text-xs mt-1" style={{ color: "var(--accent)" }}>
+                      <p style={{ fontSize: 12, color: "var(--accent)", marginTop: 3 }}>
                         Decision: {step.decision}
                       </p>
                     )}
                     {step.reasoning && (
-                      <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
+                      <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 3, lineHeight: 1.5 }}>
                         {step.reasoning}
                       </p>
                     )}
-                    <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                    <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4, lineHeight: 1.5 }}>
                       {step.output_summary}
                     </p>
                     {step.duration_ms && (
-                      <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>
-                        ⏱️ {step.duration_ms.toFixed(0)}ms
+                      <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, fontVariantNumeric: "tabular-nums" }}>
+                        {step.duration_ms.toFixed(0)} ms
                       </p>
                     )}
                   </div>
@@ -230,42 +326,59 @@ export default function TicketDetailPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-center py-8" style={{ color: "var(--text-muted)" }}>
+            <p style={{ fontSize: 13, textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
               No agent trace available for this ticket
             </p>
           )}
         </div>
       )}
 
+      {/* ─── Handoff Note Tab ─── */}
       {activeTab === "handoff" && handoff && (
-        <div className="glass-card p-5 space-y-4">
-          <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-            📋 Auto-Generated Handoff Note
-          </h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><span style={{ color: "var(--text-muted)" }}>Customer:</span> <span style={{ color: "var(--text-primary)" }}>{handoff.customer_name}</span></div>
-            <div><span style={{ color: "var(--text-muted)" }}>Phone:</span> <span style={{ color: "var(--text-primary)" }}>{handoff.customer_phone}</span></div>
-            <div><span style={{ color: "var(--text-muted)" }}>Language:</span> <span style={{ color: "var(--text-primary)" }}>{handoff.language}</span></div>
-            <div><span style={{ color: "var(--text-muted)" }}>Sentiment:</span> <span style={{ color: "var(--error)" }}>{handoff.sentiment}</span></div>
+        <div className="panel" style={{ padding: "24px" }}>
+          <span className="eyebrow">AUTO-GENERATED HANDOFF NOTE</span>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 24 }}>
+            Escalation Brief
+          </h2>
+
+          {/* Quick facts */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+            {[
+              { label: "Customer",  value: handoff.customer_name },
+              { label: "Phone",     value: handoff.customer_phone },
+              { label: "Language",  value: handoff.language },
+              { label: "Sentiment", value: handoff.sentiment, warn: true },
+            ].map((r) => (
+              <div key={r.label} style={{ background: "var(--bg-panel-raised)", borderRadius: 12, padding: "12px 14px" }}>
+                <span className="eyebrow" style={{ marginBottom: 4 }}>{r.label.toUpperCase()}</span>
+                <p style={{ fontSize: 14, fontWeight: 600, color: r.warn ? "var(--status-high)" : "var(--text-primary)" }}>
+                  {r.value}
+                </p>
+              </div>
+            ))}
           </div>
-          <div>
-            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>Issue Summary</p>
-            <p className="text-sm" style={{ color: "var(--text-primary)" }}>{handoff.issue_summary}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>Escalation Reason</p>
-            <p className="text-sm" style={{ color: "var(--error)" }}>{handoff.escalation_reason}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>AI Attempted Resolution</p>
-            <p className="text-sm" style={{ color: "var(--text-primary)" }}>{handoff.ai_attempted_resolution}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>Recommended Next Steps</p>
-            <p className="text-sm" style={{ color: "var(--accent)" }}>{handoff.recommended_next_steps}</p>
-          </div>
+
+          {/* Text fields */}
+          {[
+            { label: "ISSUE SUMMARY",           value: handoff.issue_summary,               accent: false },
+            { label: "ESCALATION REASON",        value: handoff.escalation_reason,           accent: false, warn: true },
+            { label: "AI ATTEMPTED RESOLUTION",  value: handoff.ai_attempted_resolution,     accent: false },
+            { label: "RECOMMENDED NEXT STEPS",   value: handoff.recommended_next_steps,      accent: true  },
+          ].map((section, i, arr) => (
+            <div key={section.label}>
+              {i > 0 && <div className="divider" style={{ margin: "16px 0" }} />}
+              <span className="eyebrow">{section.label}</span>
+              <p style={{
+                fontSize: 14,
+                lineHeight: 1.6,
+                color: section.warn ? "var(--status-high)" : section.accent ? "var(--accent)" : "var(--text-secondary)",
+              }}>
+                {section.value}
+              </p>
+            </div>
+          ))}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
