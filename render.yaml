@@ -1,0 +1,33 @@
+services:
+  # ── FastAPI Backend ──────────────────────────────────────────────
+  - type: web
+    name: voicecare-ai-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: singapore   # closest to India
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: CHROMA_PERSIST_DIR
+        value: ./chroma_data
+
+      # ── Secrets — set these in the Render dashboard ──
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_SYNC
+        sync: false
+      - key: BHASHINI_USER_ID
+        sync: false
+      - key: BHASHINI_API_KEY
+        sync: false
+      - key: BHASHINI_PIPELINE_URL
+        value: https://dhruva-api.bhashini.gov.in/services/inference
+      - key: FRONTEND_URL
+        sync: false   # set to your Vercel URL after deploy
