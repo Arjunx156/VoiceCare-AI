@@ -6,7 +6,7 @@
  * staggered label fade, checkmark draw on complete.
  */
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 const STAGES: { label: string }[] = [
   { label: "Receiving audio" },

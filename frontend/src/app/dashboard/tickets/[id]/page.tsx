@@ -364,7 +364,7 @@ export default function TicketDetailPage() {
             { label: "ESCALATION REASON",        value: handoff.escalation_reason,           accent: false, warn: true },
             { label: "AI ATTEMPTED RESOLUTION",  value: handoff.ai_attempted_resolution,     accent: false },
             { label: "RECOMMENDED NEXT STEPS",   value: handoff.recommended_next_steps,      accent: true  },
-          ].map((section, i, arr) => (
+          ].map((section, i) => (
             <div key={section.label}>
               {i > 0 && <div className="divider" style={{ margin: "16px 0" }} />}
               <span className="eyebrow">{section.label}</span>
