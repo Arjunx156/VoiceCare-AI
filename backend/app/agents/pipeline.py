@@ -371,9 +371,27 @@ class VoiceCarePipeline:
         await self._notify_stage(4, "Finding the right policy...")
 
         try:
+            import hashlib
             query = state.summary_english or state.transcript_english or ""
-            state.policy_context = self.chroma.get_policy_context(query, n_results=3)
-            state.retrieved_policies = self.chroma.query_policies(query, n_results=3)
+            cache_key = f"rag:{hashlib.md5(query.encode()).hexdigest()}"
+
+            memory = await get_memory_service()
+            cached = await memory.get_cache(cache_key)
+            if cached:
+                state.policy_context = cached.get("policy_context", "")
+                state.retrieved_policies = cached.get("retrieved_policies", [])
+                logger.info("policy_rag_cache_hit", query_len=len(query))
+            else:
+                state.policy_context = self.chroma.get_policy_context(query, n_results=3)
+                state.retrieved_policies = self.chroma.query_policies(query, n_results=3)
+                await memory.set_cache(
+                    cache_key,
+                    {
+                        "policy_context": state.policy_context,
+                        "retrieved_policies": state.retrieved_policies,
+                    },
+                    ttl_seconds=3600,
+                )
 
             state.add_trace(
                 agent_name="Policy RAG",
