@@ -7,12 +7,14 @@ import uuid
 import structlog
 from datetime import datetime, timedelta
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case, and_
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
+from app.api.auth import require_admin
+from app.services.memory_service import get_memory_service
 from app.db.models import (
     SupportTicket, SupportResolution, SupportMessage,
     User, Order, CustomerSentiment,
@@ -22,7 +24,37 @@ from app.schemas.schemas import (
 )
 
 logger = structlog.get_logger()
-router = APIRouter(prefix="/api/tickets", tags=["tickets"])
+
+# 60 requests per minute per IP for dashboard reads
+_TICKET_RATE_LIMIT = 60
+_TICKET_RATE_WINDOW = 60
+
+
+async def _ticket_rate_limit(request: Request) -> None:
+    client_ip = request.client.host if request.client else "unknown"
+    try:
+        memory = await get_memory_service()
+        count = await memory.increment_with_expiry(
+            f"rate_limit:tickets:{client_ip}", _TICKET_RATE_WINDOW
+        )
+        if count is not None and count > _TICKET_RATE_LIMIT:
+            raise HTTPException(
+                status_code=429,
+                detail="Too many requests. Please slow down.",
+                headers={"Retry-After": str(_TICKET_RATE_WINDOW)},
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("ticket_rate_limit_service_unavailable", error=str(exc))
+        raise HTTPException(status_code=503, detail="Rate limit service temporarily unavailable.")
+
+
+router = APIRouter(
+    prefix="/api/tickets",
+    tags=["tickets"],
+    dependencies=[Depends(require_admin), Depends(_ticket_rate_limit)],
+)
 
 
 @router.get("/", response_model=List[TicketSummary])

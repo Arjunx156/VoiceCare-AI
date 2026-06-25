@@ -8,8 +8,9 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { clearAuthToken } from "@/lib/api";
 
 class DashboardErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -71,6 +72,12 @@ function NavIcon({ name, active }: { name: string; active: boolean }) {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  function handleLogout() {
+    clearAuthToken();
+    router.push("/login");
+  }
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg-base)", position: "relative", zIndex: 1 }}>
@@ -165,7 +172,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        {/* Bottom — back to voice */}
+        {/* Bottom — back to voice + logout */}
         <div style={{ marginTop: "auto", padding: "12px 12px 0" }}>
           <div className="divider" style={{ marginBottom: 12 }} />
           <Link
@@ -187,6 +194,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </svg>
             Voice Interface
           </Link>
+          <button
+            onClick={handleLogout}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "9px 12px",
+              borderRadius: 10,
+              fontSize: 12,
+              color: "var(--text-muted)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              width: "100%",
+              textAlign: "left",
+              transition: "color 120ms",
+              marginTop: 2,
+            }}
+          >
+            <svg width="14" height="14" fill="none" viewBox="0 0 16 16">
+              <path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M10 11l3-3-3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="13" y1="8" x2="6" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            Sign out
+          </button>
         </div>
       </aside>
 

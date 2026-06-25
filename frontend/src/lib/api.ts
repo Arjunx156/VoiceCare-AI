@@ -7,6 +7,26 @@
 // On the server, default to localhost:8000.
 const BACKEND_URL = typeof window !== "undefined" ? (process.env.NEXT_PUBLIC_BACKEND_URL || "") : (process.env.BACKEND_URL || "http://localhost:8000");
 
+// ---- Auth token helpers (stored in localStorage + cookie for middleware) ----
+
+const TOKEN_KEY = "vc_admin_token";
+
+export function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setAuthToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+  // Also set a cookie so Next.js middleware can guard /dashboard routes
+  document.cookie = `vc_logged_in=1; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`;
+}
+
+export function clearAuthToken(): void {
+  localStorage.removeItem(TOKEN_KEY);
+  document.cookie = "vc_logged_in=; path=/; max-age=0";
+}
+
 export interface VoiceQueryRequest {
   text?: string;
   audio_base64?: string;
@@ -116,10 +136,20 @@ export interface HandoffNote {
 // ---- API Functions ----
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(`${BACKEND_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers: { ...headers, ...(options?.headers as Record<string, string> | undefined) },
   });
+
+  if (res.status === 401) {
+    clearAuthToken();
+    if (typeof window !== "undefined") window.location.href = "/login";
+    throw new Error("Session expired. Please log in again.");
+  }
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(error.detail || `API Error: ${res.status}`);
@@ -163,6 +193,20 @@ export async function getAnalytics(): Promise<AnalyticsOverview> {
 
 export async function getHandoffNote(ticketId: string): Promise<HandoffNote> {
   return apiFetch<HandoffNote>(`/api/tickets/${ticketId}/handoff`);
+}
+
+export async function adminLogin(email: string, password: string): Promise<void> {
+  const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Login failed." }));
+    throw new Error(err.detail || "Login failed.");
+  }
+  const data = await res.json();
+  setAuthToken(data.access_token);
 }
 
 export function createWebSocket(sessionId: string): WebSocket {
