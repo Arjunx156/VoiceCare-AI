@@ -1,6 +1,11 @@
+"use client";
+
 import { motion } from "framer-motion";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export default function BhashiniWarning({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -8 }}
@@ -23,7 +28,7 @@ export default function BhashiniWarning({ onClose }: { onClose: () => void }) {
       >
         <span style={{ fontSize: "1rem", flexShrink: 0 }}>⚠</span>
         <span style={{ flex: 1, lineHeight: 1.5 }}>
-          <strong>Voice recognition temporarily unavailable.</strong> Type your query below — everything else works perfectly.
+          <strong>{t("warning.title")}</strong> {t("warning.body")}
         </span>
         <button
           onClick={onClose}

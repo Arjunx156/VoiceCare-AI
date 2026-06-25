@@ -21,3 +21,19 @@ export const LANG_TO_BCP47: Record<string, string> = {
   Marathi: "mr-IN",
   Hinglish: "hi-IN",
 };
+
+// Maps display language names to i18n locale codes used by the UI catalog.
+// Hinglish maps to "en" — Hinglish readers use Latin-script English labels.
+export type Locale = "en" | "hi" | "ml" | "ta" | "te" | "kn" | "bn" | "mr";
+
+export const LANG_TO_LOCALE: Record<string, Locale> = {
+  Hindi: "hi",
+  English: "en",
+  Malayalam: "ml",
+  Tamil: "ta",
+  Telugu: "te",
+  Kannada: "kn",
+  Bengali: "bn",
+  Marathi: "mr",
+  Hinglish: "en",
+};

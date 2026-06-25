@@ -2,6 +2,9 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { createWebSocket, type VoiceQueryResponse } from "@/lib/api";
 import { LANG_TO_BCP47 } from "@/lib/constants";
 
+// Stable error codes — translated in the view layer via t("error.<code>")
+export type VoiceErrorCode = "micDenied" | "connection" | "connectionLost" | "generic";
+
 // Minimal type shim for the browser Web Speech API (not in TS lib by default)
 interface SpeechRecognitionInstance {
   lang: string;
@@ -19,6 +22,13 @@ interface SpeechRecognitionEvent {
 }
 
 const MAX_WS_RETRIES = 3;
+const LS_LANG_KEY = "vc_lang";
+const DEFAULT_LANG = "Hindi";
+
+function readStoredLang(): string {
+  if (typeof window === "undefined") return DEFAULT_LANG;
+  return localStorage.getItem(LS_LANG_KEY) ?? DEFAULT_LANG;
+}
 
 export function useVoiceInteraction() {
   const [isListening, setIsListening]     = useState(false);
@@ -27,13 +37,28 @@ export function useVoiceInteraction() {
   const [currentStage, setCurrentStage]   = useState(0);
   const [isComplete, setIsComplete]       = useState(false);
   const [response, setResponse]           = useState<VoiceQueryResponse | null>(null);
-  const [error, setError]                 = useState<string | null>(null);
-  const [selectedLanguage, setSelectedLanguage] = useState("Hindi");
+  // error holds a translated string (set by the view) or a raw error code string
+  // after the refactor it will hold a VoiceErrorCode; VoiceView maps it via t()
+  const [errorCode, setErrorCode]         = useState<VoiceErrorCode | null>(null);
+  const [selectedLanguage, setSelectedLanguageState] = useState<string>(DEFAULT_LANG);
   const [sessionId, setSessionId]         = useState<string | null>(null);
   const [textInput, setTextInput]         = useState("");
   const [showTextMode, setShowTextMode]   = useState(false);
   const [liveTranscript, setLiveTranscript] = useState("");
   const [bhashiniWarning, setBhashiniWarning] = useState(false);
+
+  // Load persisted language on first client render
+  useEffect(() => {
+    setSelectedLanguageState(readStoredLang());
+  }, []);
+
+  // Persist language whenever it changes
+  const setSelectedLanguage = useCallback((lang: string) => {
+    setSelectedLanguageState(lang);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(LS_LANG_KEY, lang);
+    }
+  }, []);
 
   const mediaRecorderRef  = useRef<MediaRecorder | null>(null);
   const audioChunksRef    = useRef<Blob[]>([]);
@@ -79,7 +104,6 @@ export function useVoiceInteraction() {
       const currentSessionId = sessionId || crypto.randomUUID();
       if (!sessionId) setSessionId(currentSessionId);
 
-      // Track whether this attempt completed normally so onclose can decide to retry
       let completed = false;
 
       try {
@@ -108,7 +132,7 @@ export function useVoiceInteraction() {
             setCurrentStage(data.stage_number);
           } else if (data.error) {
             completed = true;
-            setError(data.error);
+            setErrorCode("generic");
             setIsProcessing(false);
             ws.close();
           }
@@ -117,7 +141,7 @@ export function useVoiceInteraction() {
         ws.onerror = (err) => {
           console.error("WebSocket error:", err);
           completed = true;
-          setError("Connection error. Please try again.");
+          setErrorCode("connection");
           setIsProcessing(false);
           ws.close();
         };
@@ -129,14 +153,14 @@ export function useVoiceInteraction() {
               console.warn(`WebSocket closed unexpectedly, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_WS_RETRIES})`);
               setTimeout(() => processQuery(overrides, retryCount + 1), delay);
             } else {
-              setError("Connection lost after multiple retries. Please try again.");
+              setErrorCode("connectionLost");
               setIsProcessing(false);
             }
           }
         };
       } catch (err: unknown) {
-        const msg: string = err instanceof Error ? err.message : "Something went wrong. Please try again.";
-        setError(msg);
+        console.error("WebSocket setup error:", err);
+        setErrorCode("generic");
         setIsProcessing(false);
       }
     },
@@ -187,7 +211,7 @@ export function useVoiceInteraction() {
 
   const startRecording = useCallback(async () => {
     try {
-      setError(null);
+      setErrorCode(null);
       setResponse(null);
       setIsComplete(false);
       setCurrentStage(0);
@@ -229,7 +253,7 @@ export function useVoiceInteraction() {
       mediaRecorder.start(100);
       setIsListening(true);
     } catch {
-      setError("Microphone access denied. Please allow microphone access.");
+      setErrorCode("micDenied");
     }
   }, [monitorAudio, startSpeechRecognition, selectedLanguage, processQuery]);
 
@@ -253,7 +277,7 @@ export function useVoiceInteraction() {
     audioLevel,
     currentStage,
     response,
-    error,
+    errorCode,
     selectedLanguage,
     setSelectedLanguage,
     textInput,

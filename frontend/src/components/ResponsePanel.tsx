@@ -1,7 +1,12 @@
+"use client";
+
 import { motion } from "framer-motion";
 import { type VoiceQueryResponse } from "@/lib/api";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export default function ResponsePanel({ response }: { response: VoiceQueryResponse }) {
+  const { t } = useI18n();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -25,7 +30,7 @@ export default function ResponsePanel({ response }: { response: VoiceQueryRespon
             color: response.is_escalated ? "var(--status-high)" : "var(--status-low)",
           }}
         >
-          {response.is_escalated ? "Escalated" : "Resolved"}
+          {response.is_escalated ? t("response.escalated") : t("response.resolved")}
         </span>
       </div>
       <div className="divider" style={{ marginBottom: 14 }} />
@@ -46,8 +51,8 @@ export default function ResponsePanel({ response }: { response: VoiceQueryRespon
           color: "var(--text-muted)",
         }}
       >
-        <span>Ticket {response.ticket_id?.substring(0, 8)}…</span>
-        <span>Confidence {(response.confidence_score * 100).toFixed(0)}%</span>
+        <span>{t("response.ticket")} {response.ticket_id?.substring(0, 8)}…</span>
+        <span>{t("response.confidence")} {(response.confidence_score * 100).toFixed(0)}%</span>
         <span>{response.sentiment}</span>
       </div>
     </motion.div>

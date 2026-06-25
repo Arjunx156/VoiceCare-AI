@@ -1,5 +1,8 @@
+"use client";
+
 import { motion } from "framer-motion";
 import { LANGUAGES } from "@/lib/constants";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -38,6 +41,8 @@ export default function Footer({
   handleTextSubmit,
   setBhashiniWarning,
 }: FooterProps) {
+  const { t } = useI18n();
+
   return (
     <footer
       style={{
@@ -86,7 +91,7 @@ export default function Footer({
                 opacity: isProcessing ? 0.4 : 1,
                 cursor: isProcessing ? "not-allowed" : "pointer",
               }}
-              aria-label={isListening ? "Stop recording" : "Start recording"}
+              aria-label={isListening ? t("footer.stopRecording") : t("footer.startRecording")}
             >
               {isListening ? (
                 <svg width="18" height="18" fill="white" viewBox="0 0 24 24">
@@ -107,7 +112,7 @@ export default function Footer({
               type="text"
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Type your query in any language…"
+              placeholder={t("footer.placeholder")}
               disabled={isProcessing}
               autoFocus
               style={{
@@ -128,7 +133,7 @@ export default function Footer({
               className="btn-pill btn-pill-accent"
               style={{ padding: "12px 20px" }}
             >
-              Send
+              {t("footer.send")}
             </button>
           </form>
         )}
@@ -145,7 +150,7 @@ export default function Footer({
           transition: "color 150ms",
         }}
       >
-        {showTextMode ? "Switch to Voice" : "Switch to Text"}
+        {showTextMode ? t("footer.switchToVoice") : t("footer.switchToText")}
       </button>
     </footer>
   );
