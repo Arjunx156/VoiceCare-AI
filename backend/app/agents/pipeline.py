@@ -611,13 +611,11 @@ class VoiceCarePipeline:
             if state.order_data:
                 order_id = uuid.UUID(state.order_data["order_id"])
 
-            # Create voice session — guard against malformed session IDs
-            try:
-                _sid = uuid.UUID(state.session_id) if state.session_id and len(state.session_id) == 36 else uuid.uuid4()
-            except (ValueError, AttributeError):
-                _sid = uuid.uuid4()
+            # VoiceSession.session_id is the PK — always generate a fresh UUID
+            # so repeated queries in the same browser session don't collide.
+            # state.session_id is used only for conversation-memory lookups.
             session = VoiceSession(
-                session_id=_sid,
+                session_id=uuid.uuid4(),
                 user_id=user_id,
                 language_detected=state.language_detected,
                 transcript_original=state.transcript_original,

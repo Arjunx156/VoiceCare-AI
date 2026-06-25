@@ -52,7 +52,9 @@ export default function ResponsePanel({ response }: { response: VoiceQueryRespon
         }}
       >
         <span>{t("response.ticket")} {response.ticket_id?.substring(0, 8)}…</span>
-        <span>{t("response.confidence")} {(response.confidence_score * 100).toFixed(0)}%</span>
+        {response.confidence_score != null && (
+          <span>{t("response.confidence")} {(response.confidence_score * 100).toFixed(0)}%</span>
+        )}
         <span>{response.sentiment}</span>
       </div>
     </motion.div>
