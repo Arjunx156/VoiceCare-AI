@@ -11,6 +11,7 @@ pydantic-settings==2.8.1
 # ---- Database ----
 sqlalchemy==2.0.41
 asyncpg==0.30.0
+aiosqlite>=0.20.0
 psycopg[binary]>=3.2.10
 alembic==1.15.2
 greenlet>=3.0.0

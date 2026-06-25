@@ -6,10 +6,10 @@
  * Semantic colors only (never --accent for urgency).
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { getEscalations, type TicketSummary } from "@/lib/api";
+import { getEscalations, claimTicket, type TicketSummary } from "@/lib/api";
 
 const PRIORITY_COLOR: Record<string, string> = {
   Critical: "var(--status-critical)",
@@ -32,6 +32,21 @@ function isRaised(priority: string) {
 export default function EscalationsPage() {
   const [escalations, setEscalations] = useState<TicketSummary[]>([]);
   const [loading, setLoading]         = useState(true);
+  const [claiming, setClaiming]       = useState<string | null>(null);
+
+  const handleClaim = useCallback(async (ticketId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setClaiming(ticketId);
+    try {
+      await claimTicket(ticketId);
+      setEscalations((prev) => prev.filter((t) => t.ticket_id !== ticketId));
+    } catch (err) {
+      console.error("Failed to claim ticket:", err);
+    } finally {
+      setClaiming(null);
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -195,6 +210,28 @@ export default function EscalationsPage() {
                       <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
                         {new Date(ticket.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                       </span>
+                    </div>
+
+                    {/* Claim button */}
+                    <div style={{ marginTop: 12 }}>
+                      {ticket.assigned_to ? (
+                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                          Claimed by {ticket.assigned_to}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={(e) => handleClaim(ticket.ticket_id, e)}
+                          disabled={claiming === ticket.ticket_id}
+                          className="btn-pill"
+                          style={{
+                            fontSize: 11, padding: "5px 14px",
+                            opacity: claiming === ticket.ticket_id ? 0.6 : 1,
+                            cursor: claiming === ticket.ticket_id ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {claiming === ticket.ticket_id ? "Claiming…" : "Claim"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </Link>

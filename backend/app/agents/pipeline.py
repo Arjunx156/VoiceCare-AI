@@ -18,7 +18,8 @@ from sqlalchemy import select
 
 from app.agents.state import PipelineState
 from app.services.gemini_service import get_gemini_service
-from app.services.bhashini_service import get_bhashini_service, LANGUAGE_CODES
+from app.services.bhashini_service import get_bhashini_service
+from app.core.constants import LANGUAGE_CODES, LANGUAGE_NAMES
 from app.services.chroma_service import get_chroma_service
 from app.services.memory_service import get_memory_service
 from app.db.models import (
@@ -121,10 +122,7 @@ class VoiceCarePipeline:
 
                     state.transcript_original = transcript
                     state.language_code = lang_code
-
-                    # Get language name
-                    lang_names = {v: k for k, v in LANGUAGE_CODES.items()}
-                    state.language_detected = lang_names.get(lang_code, "Hindi")
+                    state.language_detected = LANGUAGE_NAMES.get(lang_code, "Hindi")
 
                     # Note: We rely on the downstream Gemini Agent (Agent 2) to handle English translation
                     # if needed, since Groq Whisper STT only returns the original language transcription here.
