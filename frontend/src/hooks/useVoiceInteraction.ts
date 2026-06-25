@@ -1,11 +1,24 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createWebSocket, type VoiceQueryResponse } from "@/lib/api";
+import { LANG_TO_BCP47 } from "@/lib/constants";
 
-const LANG_TO_BCP47: Record<string, string> = {
-  Hindi: "hi-IN", English: "en-IN", Malayalam: "ml-IN", Tamil: "ta-IN",
-  Telugu: "te-IN", Kannada: "kn-IN", Bengali: "bn-IN", Marathi: "mr-IN",
-  Hinglish: "hi-IN",
-};
+// Minimal type shim for the browser Web Speech API (not in TS lib by default)
+interface SpeechRecognitionInstance {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+interface SpeechRecognitionEvent {
+  resultIndex: number;
+  results: { length: number; [i: number]: { isFinal: boolean; [j: number]: { transcript: string } } };
+}
+
+const MAX_WS_RETRIES = 3;
 
 export function useVoiceInteraction() {
   const [isListening, setIsListening]     = useState(false);
@@ -27,15 +40,14 @@ export function useVoiceInteraction() {
   const analyserRef       = useRef<AnalyserNode | null>(null);
   const animFrameRef      = useRef<number>(0);
   const streamRef         = useRef<MediaStream | null>(null);
-  const recognitionRef    = useRef<unknown>(null);
+  const recognitionRef    = useRef<SpeechRecognitionInstance | null>(null);
   const transcriptAccRef  = useRef<string>("");
 
   useEffect(() => {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (recognitionRef.current) (recognitionRef.current as any).stop();
+      if (recognitionRef.current) recognitionRef.current.stop();
     };
   }, []);
 
@@ -60,16 +72,19 @@ export function useVoiceInteraction() {
   }, [playBrowserTTS]);
 
   const processQuery = useCallback(
-    (overrides: { text?: string; audio_base64?: string } = {}) => {
+    (overrides: { text?: string; audio_base64?: string } = {}, retryCount = 0) => {
       setIsProcessing(true);
       setCurrentStage(1);
-      
+
       const currentSessionId = sessionId || crypto.randomUUID();
       if (!sessionId) setSessionId(currentSessionId);
 
+      // Track whether this attempt completed normally so onclose can decide to retry
+      let completed = false;
+
       try {
         const ws = createWebSocket(currentSessionId);
-        
+
         ws.onopen = () => {
           ws.send(JSON.stringify({
             text: overrides.text,
@@ -80,8 +95,9 @@ export function useVoiceInteraction() {
 
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          
+
           if (data.type === "response") {
+            completed = true;
             setCurrentStage(9);
             setResponse(data as VoiceQueryResponse);
             setIsComplete(true);
@@ -91,6 +107,7 @@ export function useVoiceInteraction() {
           } else if (data.stage_number) {
             setCurrentStage(data.stage_number);
           } else if (data.error) {
+            completed = true;
             setError(data.error);
             setIsProcessing(false);
             ws.close();
@@ -99,15 +116,22 @@ export function useVoiceInteraction() {
 
         ws.onerror = (err) => {
           console.error("WebSocket error:", err);
+          completed = true;
           setError("Connection error. Please try again.");
           setIsProcessing(false);
           ws.close();
         };
 
         ws.onclose = (event) => {
-          if (!event.wasClean && isProcessing) {
-             setError("Connection closed unexpectedly.");
-             setIsProcessing(false);
+          if (!event.wasClean && !completed) {
+            if (retryCount < MAX_WS_RETRIES) {
+              const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+              console.warn(`WebSocket closed unexpectedly, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_WS_RETRIES})`);
+              setTimeout(() => processQuery(overrides, retryCount + 1), delay);
+            } else {
+              setError("Connection lost after multiple retries. Please try again.");
+              setIsProcessing(false);
+            }
           }
         };
       } catch (err: unknown) {
@@ -116,7 +140,7 @@ export function useVoiceInteraction() {
         setIsProcessing(false);
       }
     },
-    [selectedLanguage, sessionId, playAudioResponse, isProcessing]
+    [selectedLanguage, sessionId, playAudioResponse]
   );
 
   const monitorAudio = useCallback((stream: MediaStream) => {
@@ -137,8 +161,8 @@ export function useVoiceInteraction() {
   }, []);
 
   const startSpeechRecognition = useCallback((language: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const w = window as Window & { SpeechRecognition?: new () => SpeechRecognitionInstance; webkitSpeechRecognition?: new () => SpeechRecognitionInstance };
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!SR) return;
     transcriptAccRef.current = "";
     setLiveTranscript("");
@@ -146,8 +170,7 @@ export function useVoiceInteraction() {
     recognition.lang = LANG_TO_BCP47[language] || "hi-IN";
     recognition.continuous = true;
     recognition.interimResults = true;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interim = "", final = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const t = event.results[i][0].transcript;
@@ -159,8 +182,7 @@ export function useVoiceInteraction() {
     };
     recognition.onerror = () => {};
     recognitionRef.current = recognition;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (recognition as any).start();
+    recognition.start();
   }, []);
 
   const startRecording = useCallback(async () => {
@@ -185,10 +207,9 @@ export function useVoiceInteraction() {
       };
 
       mediaRecorder.onstop = async () => {
-        if (recognitionRef.current) { 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (recognitionRef.current as any).stop(); 
-          recognitionRef.current = null; 
+        if (recognitionRef.current) {
+          recognitionRef.current.stop();
+          recognitionRef.current = null;
         }
         if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
         stream.getTracks().forEach((t) => t.stop());

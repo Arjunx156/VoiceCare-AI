@@ -263,8 +263,12 @@ class VoiceCarePipeline:
                                 )
                             )
                             order = order_result.scalar_one_or_none()
-                        except (ValueError, Exception):
+                        except ValueError:
+                            logger.warning("invalid_order_uuid_format", order_id=order_id)
                             order = None
+                        except Exception as db_exc:
+                            logger.error("order_lookup_db_error", order_id=order_id, error=str(db_exc))
+                            raise
                     else:
                         # Get most recent order
                         order_result = await self.db.execute(
