@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { sendVoiceQuery, type VoiceQueryResponse } from "@/lib/api";
+import { createWebSocket, type VoiceQueryResponse } from "@/lib/api";
 
 const LANG_TO_BCP47: Record<string, string> = {
   Hindi: "hi-IN", English: "en-IN", Malayalam: "ml-IN", Tamil: "ta-IN",
@@ -60,43 +60,63 @@ export function useVoiceInteraction() {
   }, [playBrowserTTS]);
 
   const processQuery = useCallback(
-    async (overrides: { text?: string; audio_base64?: string } = {}) => {
+    (overrides: { text?: string; audio_base64?: string } = {}) => {
       setIsProcessing(true);
       setCurrentStage(1);
-      const stageInterval = setInterval(() => {
-        setCurrentStage((prev) => {
-          if (prev >= 9) { clearInterval(stageInterval); return 9; }
-          return prev + 1;
-        });
-      }, 800);
+      
+      const currentSessionId = sessionId || crypto.randomUUID();
+      if (!sessionId) setSessionId(currentSessionId);
+
       try {
-        const result = await sendVoiceQuery({
-          text: overrides.text,
-          audio_base64: overrides.audio_base64,
-          language: selectedLanguage,
-          session_id: sessionId || undefined,
-        });
-        clearInterval(stageInterval);
-        setCurrentStage(9);
-        setResponse(result);
-        setSessionId(result.session_id || null);
-        setIsComplete(true);
-        playAudioResponse(result.response_audio_base64, result.response_text, selectedLanguage);
+        const ws = createWebSocket(currentSessionId);
+        
+        ws.onopen = () => {
+          ws.send(JSON.stringify({
+            text: overrides.text,
+            audio_base64: overrides.audio_base64,
+            language: selectedLanguage,
+          }));
+        };
+
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === "response") {
+            setCurrentStage(9);
+            setResponse(data as VoiceQueryResponse);
+            setIsComplete(true);
+            playAudioResponse(data.response_audio_base64, data.response_text, selectedLanguage);
+            setIsProcessing(false);
+            ws.close();
+          } else if (data.stage_number) {
+            setCurrentStage(data.stage_number);
+          } else if (data.error) {
+            setError(data.error);
+            setIsProcessing(false);
+            ws.close();
+          }
+        };
+
+        ws.onerror = (err) => {
+          console.error("WebSocket error:", err);
+          setError("Connection error. Please try again.");
+          setIsProcessing(false);
+          ws.close();
+        };
+
+        ws.onclose = (event) => {
+          if (!event.wasClean && isProcessing) {
+             setError("Connection closed unexpectedly.");
+             setIsProcessing(false);
+          }
+        };
       } catch (err: unknown) {
-        clearInterval(stageInterval);
         const msg: string = err instanceof Error ? err.message : "Something went wrong. Please try again.";
-        if (msg.toLowerCase().includes("voice recognition") || msg.toLowerCase().includes("temporarily unavailable")) {
-          setBhashiniWarning(true);
-          setShowTextMode(true);
-          setError(null);
-        } else {
-          setError(msg);
-        }
-      } finally {
+        setError(msg);
         setIsProcessing(false);
       }
     },
-    [selectedLanguage, sessionId, playAudioResponse]
+    [selectedLanguage, sessionId, playAudioResponse, isProcessing]
   );
 
   const monitorAudio = useCallback((stream: MediaStream) => {
