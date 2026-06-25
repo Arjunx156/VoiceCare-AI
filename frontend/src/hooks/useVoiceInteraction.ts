@@ -67,34 +67,88 @@ export function useVoiceInteraction() {
   const streamRef         = useRef<MediaStream | null>(null);
   const recognitionRef    = useRef<SpeechRecognitionInstance | null>(null);
   const transcriptAccRef  = useRef<string>("");
+  // Hold a strong reference to the playing Audio element so the GC cannot
+  // collect it before playback finishes (local-variable Audio objects get
+  // collected mid-play in some browser/engine combinations).
+  const audioRef          = useRef<HTMLAudioElement | null>(null);
+  // Timer id for the Chrome SpeechSynthesis resume-workaround (see below).
+  const ttsTimerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopCurrentTTS = useCallback(() => {
+    if (ttsTimerRef.current) {
+      clearInterval(ttsTimerRef.current);
+      ttsTimerRef.current = null;
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
       if (recognitionRef.current) recognitionRef.current.stop();
+      stopCurrentTTS();
     };
-  }, []);
+  }, [stopCurrentTTS]);
 
   const playBrowserTTS = useCallback((text: string, lang?: string) => {
-    if (window.speechSynthesis) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = LANG_TO_BCP47[lang || "en-US"] || "en-US";
-      window.speechSynthesis.speak(utterance);
-    }
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    // Cancel any in-progress speech before starting a new one.
+    window.speechSynthesis.cancel();
+    if (ttsTimerRef.current) clearInterval(ttsTimerRef.current);
+
+    const bcp47 = (lang ? LANG_TO_BCP47[lang] : undefined) ?? "en-US";
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = bcp47;
+
+    // Chrome silently stops long utterances (~14 s). Pause/resume every 10 s
+    // resets the internal timer, allowing arbitrarily long speech to complete.
+    ttsTimerRef.current = setInterval(() => {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.pause();
+        window.speechSynthesis.resume();
+      } else {
+        clearInterval(ttsTimerRef.current!);
+        ttsTimerRef.current = null;
+      }
+    }, 10_000);
+
+    utterance.onend = () => {
+      if (ttsTimerRef.current) clearInterval(ttsTimerRef.current);
+      ttsTimerRef.current = null;
+    };
+    utterance.onerror = () => {
+      if (ttsTimerRef.current) clearInterval(ttsTimerRef.current);
+      ttsTimerRef.current = null;
+    };
+
+    window.speechSynthesis.speak(utterance);
   }, []);
 
   const playAudioResponse = useCallback((base64Audio?: string, text?: string, lang?: string) => {
+    // Stop anything already playing before starting a new response.
+    stopCurrentTTS();
+
     if (base64Audio) {
+      // Store in a ref so the GC cannot collect the element before it finishes.
       const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
+      audioRef.current = audio;
+      audio.onended = () => { audioRef.current = null; };
       audio.play().catch((e) => {
-        console.error("Audio playback failed", e);
+        console.error("Audio playback failed, falling back to browser TTS", e);
+        audioRef.current = null;
         if (text) playBrowserTTS(text, lang);
       });
     } else if (text) {
       playBrowserTTS(text, lang);
     }
-  }, [playBrowserTTS]);
+  }, [playBrowserTTS, stopCurrentTTS]);
 
   const processQuery = useCallback(
     (overrides: { text?: string; audio_base64?: string } = {}, retryCount = 0) => {
@@ -211,6 +265,8 @@ export function useVoiceInteraction() {
 
   const startRecording = useCallback(async () => {
     try {
+      // Stop any audio that's still playing from the previous response.
+      stopCurrentTTS();
       setErrorCode(null);
       setResponse(null);
       setIsComplete(false);
