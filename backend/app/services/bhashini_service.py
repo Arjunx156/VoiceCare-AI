@@ -11,24 +11,10 @@ from typing import Optional, Tuple
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.config import get_settings
+from app.core.constants import LANGUAGE_CODES, LANGUAGE_NAMES
 
 logger = structlog.get_logger()
 settings = get_settings()
-
-# Language code mapping for Bhashini
-LANGUAGE_CODES = {
-    "Hindi": "hi",
-    "English": "en",
-    "Malayalam": "ml",
-    "Tamil": "ta",
-    "Telugu": "te",
-    "Kannada": "kn",
-    "Bengali": "bn",
-    "Marathi": "mr",
-    "Hinglish": "hi",  # Treated as Hindi for STT/TTS
-}
-
-LANGUAGE_NAMES = {v: k for k, v in LANGUAGE_CODES.items()}
 
 
 class BhashiniService:

@@ -19,26 +19,40 @@ class MemoryService:
         """Check memory connectivity (always true)."""
         return True
 
+    _MAX_HISTORY_TURNS = 50
+
     def _clean_expired(self, key: str):
-        """Helper to clean up expired keys."""
+        """Evict a single key if its TTL has elapsed."""
         if key in _expiry_store and datetime.now() > _expiry_store[key]:
             _memory_store.pop(key, None)
             _list_store.pop(key, None)
             _expiry_store.pop(key, None)
+
+    def _clean_all_expired(self):
+        """Sweep all stores and evict every expired key."""
+        now = datetime.now()
+        expired = [k for k, exp in _expiry_store.items() if now > exp]
+        for k in expired:
+            _memory_store.pop(k, None)
+            _list_store.pop(k, None)
+            _expiry_store.pop(k, None)
 
     # ---- Conversation Memory ----
 
     async def store_conversation_turn(self, session_id: str, role: str, content: str):
         """Store a single turn in the conversation history list."""
         key = f"session:{session_id}:history"
-        self._clean_expired(key)
-        
+        self._clean_all_expired()
+
         turn = {"role": role, "content": content, "timestamp": datetime.now().isoformat()}
-        
+
         if key not in _list_store:
             _list_store[key] = []
-        
-        _list_store[key].append(json.dumps(turn))
+
+        history = _list_store[key]
+        if len(history) >= self._MAX_HISTORY_TURNS:
+            history.pop(0)  # drop oldest turn to keep memory bounded
+        history.append(json.dumps(turn))
         _expiry_store[key] = datetime.now() + timedelta(hours=2)
 
     async def get_conversation_history(self, session_id: str, max_turns: int = 10) -> List[dict]:

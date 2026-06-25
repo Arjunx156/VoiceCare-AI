@@ -35,14 +35,19 @@ export default function EscalationsPage() {
 
   useEffect(() => {
     let mounted = true;
+    let controller = new AbortController();
 
     async function load() {
-      try { 
-        const data = await getEscalations();
+      controller = new AbortController();
+      try {
+        const data = await getEscalations(controller.signal);
         if (mounted) setEscalations(data);
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") return;
+        console.error("Failed to load escalations:", err);
+      } finally {
+        if (mounted) setLoading(false);
       }
-      catch (err) { console.error("Failed to load escalations:", err); }
-      finally { if (mounted) setLoading(false); }
     }
     load();
 
@@ -52,6 +57,7 @@ export default function EscalationsPage() {
     return () => {
       mounted = false;
       clearInterval(intervalId);
+      controller.abort();
     };
   }, []);
 

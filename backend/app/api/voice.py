@@ -9,10 +9,12 @@ import time
 import structlog
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from app.core.database import get_db
 from app.core.config import get_settings
 from app.core.errors import RateLimitError, ErrorMessages
+from app.core.constants import LANGUAGE_CODES
 from app.agents.state import PipelineState
 from app.agents.pipeline import VoiceCarePipeline
 from app.schemas.schemas import VoiceQueryRequest, VoiceQueryResponse
@@ -21,6 +23,9 @@ from app.services.memory_service import get_memory_service
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/voice", tags=["voice"])
 settings = get_settings()
+
+# ~10 MB audio limit expressed as base64 character count (10 * 1024 * 1024 * 4 / 3)
+_MAX_AUDIO_B64_LEN = 14_316_558
 
 
 # ================================================================
@@ -55,8 +60,11 @@ async def rate_limit_dependency(request: VoiceQueryRequest) -> None:
     except HTTPException:
         raise
     except Exception as exc:
-        # Redis unavailable — degrade gracefully, don't block the user
-        logger.warning("rate_limit_check_failed", error=str(exc))
+        logger.error("rate_limit_service_unavailable", error=str(exc))
+        raise HTTPException(
+            status_code=503,
+            detail="Rate limit service temporarily unavailable. Please try again shortly.",
+        )
 
 
 # ================================================================
@@ -75,7 +83,7 @@ async def process_voice_query(
         raw_text=request.text,
         raw_audio_base64=request.audio_base64,
         language_detected=request.language or "English",
-        language_code=_lang_to_code(request.language) if request.language else "en",
+        language_code=_language_to_code(request.language) if request.language else "en",
         phone=request.phone,
         input_order_id=request.order_id,
     )
@@ -137,17 +145,29 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
         while True:
             data = await websocket.receive_json()
 
+            # Validate incoming payload with Pydantic schema
+            try:
+                ws_request = VoiceQueryRequest(**data)
+            except Exception as ve:
+                await websocket.send_json({"error": f"Invalid request: {ve}"})
+                continue
+
+            # Reject oversized audio payloads before any processing
+            if ws_request.audio_base64 and len(ws_request.audio_base64) > _MAX_AUDIO_B64_LEN:
+                await websocket.send_json({"error": "Audio payload exceeds 10 MB limit."})
+                continue
+
             # Get a fresh DB session for WebSocket
             from app.core.database import async_session
             async with async_session() as db:
                 state = PipelineState(
                     session_id=session_id,
-                    raw_text=data.get("text"),
-                    raw_audio_base64=data.get("audio_base64"),
-                    language_detected=data.get("language", "English"),
-                    language_code=_lang_to_code(data.get("language", "English")),
-                    phone=data.get("phone"),
-                    input_order_id=data.get("order_id"),
+                    raw_text=ws_request.text,
+                    raw_audio_base64=ws_request.audio_base64,
+                    language_detected=ws_request.language or "English",
+                    language_code=_language_to_code(ws_request.language or "English"),
+                    phone=ws_request.phone,
+                    input_order_id=ws_request.order_id,
                 )
 
                 # Load history
@@ -181,7 +201,15 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
                     session_id, "ai", state.response_english or ""
                 )
 
-                await db.commit()
+                try:
+                    await db.commit()
+                except (IntegrityError, OperationalError) as db_exc:
+                    await db.rollback()
+                    logger.error(
+                        "websocket_db_commit_failed",
+                        session_id=session_id,
+                        error=str(db_exc),
+                    )
 
     except WebSocketDisconnect:
         logger.info("websocket_disconnected", session_id=session_id)
@@ -194,11 +222,6 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
 # Helpers
 # ================================================================
 
-def _lang_to_code(language: str) -> str:
-    """Convert language name to code."""
-    mapping = {
-        "Hindi": "hi", "English": "en", "Malayalam": "ml",
-        "Tamil": "ta", "Telugu": "te", "Kannada": "kn",
-        "Bengali": "bn", "Marathi": "mr", "Hinglish": "hi",
-    }
-    return mapping.get(language, "en")
+def _language_to_code(language: str) -> str:
+    """Convert language display name to BCP-47 code via shared LANGUAGE_CODES constant."""
+    return LANGUAGE_CODES.get(language, "en")

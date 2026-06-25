@@ -149,8 +149,8 @@ export async function getTickets(params?: {
   return apiFetch<TicketSummary[]>(`/api/tickets/${qs ? `?${qs}` : ""}`);
 }
 
-export async function getEscalations(): Promise<TicketSummary[]> {
-  return apiFetch<TicketSummary[]>("/api/tickets/escalations");
+export async function getEscalations(signal?: AbortSignal): Promise<TicketSummary[]> {
+  return apiFetch<TicketSummary[]>("/api/tickets/escalations", { signal });
 }
 
 export async function getTicketDetail(ticketId: string): Promise<TicketDetail> {

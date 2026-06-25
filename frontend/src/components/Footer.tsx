@@ -1,9 +1,5 @@
 import { motion } from "framer-motion";
-
-const LANGUAGES = [
-  "Hindi", "English", "Malayalam", "Tamil", "Telugu",
-  "Kannada", "Bengali", "Marathi", "Hinglish",
-];
+import { LANGUAGES } from "@/lib/constants";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },

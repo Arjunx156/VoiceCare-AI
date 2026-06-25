@@ -6,9 +6,48 @@
  * no glassmorphism, editorial feel.
  */
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+
+class DashboardErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; message: string }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, message: "" };
+  }
+
+  static getDerivedStateFromError(err: unknown) {
+    return { hasError: true, message: err instanceof Error ? err.message : "Unknown error" };
+  }
+
+  componentDidCatch(err: unknown, info: React.ErrorInfo) {
+    console.error("Dashboard error boundary caught:", err, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: "48px 36px", color: "var(--text-secondary)" }}>
+          <p style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", marginBottom: 8 }}>
+            Something went wrong
+          </p>
+          <p style={{ fontSize: 13, marginBottom: 20 }}>{this.state.message}</p>
+          <button
+            className="btn-pill"
+            onClick={() => this.setState({ hasError: false, message: "" })}
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const NAV_ITEMS = [
   { href: "/dashboard",             label: "Overview",    icon: "overview" },
@@ -152,7 +191,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, overflow: "auto", padding: "32px 36px" }}>{children}</main>
+      <main style={{ flex: 1, overflow: "auto", padding: "32px 36px" }}>
+        <DashboardErrorBoundary>{children}</DashboardErrorBoundary>
+      </main>
     </div>
   );
 }
