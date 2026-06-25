@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     admin_email: str = "admin@voicecare.ai"
     admin_password: str = "change_this_in_production"
 
+    # ---- Observability ----
+    sentry_dsn: Optional[str] = None  # set to enable Sentry error tracking
+
     # ---- Rate Limiting ----
     gemini_max_retries: int = 3
     gemini_base_delay: float = 1.0

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -14,4 +15,18 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Sentry build-time options
+  // Source map upload is skipped unless SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT are set in CI.
+  silent: !process.env.CI,
+  telemetry: false,
+  sourcemaps: {
+    disable: !process.env.SENTRY_AUTH_TOKEN,
+  },
+  // Turbopack-compatible tree-shaking options (replaces deprecated disableLogger)
+  webpack: {
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
+});

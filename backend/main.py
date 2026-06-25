@@ -22,6 +22,25 @@ from app.api.auth import router as auth_router
 
 settings = get_settings()
 
+# ---- Sentry (initialise before anything else so startup errors are caught) ----
+if settings.sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.starlette import StarletteIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.environment,
+        integrations=[
+            StarletteIntegration(transaction_style="url"),
+            FastApiIntegration(transaction_style="url"),
+            SqlalchemyIntegration(),
+        ],
+        traces_sample_rate=0.2,   # 20 % of requests recorded for perf tracing
+        send_default_pii=False,   # GDPR-friendly — no IP / user data by default
+    )
+
 # Configure structured logging
 structlog.configure(
     processors=[
