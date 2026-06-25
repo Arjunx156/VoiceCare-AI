@@ -62,7 +62,7 @@ Speak in Hindi, Tamil, Telugu, Malayalam, Kannada, Bengali, Marathi, or English 
 | **STT/TTS** | Bhashini API (8 Indian languages) |
 | **Vector Store** | Chroma (embedded, persistent) |
 | **Database** | PostgreSQL (Neon) via SQLAlchemy Async |
-| **Cache/Memory** | Redis (Upstash) |
+| **Cache/Memory** | In-process Python dict (TTL-based, 50-turn history cap) |
 | **Hosting** | Vercel (FE), Railway/Render (BE) |
 
 ---
@@ -159,17 +159,35 @@ npm run dev
 ### 4. Open
 
 - **Voice Interface**: http://localhost:3000
-- **Admin Dashboard**: http://localhost:3000/dashboard
+- **Admin Login**: http://localhost:3000/login (email + password from `.env`)
+- **Admin Dashboard**: http://localhost:3000/dashboard (redirects to login if not authenticated)
 - **API Docs**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
 
 ---
 
-## 🔒 Security
+## 🔒 Security & Auth
 
 - All API keys, secrets, and `.env` files are in `.gitignore`
 - `.env.example` contains only placeholder values
-- Admin dashboard uses NextAuth.js (phone + order lookup for customers)
-- CORS restricted to frontend URL
+- CORS restricted to frontend URL + Vercel preview domains
+- Security headers on every response: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`
+
+### Admin Authentication
+
+The dashboard is protected by JWT auth. Set credentials in `.env`:
+
+```
+ADMIN_EMAIL=admin@voicecare.ai
+ADMIN_PASSWORD=your_secure_password
+NEXTAUTH_SECRET=your_jwt_signing_secret
+```
+
+- `POST /api/auth/login` — returns a 24-hour JWT (HS256)
+- All `/api/tickets/*` routes require `Authorization: Bearer <token>`
+- Frontend stores token in `localStorage`; `vc_logged_in` cookie gates the Next.js route proxy
+- Navigating to `/dashboard` without a valid session redirects to `/login`
+- Any `401` response from the API clears the token and redirects to `/login` automatically
 
 ---
 
