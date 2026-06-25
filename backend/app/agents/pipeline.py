@@ -593,118 +593,122 @@ class VoiceCarePipeline:
         start = time.time()
         await self._notify_stage(9, "Creating your support ticket...")
 
+        # Wrap everything in a SAVEPOINT so that any flush/constraint failure
+        # rolls back only this agent's writes — the outer transaction stays
+        # alive and db.commit() succeeds (committing nothing) rather than
+        # raising PendingRollbackError and losing the whole session.
         try:
-            user_id = None
-            if state.user_data:
-                user_id = uuid.UUID(state.user_data["user_id"])
-            else:
-                phone_val = state.extracted_phone or f"temp-{uuid.uuid4().hex[:10]}"
-                new_user = User(
-                    name=state.extracted_name or "Anonymous Customer",
-                    phone=phone_val
+            async with self.db.begin_nested():
+                user_id = None
+                if state.user_data:
+                    user_id = uuid.UUID(state.user_data["user_id"])
+                else:
+                    # Get-or-create: if Gemini extracted a phone that already
+                    # exists in the DB, look it up instead of inserting a
+                    # duplicate (which would raise a UniqueViolation).
+                    phone_val = state.extracted_phone or f"temp-{uuid.uuid4().hex[:10]}"
+                    existing = (await self.db.execute(
+                        select(User).where(User.phone == phone_val)
+                    )).scalar_one_or_none()
+                    if existing:
+                        user_id = existing.user_id
+                    else:
+                        new_user = User(
+                            name=state.extracted_name or "Anonymous Customer",
+                            phone=phone_val,
+                        )
+                        self.db.add(new_user)
+                        await self.db.flush()
+                        user_id = new_user.user_id
+
+                order_id = None
+                if state.order_data:
+                    order_id = uuid.UUID(state.order_data["order_id"])
+
+                # VoiceSession.session_id is the PK — always use a fresh UUID.
+                # state.session_id is only for conversation-memory lookups.
+                session = VoiceSession(
+                    session_id=uuid.uuid4(),
+                    user_id=user_id,
+                    language_detected=state.language_detected,
+                    transcript_original=state.transcript_original,
+                    transcript_english=state.transcript_english,
+                    started_at=state.started_at,
+                    ended_at=datetime.utcnow(),
                 )
-                self.db.add(new_user)
+                self.db.add(session)
                 await self.db.flush()
-                user_id = new_user.user_id
 
-            order_id = None
-            if state.order_data:
-                order_id = uuid.UUID(state.order_data["order_id"])
+                ticket = SupportTicket(
+                    user_id=user_id,
+                    order_id=order_id,
+                    session_id=session.session_id,
+                    ticket_type=self._intent_to_ticket_type(state.intent),
+                    priority=state.priority,
+                    status="Escalated" if state.is_escalated else "Resolved",
+                    language=state.language_detected,
+                    sentiment=state.sentiment,
+                    summary=state.summary_english,
+                    escalated_at=datetime.utcnow() if state.is_escalated else None,
+                    resolved_at=datetime.utcnow() if not state.is_escalated else None,
+                )
+                self.db.add(ticket)
+                await self.db.flush()
 
-            # VoiceSession.session_id is the PK — always generate a fresh UUID
-            # so repeated queries in the same browser session don't collide.
-            # state.session_id is used only for conversation-memory lookups.
-            session = VoiceSession(
-                session_id=uuid.uuid4(),
-                user_id=user_id,
-                language_detected=state.language_detected,
-                transcript_original=state.transcript_original,
-                transcript_english=state.transcript_english,
-                started_at=state.started_at,
-                ended_at=datetime.utcnow(),
-            )
-            self.db.add(session)
-            await self.db.flush()
+                state.ticket_id = str(ticket.ticket_id)
 
-            # Create ticket
-            ticket = SupportTicket(
-                user_id=user_id,
-                order_id=order_id,
-                session_id=session.session_id,
-                ticket_type=self._intent_to_ticket_type(state.intent),
-                priority=state.priority,
-                status="Escalated" if state.is_escalated else "Resolved",
-                language=state.language_detected,
-                sentiment=state.sentiment,
-                summary=state.summary_english,
-                escalated_at=datetime.utcnow() if state.is_escalated else None,
-                resolved_at=datetime.utcnow() if not state.is_escalated else None,
-            )
-            self.db.add(ticket)
-            await self.db.flush()
+                self.db.add(SupportMessage(
+                    ticket_id=ticket.ticket_id,
+                    session_id=session.session_id,
+                    sender_type="Customer",
+                    message_text=state.transcript_original or "",
+                    language=state.language_detected,
+                ))
+                self.db.add(SupportMessage(
+                    ticket_id=ticket.ticket_id,
+                    session_id=session.session_id,
+                    sender_type="AI",
+                    message_text=state.response_english or state.response_text or "",
+                    language="English",
+                ))
 
-            state.ticket_id = str(ticket.ticket_id)
+                trace_json = json.dumps(
+                    [step.model_dump(mode="json") for step in state.agent_trace],
+                    default=str,
+                )
+                self.db.add(SupportResolution(
+                    ticket_id=ticket.ticket_id,
+                    recommended_action=state.recommended_action or "Inform",
+                    policy_reference=state.policy_reference,
+                    final_response_text=state.response_text or "",
+                    internal_note=state.internal_note,
+                    confidence_score=state.confidence_score,
+                    agent_trace=trace_json,
+                ))
+                self.db.add(CustomerSentiment(
+                    ticket_id=ticket.ticket_id,
+                    sentiment_label=state.sentiment,
+                    confidence_score=state.confidence_score,
+                ))
 
-            # Create messages
-            customer_msg = SupportMessage(
-                ticket_id=ticket.ticket_id,
-                session_id=session.session_id,
-                sender_type="Customer",
-                message_text=state.transcript_original or "",
-                language=state.language_detected,
-            )
-            self.db.add(customer_msg)
+                await self.db.flush()
+                state.ticket_created = True
 
-            ai_msg = SupportMessage(
-                ticket_id=ticket.ticket_id,
-                session_id=session.session_id,
-                sender_type="AI",
-                message_text=state.response_english or state.response_text or "",
-                language="English",
-            )
-            self.db.add(ai_msg)
-
-            # Create resolution
-            trace_json = json.dumps(
-                [step.model_dump(mode="json") for step in state.agent_trace],
-                default=str,
-            )
-            resolution = SupportResolution(
-                ticket_id=ticket.ticket_id,
-                recommended_action=state.recommended_action or "Inform",
-                policy_reference=state.policy_reference,
-                final_response_text=state.response_text or "",
-                internal_note=state.internal_note,
-                confidence_score=state.confidence_score,
-                agent_trace=trace_json,
-            )
-            self.db.add(resolution)
-
-            # Create sentiment record
-            sentiment_record = CustomerSentiment(
-                ticket_id=ticket.ticket_id,
-                sentiment_label=state.sentiment,
-                confidence_score=state.confidence_score,
-            )
-            self.db.add(sentiment_record)
-
-            await self.db.flush()
-            state.ticket_created = True
-
-            state.add_trace(
-                agent_name="Ticket Creation",
-                stage_number=9,
-                input_summary=f"User: {user_id}, Escalated: {state.is_escalated}",
-                output_summary=f"Ticket {state.ticket_id} created",
-                decision="Ticket persisted to Postgres",
-                duration_ms=(time.time() - start) * 1000,
-            )
+                state.add_trace(
+                    agent_name="Ticket Creation",
+                    stage_number=9,
+                    input_summary=f"User: {user_id}, Escalated: {state.is_escalated}",
+                    output_summary=f"Ticket {state.ticket_id} created",
+                    decision="Ticket persisted to Postgres",
+                    duration_ms=(time.time() - start) * 1000,
+                )
 
             await self._notify_stage(9, "Done!", is_complete=True)
 
         except Exception as e:
-            logger.error("ticket_creation_failed", error=str(e))
+            logger.error("ticket_creation_failed", error=str(e), exc_info=True)
             state.error = f"Ticket creation failed: {str(e)}"
+            # Savepoint already rolled back — outer transaction is clean.
 
         return state
 

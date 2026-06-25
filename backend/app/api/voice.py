@@ -210,12 +210,19 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
 
                 try:
                     await db.commit()
-                except (IntegrityError, OperationalError) as db_exc:
-                    await db.rollback()
+                except Exception as db_exc:
+                    # Catch all SQLAlchemy errors — PendingRollbackError,
+                    # IntegrityError, OperationalError, etc. — so the WS
+                    # handler never crashes after a failed commit.
+                    try:
+                        await db.rollback()
+                    except Exception:
+                        pass
                     logger.error(
                         "websocket_db_commit_failed",
                         session_id=session_id,
                         error=str(db_exc),
+                        exc_info=True,
                     )
 
     except WebSocketDisconnect:

@@ -131,13 +131,36 @@ export function useVoiceInteraction() {
     window.speechSynthesis.speak(utterance);
   }, []);
 
+  /**
+   * Detect MIME type from the base64 payload.
+   * The backend prefixes Google-TTS fallback audio with "mp3:" so we can
+   * distinguish it from Bhashini WAV audio without inspecting magic bytes.
+   * If no prefix is present, inspect the first decoded bytes.
+   */
+  const resolveAudio = useCallback((raw: string): { mime: string; b64: string } => {
+    if (raw.startsWith("mp3:")) {
+      return { mime: "audio/mpeg", b64: raw.slice(4) };
+    }
+    // Inspect first 4 bytes to distinguish WAV ("RIFF") from MP3 (0xFF 0xFx / "ID3")
+    try {
+      const header = atob(raw.slice(0, 8));
+      if (header.startsWith("RIFF")) return { mime: "audio/wav", b64: raw };
+      const b0 = header.charCodeAt(0), b1 = header.charCodeAt(1);
+      if (header.startsWith("ID3") || (b0 === 0xff && (b1 & 0xe0) === 0xe0)) {
+        return { mime: "audio/mpeg", b64: raw };
+      }
+    } catch { /* ignore decode errors, fall through */ }
+    return { mime: "audio/wav", b64: raw }; // Bhashini default
+  }, []);
+
   const playAudioResponse = useCallback((base64Audio?: string, text?: string, lang?: string) => {
     // Stop anything already playing before starting a new response.
     stopCurrentTTS();
 
     if (base64Audio) {
+      const { mime, b64 } = resolveAudio(base64Audio);
       // Store in a ref so the GC cannot collect the element before it finishes.
-      const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
+      const audio = new Audio(`data:${mime};base64,${b64}`);
       audioRef.current = audio;
       audio.onended = () => { audioRef.current = null; };
       audio.play().catch((e) => {
@@ -148,7 +171,7 @@ export function useVoiceInteraction() {
     } else if (text) {
       playBrowserTTS(text, lang);
     }
-  }, [playBrowserTTS, stopCurrentTTS]);
+  }, [playBrowserTTS, stopCurrentTTS, resolveAudio]);
 
   const processQuery = useCallback(
     (overrides: { text?: string; audio_base64?: string } = {}, retryCount = 0) => {

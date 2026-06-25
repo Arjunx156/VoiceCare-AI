@@ -206,24 +206,47 @@ class BhashiniService:
 
         except Exception as e:
             logger.error("tts_failed", error=str(e), language=target_language)
-            # Fallback to free Google Translate TTS
+            # Fallback: split text into ≤200-char chunks (Google TTS URL limit),
+            # fetch each chunk as MP3, concatenate the raw bytes, and return
+            # the result base64-encoded with a "mp3" marker so the frontend
+            # can use the right MIME type.
             logger.info("falling_back_to_gtts")
             try:
                 import urllib.parse
-                import base64
-                safe_text = text[:200]
-                encoded_text = urllib.parse.quote(safe_text)
+                import base64 as b64mod
                 lang_code = target_language if target_language != "en" else "en"
-                url = f"https://translate.google.com/translate_tts?ie=UTF-8&total=1&idx=0&textlen={len(safe_text)}&client=tw-ob&q={encoded_text}&tl={lang_code}"
-                
+
+                # Split on sentence boundaries first, then hard-chunk at 200 chars.
+                chunks: list[str] = []
+                for sentence in text.replace("।", ".").split("."):
+                    sentence = sentence.strip()
+                    if not sentence:
+                        continue
+                    while len(sentence) > 200:
+                        chunks.append(sentence[:200])
+                        sentence = sentence[200:]
+                    if sentence:
+                        chunks.append(sentence)
+
+                audio_parts: list[bytes] = []
                 async with httpx.AsyncClient(timeout=10.0) as client:
-                    response = await client.get(url)
-                    response.raise_for_status()
-                    audio_base64 = base64.b64encode(response.content).decode("utf-8")
-                    return audio_base64
+                    for chunk in chunks:
+                        encoded = urllib.parse.quote(chunk)
+                        url = (
+                            f"https://translate.google.com/translate_tts"
+                            f"?ie=UTF-8&total=1&idx=0&textlen={len(chunk)}"
+                            f"&client=tw-ob&q={encoded}&tl={lang_code}"
+                        )
+                        resp = await client.get(url)
+                        resp.raise_for_status()
+                        audio_parts.append(resp.content)
+
+                combined = b"".join(audio_parts)
+                # Prefix with "mp3:" so the frontend knows the MIME type.
+                return "mp3:" + b64mod.b64encode(combined).decode("utf-8")
             except Exception as fallback_e:
                 logger.error("gtts_fallback_failed", error=str(fallback_e))
-                raise
+                return None  # Let frontend fall back to browser TTS
 
     async def translate_text(
         self, text: str, source_lang: str, target_lang: str = "en"
