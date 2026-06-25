@@ -8,6 +8,8 @@ from typing import Optional
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_REQUIRED_IN_PRODUCTION = ["database_url", "gemini_api_key", "nextauth_secret"]
+
 
 class Settings(BaseSettings):
     """Application configuration loaded from environment variables."""
@@ -69,6 +71,20 @@ class Settings(BaseSettings):
                 "Admin password must be changed from the default value in production!"
             )
         return v
+
+    @model_validator(mode="after")
+    def validate_required_secrets(self) -> "Settings":
+        """Fail fast in production if critical secrets are empty."""
+        if self.environment == "production":
+            missing = [
+                k for k in _REQUIRED_IN_PRODUCTION
+                if not getattr(self, k, None)
+            ]
+            if missing:
+                raise ValueError(
+                    f"Required secrets not set for production: {', '.join(missing)}"
+                )
+        return self
 
     # ----------------------------------------------------------------
     # Computed properties

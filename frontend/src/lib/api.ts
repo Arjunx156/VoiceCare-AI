@@ -76,10 +76,12 @@ export interface TicketSummary {
   summary?: string;
   created_at: string;
   resolved_at?: string;
+  assigned_to?: string;
 }
 
 export interface TicketDetail extends TicketSummary {
   escalated_at?: string;
+  assigned_to?: string;
   order_id?: string;
   order_status?: string;
   order_amount?: number;
@@ -207,6 +209,14 @@ export async function adminLogin(email: string, password: string): Promise<void>
   }
   const data = await res.json();
   setAuthToken(data.access_token);
+}
+
+export async function claimTicket(ticketId: string): Promise<{ ticket_id: string; status: string; assigned_to: string }> {
+  return apiFetch(`/api/tickets/${ticketId}/claim`, { method: "PATCH" });
+}
+
+export async function releaseTicket(ticketId: string): Promise<{ ticket_id: string; status: string; assigned_to: null }> {
+  return apiFetch(`/api/tickets/${ticketId}/release`, { method: "PATCH" });
 }
 
 export function createWebSocket(sessionId: string): WebSocket {

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, case, and_
+from sqlalchemy import select, func, case, and_, update
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
@@ -98,6 +98,7 @@ async def list_tickets(
             summary=t.summary,
             created_at=t.created_at,
             resolved_at=t.resolved_at,
+            assigned_to=t.assigned_to,
         )
         for t in tickets
     ]
@@ -133,6 +134,7 @@ async def list_escalations(
             summary=t.summary,
             created_at=t.created_at,
             resolved_at=t.resolved_at,
+            assigned_to=t.assigned_to,
         )
         for t in tickets
     ]
@@ -264,6 +266,7 @@ async def get_ticket(ticket_id: str, db: AsyncSession = Depends(get_db)):
         created_at=ticket.created_at,
         resolved_at=ticket.resolved_at,
         escalated_at=ticket.escalated_at,
+        assigned_to=ticket.assigned_to,
         order_id=ticket.order_id,
         order_status=order.status if order else None,
         order_amount=float(order.total_amount) if order else None,
@@ -285,6 +288,62 @@ async def get_ticket(ticket_id: str, db: AsyncSession = Depends(get_db)):
             for m in messages
         ],
     )
+
+
+@router.patch("/{ticket_id}/claim")
+async def claim_ticket(
+    ticket_id: str,
+    db: AsyncSession = Depends(get_db),
+    admin_email: str = Depends(require_admin),
+):
+    """Claim an escalated ticket for human review. Sets status to 'In Progress'."""
+    try:
+        tid = uuid.UUID(ticket_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid ticket ID")
+
+    result = await db.execute(select(SupportTicket).where(SupportTicket.ticket_id == tid))
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    if ticket.status not in ("Escalated", "Open"):
+        raise HTTPException(status_code=409, detail=f"Ticket is already {ticket.status}")
+
+    await db.execute(
+        update(SupportTicket)
+        .where(SupportTicket.ticket_id == tid)
+        .values(status="In Progress", assigned_to=admin_email, updated_by=admin_email)
+    )
+    await db.commit()
+    logger.info("ticket_claimed", ticket_id=ticket_id, agent=admin_email)
+    return {"ticket_id": ticket_id, "status": "In Progress", "assigned_to": admin_email}
+
+
+@router.patch("/{ticket_id}/release")
+async def release_ticket(
+    ticket_id: str,
+    db: AsyncSession = Depends(get_db),
+    admin_email: str = Depends(require_admin),
+):
+    """Release a claimed ticket back to the escalation queue."""
+    try:
+        tid = uuid.UUID(ticket_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid ticket ID")
+
+    result = await db.execute(select(SupportTicket).where(SupportTicket.ticket_id == tid))
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    await db.execute(
+        update(SupportTicket)
+        .where(SupportTicket.ticket_id == tid)
+        .values(status="Escalated", assigned_to=None, updated_by=admin_email)
+    )
+    await db.commit()
+    logger.info("ticket_released", ticket_id=ticket_id, agent=admin_email)
+    return {"ticket_id": ticket_id, "status": "Escalated", "assigned_to": None}
 
 
 @router.get("/{ticket_id}/handoff", response_model=HandoffNote)
