@@ -9,6 +9,7 @@ import json
 import time
 import uuid
 import structlog
+import asyncio
 from datetime import datetime
 from typing import Optional, Callable, Awaitable
 
@@ -693,24 +694,42 @@ class VoiceCarePipeline:
     # Pipeline Executor
     # ================================================================
     async def run(self, state: PipelineState) -> PipelineState:
-        """Execute the full 9-agent pipeline sequentially."""
-        agents = [
-            self.agent_voice_intake,
-            self.agent_intent_analysis,
-            self.agent_order_lookup,
-            self.agent_policy_rag,
-            self.agent_resolution,
-            self.agent_escalation_check,
-            self.agent_response_generation,
-            self.agent_tts,
-            self.agent_ticket_creation,
-        ]
+        """Execute the full 9-agent pipeline."""
+        if state.has_error:
+            return state
+        state = await self.agent_voice_intake(state)
 
-        for agent in agents:
-            if state.has_error:
-                logger.error("pipeline_aborted", stage=state.current_stage, error=state.error)
-                break
-            state = await agent(state)
+        if state.has_error:
+            return state
+        state = await self.agent_intent_analysis(state)
+
+        if state.has_error:
+            return state
+        # Run Order Lookup and Policy RAG in parallel
+        await asyncio.gather(
+            self.agent_order_lookup(state),
+            self.agent_policy_rag(state)
+        )
+
+        if state.has_error:
+            return state
+        state = await self.agent_resolution(state)
+
+        if state.has_error:
+            return state
+        state = await self.agent_escalation_check(state)
+
+        if state.has_error:
+            return state
+        state = await self.agent_response_generation(state)
+
+        if state.has_error:
+            return state
+        state = await self.agent_tts(state)
+
+        if state.has_error:
+            return state
+        state = await self.agent_ticket_creation(state)
 
         return state
 
