@@ -4,8 +4,11 @@ Replaces Redis with an in-memory dictionary for free deployments.
 """
 
 import json
+import structlog
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
+
+logger = structlog.get_logger()
 
 # In-memory stores
 _memory_store: Dict[str, Any] = {}
@@ -78,13 +81,16 @@ class MemoryService:
         """Cache an API response or generic dict."""
         _memory_store[key] = json.dumps(response)
         _expiry_store[key] = datetime.now() + timedelta(seconds=ttl_seconds)
+        logger.debug("cache_set", key=key[:40], ttl_seconds=ttl_seconds)
 
     async def get_cache(self, key: str) -> Optional[dict]:
         """Retrieve a cached dict."""
         self._clean_expired(key)
         cached = _memory_store.get(key)
         if cached:
+            logger.debug("cache_hit", key=key[:40])
             return json.loads(cached)
+        logger.debug("cache_miss", key=key[:40])
         return None
 
     # ---- Rate Limiting ----

@@ -67,6 +67,7 @@ class TicketSummary(BaseModel):
     summary: Optional[str]
     created_at: datetime
     resolved_at: Optional[datetime]
+    assigned_to: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -86,6 +87,7 @@ class TicketDetail(BaseModel):
     created_at: datetime
     resolved_at: Optional[datetime]
     escalated_at: Optional[datetime]
+    assigned_to: Optional[str] = None
 
     # Order info
     order_id: Optional[uuid.UUID]

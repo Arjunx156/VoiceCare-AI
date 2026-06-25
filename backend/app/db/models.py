@@ -45,6 +45,7 @@ class User(Base):
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, onupdate=datetime.utcnow)
     created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # system / admin / pipeline
     updated_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Relationships
     orders: Mapped[List["Order"]] = relationship(back_populates="user", lazy="selectin")
@@ -96,6 +97,7 @@ class Order(Base):
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, onupdate=datetime.utcnow)
     created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     updated_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="orders")
@@ -321,10 +323,12 @@ class SupportTicket(Base):
     )
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     escalated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    assigned_to: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # agent email who claimed
     # Audit fields
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, onupdate=datetime.utcnow)
     created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     updated_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="support_tickets")
@@ -374,6 +378,11 @@ class SupportMessage(Base):
     # Relationships
     ticket: Mapped["SupportTicket"] = relationship(back_populates="messages")
     voice_session: Mapped[Optional["VoiceSession"]] = relationship(back_populates="messages")
+
+    __table_args__ = (
+        Index("idx_messages_ticket_id", "ticket_id"),
+        Index("idx_messages_timestamp", "timestamp"),
+    )
 
 
 class SupportResolution(Base):
