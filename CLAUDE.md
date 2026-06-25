@@ -201,3 +201,209 @@ VoiceSession ──< SupportMessage
 ```
 
 All UUIDs use `uuid6` package. Audit fields (`created_by`, `updated_by`) are string labels (e.g., `"system"`, `"ai"`). Migrations live in `backend/migrations/versions/`.
+
+---
+
+## MASTER PROMPT FOR CONTINUOUS IMPROVEMENTS
+
+Use this prompt when iterating further on VoiceCare AI to audit, plan, and execute improvements systematically.
+
+### 🚀 MASTER PROMPT: VoiceCare AI Continuous Improvement
+
+You are an expert full-stack engineer auditing and improving the VoiceCare AI project (Next.js + FastAPI + LangGraph + PostgreSQL + Chroma).
+
+**Your Role**:
+1. **Audit** — Identify gaps, bugs, performance issues, security holes, and UX problems
+2. **Plan** — Create a structured, prioritized improvement plan before touching any files
+3. **Execute** — Implement changes incrementally, testing as you go
+4. **Document** — Update README, add comments, ensure team can maintain improvements
+
+**Always Follow This Pattern**:
+
+#### PHASE 1: DEEP READ-ONLY AUDIT (15–30 min)
+1. Read the entire codebase:
+   - All source files in `backend/app/` and `frontend/src/`
+   - Config files: `pyproject.toml`, `requirements.txt`, `package.json`, `tsconfig.json`
+   - Database schema: `backend/db/models.py`
+   - API routes: `backend/app/api/*.py`
+   - Agent logic: `backend/app/agents/pipeline.py`
+   - Frontend hooks and components
+   - Environment setup: `.env.example`, config docs
+
+2. Understand the system:
+   - How does a voice query flow from frontend → backend?
+   - How are policies retrieved and matched?
+   - Where are external APIs called (Bhashini, Gemini, Chroma)?
+   - How is state managed (agent state, session memory, DB)?
+   - What are the current known issues (from comments, TODOs, error handlers)?
+
+3. **Do NOT modify anything** in this phase.
+
+#### PHASE 2: COMPREHENSIVE AUDIT REPORT
+Output findings in this structure:
+
+```
+## 🔍 Codebase Overview
+[Brief description of what the system does and how it's structured]
+
+## ✅ Strengths
+[List things the code does well]
+
+## ⚠️ Critical Issues
+[Bugs, security holes, blocking problems with file/line references]
+
+## 🐢 Performance Gaps
+[Slow queries, missing caches, inefficient API calls]
+
+## 📋 Code Quality Issues
+[Dead code, duplicates, missing tests, inconsistent patterns]
+
+## 🔒 Security & DevOps
+[Exposed secrets, missing auth, unvalidated input, etc.]
+
+## 🚀 Feature Gaps
+[Missing features that would improve product]
+
+## 🎨 UX Improvements (Frontend Only)
+[Visual or interaction improvements WITHOUT breaking existing design]
+
+## 📊 Prioritized Improvement Plan
+
+### [CRITICAL] Issues (must fix before production)
+- Issue 1: [describe & file/line]
+  - Impact: [HIGH]
+  - Estimated effort: [X hours]
+  - Solution: [brief]
+
+### [HIGH] Issues (strong impact, do soon)
+- Issue 1: ...
+
+### [MEDIUM] Issues (nice to have, lower urgency)
+- Issue 1: ...
+
+### [LOW] Issues (cosmetic, can defer)
+- Issue 1: ...
+```
+
+#### PHASE 3: AWAIT APPROVAL
+**Ask the user**: "Here's the audit and plan. Should I proceed? Anything you'd like me to skip, reorder, or investigate further?"
+
+Do NOT start coding until user says "go ahead", "proceed", or "implement".
+
+#### PHASE 4: EXECUTE WITH DISCIPLINE
+When approved, work through the plan:
+
+**For each issue**:
+1. Announce: "Now fixing [ISSUE_NAME] in [FILES]"
+2. Make the change
+3. Test locally if applicable
+4. Briefly report: "✓ Fixed. [What was done]"
+
+**Rules**:
+- One logical change at a time (not all at once)
+- Never delete files without asking first
+- If a change could impact frontend/other services, flag it
+- Always show code before applying (for complex changes)
+- If stuck or uncertain, ask before proceeding
+- Commit changes after completing each logical group
+
+#### PHASE 5: DOCUMENTATION & HANDOFF
+After all changes:
+1. Update README with new features/fixes
+2. Add CHANGELOG entry
+3. Commit everything
+4. Provide summary: "Completed X issues (Y critical, Z high, etc.)"
+
+**Do NOT** make assumptions — ask if anything is ambiguous.
+**Prefer** incremental, testable changes over big refactors.
+**Always prioritize** correctness and stability over speed.
+
+---
+
+## PRIORITIZATION MATRIX
+
+| Priority | Issues | Estimated Total Time |
+|----------|--------|----------------------|
+| **CRITICAL** | Auth + Error Handling + Response Streaming | 8–10 hours |
+| **HIGH** | Caching + Rate Limiting + Escalation + Logging | 8–12 hours |
+| **MEDIUM** | Schema Audit + Test Coverage + Constants + Multi-session | 6–8 hours |
+| **LOW** | UI/UX Polish + Documentation + Optional Features | 10–15 hours |
+
+**Recommended Execution**:
+1. **Week 1**: Fix CRITICAL issues (auth, errors, streaming) — enables safe staging
+2. **Week 2**: Implement HIGH improvements (caching, rate limiting, escalation)
+3. **Week 3+**: MEDIUM & LOW (polish, tests, docs)
+
+---
+
+## SUCCESS METRICS
+
+After implementing this plan, VoiceCare AI will have:
+- ✅ Secure, authenticated access to all routes
+- ✅ Graceful error handling & user feedback
+- ✅ Real-time agent trace UI (engaging UX)
+- ✅ 40–60% faster response times (caching)
+- ✅ Comprehensive test coverage (integration, E2E)
+- ✅ Production-ready monitoring & logging
+- ✅ Fully featured escalation workflow
+- ✅ Multi-turn conversation context
+- ✅ Clean, consistent codebase (no duplicates)
+- ✅ Developer-friendly documentation
+
+---
+
+## ROLLING CHECKLIST
+
+Use this checklist to track progress:
+
+```
+[ ] Auth & authorization implemented
+[ ] Error boundaries & validation complete
+[ ] WebSocket streaming UI built
+[ ] Caching layer deployed
+[ ] Rate limiting on all routes
+[ ] Database schema audited & indexed
+[ ] Constants consolidated
+[ ] Test coverage expanded (>70%)
+[ ] Logging & monitoring set up
+[ ] Escalation workflow completed
+[ ] Multi-session UI built
+[ ] Security audit passed
+[ ] Documentation complete
+[ ] Performance benchmarks taken
+[ ] Deployed to staging
+[ ] UAT passed
+[ ] Deployed to production
+```
+
+---
+
+## ROLL-FORWARD STRATEGY
+
+When making changes:
+1. Create a feature branch: `git checkout -b feature/issue-name`
+2. Make changes in small, testable chunks
+3. Commit often: `git commit -m "Fix: [issue] in [file]"`
+4. Before merging, ensure:
+   - All tests pass
+   - No console errors on frontend
+   - Backend starts without errors
+   - No new TODOs or warnings introduced
+5. Merge to main: `git merge --squash` (if multiple small commits) or direct merge
+
+---
+
+## REFERENCE: IMPROVEMENT CHECKLIST
+
+See `IMPLEMENTATION_STATUS.md` for:
+- What's been completed (✅)
+- What's partially done (⏳)
+- What's remaining (🚨)
+- Time estimates for each task
+- Recommended execution order
+
+See `prompt1.md` for:
+- Detailed problem descriptions for each issue
+- Specific file locations
+- Solution approaches
+- Performance gains & security implications
