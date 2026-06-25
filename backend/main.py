@@ -2,7 +2,10 @@
 CommerceMind VoiceCare AI — FastAPI Application Entry Point
 """
 
+import time
+import statistics
 import structlog
+from collections import deque
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,6 +34,9 @@ structlog.configure(
 )
 
 logger = structlog.get_logger()
+
+# Rolling window of the last 1 000 request durations (seconds)
+_request_latencies: deque[float] = deque(maxlen=1000)
 
 
 from app.services.chroma_service import get_chroma_service
@@ -114,6 +120,27 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class RequestTimingMiddleware(BaseHTTPMiddleware):
+    """Records per-request latency, logs it, and adds X-Response-Time header."""
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        start = time.perf_counter()
+        response = await call_next(request)
+        duration = time.perf_counter() - start
+        _request_latencies.append(duration)
+        ms = round(duration * 1000, 1)
+        response.headers["X-Response-Time"] = f"{ms}ms"
+        logger.debug(
+            "request_handled",
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration_ms=ms,
+        )
+        return response
+
+
+app.add_middleware(RequestTimingMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS
@@ -169,6 +196,29 @@ async def health_check():
     }
 
 
+@app.get("/metrics")
+async def get_metrics():
+    """Latency percentiles from the rolling request window (last ≤1 000 requests)."""
+    sample = list(_request_latencies)
+    if not sample:
+        return {"request_count": 0, "note": "No requests recorded yet."}
+
+    sample_ms = [round(v * 1000, 2) for v in sample]
+    qs = statistics.quantiles(sample_ms, n=100)  # returns 99 cut-points
+
+    return {
+        "request_count": len(sample_ms),
+        "latency_ms": {
+            "min": round(min(sample_ms), 2),
+            "p50": round(qs[49], 2),
+            "p95": round(qs[94], 2),
+            "p99": round(qs[98], 2),
+            "max": round(max(sample_ms), 2),
+            "mean": round(statistics.mean(sample_ms), 2),
+        },
+    }
+
+
 @app.get("/")
 async def root():
     """Root endpoint."""
@@ -177,4 +227,5 @@ async def root():
         "version": "1.0.0",
         "docs": "/docs",
         "health": "/health",
+        "metrics": "/metrics",
     }

@@ -37,6 +37,10 @@ class TestChromaService:
         import asyncio
         from unittest.mock import AsyncMock
 
+        mock_memory = MagicMock()
+        mock_memory.get_cache = AsyncMock(return_value=None)  # cache miss
+        mock_memory.set_cache = AsyncMock()
+
         mock_db = MagicMock()
 
         async def run():
@@ -45,7 +49,7 @@ class TestChromaService:
                 patch("app.agents.pipeline.get_gemini_service", return_value=MagicMock()),
                 patch("app.agents.pipeline.get_bhashini_service", return_value=MagicMock()),
                 patch("app.agents.pipeline.get_chroma_service", return_value=mock_chroma),
-                patch("app.agents.pipeline.get_memory_service", new=AsyncMock(return_value=MagicMock())),
+                patch("app.agents.pipeline.get_memory_service", new=AsyncMock(return_value=mock_memory)),
             ):
                 pipeline = VoiceCarePipeline(db=mock_db)
                 return await pipeline.agent_policy_rag(state)
@@ -67,6 +71,10 @@ class TestChromaService:
         mock_chroma.get_policy_context = MagicMock(side_effect=Exception("ChromaDB unavailable"))
         mock_chroma.query_policies = MagicMock(side_effect=Exception("ChromaDB unavailable"))
 
+        mock_memory = MagicMock()
+        mock_memory.get_cache = AsyncMock(return_value=None)  # cache miss → triggers Chroma call
+        mock_memory.set_cache = AsyncMock()
+
         mock_db = MagicMock()
 
         async def run():
@@ -75,12 +83,11 @@ class TestChromaService:
                 patch("app.agents.pipeline.get_gemini_service", return_value=MagicMock()),
                 patch("app.agents.pipeline.get_bhashini_service", return_value=MagicMock()),
                 patch("app.agents.pipeline.get_chroma_service", return_value=mock_chroma),
-                patch("app.agents.pipeline.get_memory_service", new=AsyncMock(return_value=MagicMock())),
+                patch("app.agents.pipeline.get_memory_service", new=AsyncMock(return_value=mock_memory)),
             ):
                 pipeline = VoiceCarePipeline(db=mock_db)
                 return await pipeline.agent_policy_rag(state)
 
         result = asyncio.get_event_loop().run_until_complete(run())
-        # Should fallback gracefully
         assert result.policy_context == "No policy documents available."
         assert result.has_error is False

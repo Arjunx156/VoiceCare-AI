@@ -67,10 +67,11 @@ async def list_tickets(
     db: AsyncSession = Depends(get_db),
 ):
     """List support tickets with optional filters."""
-    # Eager-load user to avoid N+1 queries
+    # Eager-load user to avoid N+1 queries; exclude soft-deleted tickets
     query = (
         select(SupportTicket)
         .options(selectinload(SupportTicket.user))
+        .where(SupportTicket.deleted_at.is_(None))
         .order_by(SupportTicket.created_at.desc())
     )
 
@@ -110,11 +111,12 @@ async def list_escalations(
     db: AsyncSession = Depends(get_db),
 ):
     """List escalated tickets for the escalation queue."""
-    # Eager-load user to avoid N+1 queries
+    # Eager-load user; exclude soft-deleted tickets
     query = (
         select(SupportTicket)
         .options(selectinload(SupportTicket.user))
         .where(SupportTicket.status == "Escalated")
+        .where(SupportTicket.deleted_at.is_(None))
         .order_by(SupportTicket.created_at.desc())
         .limit(limit)
     )
@@ -143,21 +145,27 @@ async def list_escalations(
 @router.get("/analytics", response_model=AnalyticsOverview)
 async def get_analytics(db: AsyncSession = Depends(get_db)):
     """Dashboard analytics overview."""
-    # Total counts
-    total = await db.scalar(select(func.count(SupportTicket.ticket_id)))
+    _active = SupportTicket.deleted_at.is_(None)
+
+    # Total counts (exclude soft-deleted)
+    total = await db.scalar(select(func.count(SupportTicket.ticket_id)).where(_active))
     open_count = await db.scalar(
-        select(func.count(SupportTicket.ticket_id)).where(SupportTicket.status == "Open")
+        select(func.count(SupportTicket.ticket_id))
+        .where(_active, SupportTicket.status == "Open")
     )
     escalated = await db.scalar(
-        select(func.count(SupportTicket.ticket_id)).where(SupportTicket.status == "Escalated")
+        select(func.count(SupportTicket.ticket_id))
+        .where(_active, SupportTicket.status == "Escalated")
     )
     resolved = await db.scalar(
-        select(func.count(SupportTicket.ticket_id)).where(SupportTicket.status == "Resolved")
+        select(func.count(SupportTicket.ticket_id))
+        .where(_active, SupportTicket.status == "Resolved")
     )
 
     # By language
     lang_result = await db.execute(
         select(SupportTicket.language, func.count(SupportTicket.ticket_id))
+        .where(_active)
         .group_by(SupportTicket.language)
     )
     by_language = {row[0]: row[1] for row in lang_result.all()}
@@ -165,6 +173,7 @@ async def get_analytics(db: AsyncSession = Depends(get_db)):
     # By category
     cat_result = await db.execute(
         select(SupportTicket.ticket_type, func.count(SupportTicket.ticket_id))
+        .where(_active)
         .group_by(SupportTicket.ticket_type)
     )
     by_category = {row[0]: row[1] for row in cat_result.all()}
@@ -172,6 +181,7 @@ async def get_analytics(db: AsyncSession = Depends(get_db)):
     # By priority
     pri_result = await db.execute(
         select(SupportTicket.priority, func.count(SupportTicket.ticket_id))
+        .where(_active)
         .group_by(SupportTicket.priority)
     )
     by_priority = {row[0]: row[1] for row in pri_result.all()}
@@ -179,7 +189,7 @@ async def get_analytics(db: AsyncSession = Depends(get_db)):
     # By sentiment
     sent_result = await db.execute(
         select(SupportTicket.sentiment, func.count(SupportTicket.ticket_id))
-        .where(SupportTicket.sentiment.isnot(None))
+        .where(_active, SupportTicket.sentiment.isnot(None))
         .group_by(SupportTicket.sentiment)
     )
     by_sentiment = {row[0]: row[1] for row in sent_result.all()}
@@ -213,7 +223,10 @@ async def get_ticket(ticket_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Invalid ticket ID")
 
     result = await db.execute(
-        select(SupportTicket).where(SupportTicket.ticket_id == tid)
+        select(SupportTicket).where(
+            SupportTicket.ticket_id == tid,
+            SupportTicket.deleted_at.is_(None),
+        )
     )
     ticket = result.scalar_one_or_none()
     if not ticket:
@@ -302,7 +315,12 @@ async def claim_ticket(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ticket ID")
 
-    result = await db.execute(select(SupportTicket).where(SupportTicket.ticket_id == tid))
+    result = await db.execute(
+        select(SupportTicket).where(
+            SupportTicket.ticket_id == tid,
+            SupportTicket.deleted_at.is_(None),
+        )
+    )
     ticket = result.scalar_one_or_none()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
@@ -331,7 +349,12 @@ async def release_ticket(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ticket ID")
 
-    result = await db.execute(select(SupportTicket).where(SupportTicket.ticket_id == tid))
+    result = await db.execute(
+        select(SupportTicket).where(
+            SupportTicket.ticket_id == tid,
+            SupportTicket.deleted_at.is_(None),
+        )
+    )
     ticket = result.scalar_one_or_none()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
@@ -355,7 +378,10 @@ async def get_handoff_note(ticket_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Invalid ticket ID")
 
     result = await db.execute(
-        select(SupportTicket).where(SupportTicket.ticket_id == tid)
+        select(SupportTicket).where(
+            SupportTicket.ticket_id == tid,
+            SupportTicket.deleted_at.is_(None),
+        )
     )
     ticket = result.scalar_one_or_none()
     if not ticket:
