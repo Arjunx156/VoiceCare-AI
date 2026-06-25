@@ -5,6 +5,7 @@ Loads environment variables with validation via Pydantic Settings.
 
 from functools import lru_cache
 from typing import Optional
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,7 +30,6 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://localhost/voicecare"
     database_url_sync: str = "postgresql://localhost/voicecare"
 
-
     # ---- Gemini ----
     gemini_api_key: str = ""
 
@@ -53,10 +53,37 @@ class Settings(BaseSettings):
     gemini_max_retries: int = 3
     gemini_base_delay: float = 1.0
     bhashini_timeout: float = 30.0
+    voice_rate_limit_per_minute: int = 5  # max voice queries per phone per minute
+
+    # ----------------------------------------------------------------
+    # Validators
+    # ----------------------------------------------------------------
+
+    @field_validator("admin_password")
+    @classmethod
+    def validate_admin_password(cls, v: str, info) -> str:
+        """Prevent default/weak passwords in production deployments."""
+        environment = (info.data or {}).get("environment", "development")
+        if "change_this" in v.lower() and environment == "production":
+            raise ValueError(
+                "Admin password must be changed from the default value in production!"
+            )
+        return v
+
+    # ----------------------------------------------------------------
+    # Computed properties
+    # ----------------------------------------------------------------
 
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        """Narrow CORS origin list based on environment."""
+        if self.is_production:
+            return [self.frontend_url]
+        return [self.frontend_url, "http://localhost:3000", "http://localhost:3001"]
 
 
 @lru_cache()

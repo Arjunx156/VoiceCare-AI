@@ -5,11 +5,14 @@ Handles text/voice queries and WebSocket streaming.
 
 import json
 import uuid
+import time
 import structlog
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.config import get_settings
+from app.core.errors import RateLimitError, ErrorMessages
 from app.agents.state import PipelineState
 from app.agents.pipeline import VoiceCarePipeline
 from app.schemas.schemas import VoiceQueryRequest, VoiceQueryResponse
@@ -17,12 +20,54 @@ from app.services.memory_service import get_memory_service
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/voice", tags=["voice"])
+settings = get_settings()
 
+
+# ================================================================
+# Rate-Limiting Dependency
+# ================================================================
+
+async def rate_limit_dependency(request: VoiceQueryRequest) -> None:
+    """
+    Simple in-memory rate limiter: max 5 voice queries/minute per phone.
+    Uses the memory service (Redis) so it works across multiple workers.
+    Falls back gracefully if Redis is unavailable.
+    """
+    phone = request.phone
+    if not phone:
+        return  # anonymous requests are not rate-limited here
+
+    try:
+        memory = await get_memory_service()
+        limit = settings.voice_rate_limit_per_minute
+        window = 60  # seconds
+        key = f"rate_limit:voice:{phone}"
+
+        # Increment the counter; set expiry on first hit
+        count = await memory.increment_with_expiry(key, window)
+        if count is not None and count > limit:
+            logger.warning("rate_limit_exceeded", phone=phone, count=count)
+            raise HTTPException(
+                status_code=429,
+                detail=ErrorMessages.RATE_LIMIT_VOICE,
+                headers={"Retry-After": str(window)},
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        # Redis unavailable — degrade gracefully, don't block the user
+        logger.warning("rate_limit_check_failed", error=str(exc))
+
+
+# ================================================================
+# REST Endpoint
+# ================================================================
 
 @router.post("/query", response_model=VoiceQueryResponse)
 async def process_voice_query(
     request: VoiceQueryRequest,
     db: AsyncSession = Depends(get_db),
+    _: None = Depends(rate_limit_dependency),
 ):
     """Process a text or voice query through the 9-agent pipeline."""
     # Build initial pipeline state
@@ -75,6 +120,10 @@ async def process_voice_query(
         agent_trace=[step.model_dump(mode="json") for step in state.agent_trace],
     )
 
+
+# ================================================================
+# WebSocket Endpoint
+# ================================================================
 
 @router.websocket("/ws/{session_id}")
 async def voice_websocket(websocket: WebSocket, session_id: str):
@@ -140,6 +189,10 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
         logger.error("websocket_error", session_id=session_id, error=str(e))
         await websocket.close(code=1011)
 
+
+# ================================================================
+# Helpers
+# ================================================================
 
 def _lang_to_code(language: str) -> str:
     """Convert language name to code."""

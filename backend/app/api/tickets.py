@@ -10,6 +10,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case, and_
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.db.models import (
@@ -34,9 +35,10 @@ async def list_tickets(
     db: AsyncSession = Depends(get_db),
 ):
     """List support tickets with optional filters."""
+    # Eager-load user to avoid N+1 queries
     query = (
-        select(SupportTicket, User.name, User.phone)
-        .join(User, SupportTicket.user_id == User.user_id, isouter=True)
+        select(SupportTicket)
+        .options(selectinload(SupportTicket.user))
         .order_by(SupportTicket.created_at.desc())
     )
 
@@ -49,23 +51,23 @@ async def list_tickets(
 
     query = query.limit(limit).offset(offset)
     result = await db.execute(query)
-    rows = result.all()
+    tickets = result.scalars().all()
 
     return [
         TicketSummary(
-            ticket_id=row[0].ticket_id,
-            user_name=row[1] or "Unknown",
-            phone=row[2] or "",
-            ticket_type=row[0].ticket_type,
-            priority=row[0].priority,
-            status=row[0].status,
-            language=row[0].language,
-            sentiment=row[0].sentiment,
-            summary=row[0].summary,
-            created_at=row[0].created_at,
-            resolved_at=row[0].resolved_at,
+            ticket_id=t.ticket_id,
+            user_name=t.user.name if t.user else "Unknown",
+            phone=t.user.phone if t.user else "",
+            ticket_type=t.ticket_type,
+            priority=t.priority,
+            status=t.status,
+            language=t.language,
+            sentiment=t.sentiment,
+            summary=t.summary,
+            created_at=t.created_at,
+            resolved_at=t.resolved_at,
         )
-        for row in rows
+        for t in tickets
     ]
 
 
@@ -75,31 +77,32 @@ async def list_escalations(
     db: AsyncSession = Depends(get_db),
 ):
     """List escalated tickets for the escalation queue."""
+    # Eager-load user to avoid N+1 queries
     query = (
-        select(SupportTicket, User.name, User.phone)
-        .join(User, SupportTicket.user_id == User.user_id, isouter=True)
+        select(SupportTicket)
+        .options(selectinload(SupportTicket.user))
         .where(SupportTicket.status == "Escalated")
         .order_by(SupportTicket.created_at.desc())
         .limit(limit)
     )
     result = await db.execute(query)
-    rows = result.all()
+    tickets = result.scalars().all()
 
     return [
         TicketSummary(
-            ticket_id=row[0].ticket_id,
-            user_name=row[1] or "Unknown",
-            phone=row[2] or "",
-            ticket_type=row[0].ticket_type,
-            priority=row[0].priority,
-            status=row[0].status,
-            language=row[0].language,
-            sentiment=row[0].sentiment,
-            summary=row[0].summary,
-            created_at=row[0].created_at,
-            resolved_at=row[0].resolved_at,
+            ticket_id=t.ticket_id,
+            user_name=t.user.name if t.user else "Unknown",
+            phone=t.user.phone if t.user else "",
+            ticket_type=t.ticket_type,
+            priority=t.priority,
+            status=t.status,
+            language=t.language,
+            sentiment=t.sentiment,
+            summary=t.summary,
+            created_at=t.created_at,
+            resolved_at=t.resolved_at,
         )
-        for row in rows
+        for t in tickets
     ]
 
 

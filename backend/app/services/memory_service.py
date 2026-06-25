@@ -79,19 +79,34 @@ class MemoryService:
         """Simple memory-based rate limiting."""
         key = f"ratelimit:{identifier}"
         self._clean_expired(key)
-        
+
         current = _memory_store.get(key)
-        
+
         if current is None:
             _memory_store[key] = 1
             _expiry_store[key] = datetime.now() + timedelta(seconds=window_seconds)
             return True
-            
+
         if current >= limit:
             return False
-            
+
         _memory_store[key] += 1
         return True
+
+    async def increment_with_expiry(self, key: str, window_seconds: int = 60) -> Optional[int]:
+        """
+        Atomically increment a counter and set TTL if it doesn't exist yet.
+        Returns the new counter value. Used for sliding-window rate limiting.
+        """
+        self._clean_expired(key)
+        current = _memory_store.get(key)
+        if current is None:
+            _memory_store[key] = 1
+            _expiry_store[key] = datetime.now() + timedelta(seconds=window_seconds)
+            return 1
+        _memory_store[key] = current + 1
+        return _memory_store[key]
+
 
     # ---- Pipeline State Sharing ----
 

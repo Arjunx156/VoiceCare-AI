@@ -34,7 +34,8 @@ export function useVoiceInteraction() {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
-      if (recognitionRef.current) recognitionRef.current.stop();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (recognitionRef.current) (recognitionRef.current as any).stop();
     };
   }, []);
 

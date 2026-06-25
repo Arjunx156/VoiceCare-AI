@@ -41,6 +41,10 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
+    # Audit fields
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, onupdate=datetime.utcnow)
+    created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # system / admin / pipeline
+    updated_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Relationships
     orders: Mapped[List["Order"]] = relationship(back_populates="user", lazy="selectin")
@@ -88,6 +92,10 @@ class Order(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
+    # Audit fields
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, onupdate=datetime.utcnow)
+    created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="orders")
@@ -175,6 +183,10 @@ class Return(Base):
     eligibility_window_days: Mapped[int] = mapped_column(
         Integer, default=7, nullable=False
     )
+    # Audit fields
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, onupdate=datetime.utcnow)
+    created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Relationships
     order: Mapped["Order"] = relationship(back_populates="return_request")
@@ -203,6 +215,10 @@ class Refund(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
+    # Audit fields
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, onupdate=datetime.utcnow)
+    created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Relationships
     return_request: Mapped[Optional["Return"]] = relationship(back_populates="refund")
@@ -305,6 +321,10 @@ class SupportTicket(Base):
     )
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     escalated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # Audit fields
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, onupdate=datetime.utcnow)
+    created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="support_tickets")
@@ -346,6 +366,10 @@ class SupportMessage(Base):
     timestamp: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
+    # Audit fields
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, onupdate=datetime.utcnow)
+    created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Relationships
     ticket: Mapped["SupportTicket"] = relationship(back_populates="messages")
@@ -375,6 +399,10 @@ class SupportResolution(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
+    # Audit fields
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, onupdate=datetime.utcnow)
+    created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Relationships
     ticket: Mapped["SupportTicket"] = relationship(back_populates="resolution")
