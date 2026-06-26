@@ -391,12 +391,19 @@ class VoiceCarePipeline:
                     ttl_seconds=3600,
                 )
 
+            state.rag_retrieved_count = len(state.retrieved_policies)
+            if state.rag_retrieved_count == 0:
+                logger.warning("rag_no_policies_retrieved", query_preview=query[:80])
+                state.policy_context = (
+                    "No matching policy documents found. Apply standard e-commerce best practices."
+                )
+
             state.add_trace(
                 agent_name="Policy RAG",
                 stage_number=4,
                 input_summary=f"Query: {query[:100]}...",
-                output_summary=f"Retrieved {len(state.retrieved_policies)} policy documents",
-                decision="Vector similarity search on policy collection",
+                output_summary=f"Retrieved {state.rag_retrieved_count} policy documents",
+                decision="Vector similarity search on policy collection" if state.rag_retrieved_count else "No matching policies — using best-practice fallback",
                 duration_ms=(time.time() - start) * 1000,
             )
         except Exception as e:
@@ -421,13 +428,19 @@ class VoiceCarePipeline:
                 order_data=state.order_data,
                 policy_context=state.policy_context or "",
                 sentiment=state.sentiment,
+                conversation_history=state.conversation_history,
             )
 
             state.recommended_action = result.get("recommended_action", "Inform")
             state.resolution_summary = result.get("resolution_summary", "")
             state.policy_reference = result.get("policy_reference", "")
             state.internal_note = result.get("internal_note", "")
-            state.confidence_score = result.get("confidence_score", 0.5)
+            raw_confidence = result.get("confidence_score", 0.5)
+            # If no policies were retrieved, cap confidence so escalation rules can trigger
+            # correctly — LLM can't be highly confident without policy grounding.
+            if state.rag_retrieved_count == 0:
+                raw_confidence = min(raw_confidence, 0.65)
+            state.confidence_score = raw_confidence
             state.requires_human_review = result.get("requires_human_review", False)
 
             state.add_trace(
@@ -530,6 +543,7 @@ class VoiceCarePipeline:
                 resolution=resolution_data,
                 language=state.language_detected,
                 customer_name=customer_name,
+                conversation_history=state.conversation_history,
             )
 
             state.response_text = result.get("response_text", "")
@@ -717,6 +731,19 @@ class VoiceCarePipeline:
     # ================================================================
     async def run(self, state: PipelineState) -> PipelineState:
         """Execute the full 9-agent pipeline."""
+        # Part B: Hydrate identity from prior turns so customers don't re-identify
+        memory = await get_memory_service()
+        if state.session_id:
+            try:
+                ctx = await memory.get_session_context(state.session_id)
+                if ctx:
+                    if not state.phone and ctx.get("phone"):
+                        state.phone = ctx["phone"]
+                    if not state.input_order_id and ctx.get("order_id"):
+                        state.input_order_id = ctx["order_id"]
+            except Exception as ctx_err:
+                logger.warning("session_context_load_failed", error=str(ctx_err))
+
         if state.has_error:
             return state
         state = await self.agent_voice_intake(state)
@@ -752,6 +779,22 @@ class VoiceCarePipeline:
         if state.has_error:
             return state
         state = await self.agent_ticket_creation(state)
+
+        # Part B: Persist identity context so the next turn can reuse phone/order_id
+        if not state.has_error and state.session_id:
+            try:
+                phone = (state.user_data or {}).get("phone") or state.extracted_phone
+                order_id = (state.order_data or {}).get("order_id") or state.extracted_order_id
+                if phone or order_id:
+                    await memory.set_session_context(state.session_id, {
+                        "phone": phone,
+                        "user_id": (state.user_data or {}).get("user_id"),
+                        "order_id": order_id,
+                        "intent": state.intent,
+                        "last_summary": state.summary_english,
+                    })
+            except Exception as ctx_save_err:
+                logger.warning("session_context_save_failed", error=str(ctx_save_err))
 
         return state
 

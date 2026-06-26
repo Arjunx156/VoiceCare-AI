@@ -41,6 +41,7 @@ class GeminiService:
     async def _call_gemini(self, prompt: str, system_instruction: str = "") -> str:
         """Make a Gemini API call with retry logic and Groq fallback."""
         try:
+            import google.api_core.exceptions as _gapi_exc
             response = self.model.generate_content(
                 prompt,
                 generation_config=genai.GenerationConfig(
@@ -48,6 +49,7 @@ class GeminiService:
                     max_output_tokens=2048,
                     response_mime_type="application/json",
                 ),
+                request_options={"timeout": 30},
             )
             return response.text
         except Exception as e:
@@ -145,6 +147,7 @@ Rules:
         order_data: Optional[dict],
         policy_context: str,
         sentiment: str,
+        conversation_history: list = None,
     ) -> dict:
         """
         LLM Call 2: Determine the resolution based on order data + policy.
@@ -153,6 +156,10 @@ Rules:
         order_context = "No order data available."
         if order_data:
             order_context = f"Order details:\n{json.dumps(order_data, indent=2, default=str)}"
+
+        history_context = ""
+        if conversation_history:
+            history_context = f"\n\nConversation history (earlier turns in this session):\n{json.dumps(conversation_history[-6:], indent=2)}"
 
         prompt = f"""You are an e-commerce customer support AI making a resolution decision.
 
@@ -163,7 +170,7 @@ Customer sentiment: {sentiment}
 {order_context}
 
 Relevant company policy sections:
-{policy_context}
+{policy_context}{history_context}
 
 Return a JSON object with exactly these fields:
 {{
@@ -203,17 +210,22 @@ Rules:
         resolution: dict,
         language: str,
         customer_name: str = "Customer",
+        conversation_history: list = None,
     ) -> dict:
         """
         LLM Call 3: Generate the final customer-facing response in their language.
         """
+        history_context = ""
+        if conversation_history:
+            history_context = f"\nConversation history (for context):\n{json.dumps(conversation_history[-4:], indent=2)}\n"
+
         prompt = f"""You are a friendly, empathetic e-commerce customer support assistant.
 Generate a natural, helpful response to the customer.
 
 Original customer query: "{query}"
 Customer name: {customer_name}
 Target language: {language}
-Resolution decided: {json.dumps(resolution, indent=2, default=str)}
+{history_context}Resolution decided: {json.dumps(resolution, indent=2, default=str)}
 
 Return a JSON object with exactly these fields:
 {{

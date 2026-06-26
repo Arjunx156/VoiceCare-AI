@@ -7,7 +7,7 @@ import statistics
 import structlog
 from collections import deque
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -19,6 +19,7 @@ from app.core.database import init_db, close_db
 from app.api.voice import router as voice_router
 from app.api.tickets import router as tickets_router
 from app.api.auth import router as auth_router
+from app.api.auth import require_admin
 
 settings = get_settings()
 
@@ -162,15 +163,16 @@ class RequestTimingMiddleware(BaseHTTPMiddleware):
 app.add_middleware(RequestTimingMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
-# CORS
+# CORS — production only allows the explicit frontend URL.
+# The vercel.app wildcard is restricted to non-production to prevent
+# any Vercel deployment from cross-origin access to production data.
+_cors_origins = settings.allowed_origins  # narrows to [frontend_url] in production
+_cors_origin_regex = r"https://.*\.vercel\.app" if not settings.is_production else None
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.frontend_url,
-        "http://localhost:3000",
-        "http://localhost:3001",
-    ],
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origins=_cors_origins,
+    allow_origin_regex=_cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -216,8 +218,8 @@ async def health_check():
 
 
 @app.get("/metrics")
-async def get_metrics():
-    """Latency percentiles from the rolling request window (last ≤1 000 requests)."""
+async def get_metrics(admin_email: str = Depends(require_admin)):  # noqa: ARG001
+    """Latency percentiles — admin-only, not exposed publicly."""
     sample = list(_request_latencies)
     if not sample:
         return {"request_count": 0, "note": "No requests recorded yet."}

@@ -62,6 +62,7 @@ class PipelineState(BaseModel):
     # Stage 4: Policy RAG
     policy_context: Optional[str] = None
     retrieved_policies: List[dict] = Field(default_factory=list)
+    rag_retrieved_count: int = 0       # 0 means no policy grounding — resolution confidence is capped
 
     # Stage 5: Resolution
     recommended_action: Optional[str] = None

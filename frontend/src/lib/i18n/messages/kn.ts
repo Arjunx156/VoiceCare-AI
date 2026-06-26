@@ -18,6 +18,7 @@ const kn: Messages = {
   "footer.placeholder": "ಯಾವುದೇ ಭಾಷೆಯಲ್ಲಿ ನಿಮ್ಮ ಪ್ರಶ್ನೆ ಟೈಪ್ ಮಾಡಿ…",
   "footer.switchToVoice": "ವಾಯ್ಸ್‌ಗೆ ಬದಲಿಸಿ",
   "footer.switchToText": "ಟೆಕ್ಸ್ಟ್‌ಗೆ ಬದಲಿಸಿ",
+  "footer.newConversation": "ಹೊಸ ಸಂವಾದ",
 
   "status.processing": "ಸಂಸ್ಕರಿಸಲಾಗುತ್ತಿದೆ",
   "status.complete": "ಮುಗಿದಿದೆ",

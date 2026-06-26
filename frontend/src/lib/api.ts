@@ -137,26 +137,36 @@ export interface HandoffNote {
 
 // ---- API Functions ----
 
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+async function apiFetch<T>(path: string, options?: RequestInit & { timeoutMs?: number }): Promise<T> {
   const token = getAuthToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${BACKEND_URL}${path}`, {
-    ...options,
-    headers: { ...headers, ...(options?.headers as Record<string, string> | undefined) },
-  });
+  const controller = new AbortController();
+  const timeoutMs = options?.timeoutMs ?? 10_000;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (res.status === 401) {
-    clearAuthToken();
-    if (typeof window !== "undefined") window.location.href = "/login";
-    throw new Error("Session expired. Please log in again.");
+  try {
+    const { timeoutMs: _drop, ...fetchOptions } = options ?? {};
+    const res = await fetch(`${BACKEND_URL}${path}`, {
+      ...fetchOptions,
+      signal: options?.signal ?? controller.signal,
+      headers: { ...headers, ...(options?.headers as Record<string, string> | undefined) },
+    });
+
+    if (res.status === 401) {
+      clearAuthToken();
+      if (typeof window !== "undefined") window.location.href = "/login";
+      throw new Error("Session expired. Please log in again.");
+    }
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(error.detail || `API Error: ${res.status}`);
+    }
+    return res.json();
+  } finally {
+    clearTimeout(timer);
   }
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(error.detail || `API Error: ${res.status}`);
-  }
-  return res.json();
 }
 
 export async function sendVoiceQuery(
@@ -217,6 +227,10 @@ export async function claimTicket(ticketId: string): Promise<{ ticket_id: string
 
 export async function releaseTicket(ticketId: string): Promise<{ ticket_id: string; status: string; assigned_to: null }> {
   return apiFetch(`/api/tickets/${ticketId}/release`, { method: "PATCH" });
+}
+
+export async function clearConversation(sessionId: string): Promise<void> {
+  await apiFetch(`/api/voice/session/${sessionId}`, { method: "DELETE" });
 }
 
 export function createWebSocket(sessionId: string): WebSocket {

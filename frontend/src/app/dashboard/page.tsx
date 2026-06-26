@@ -54,8 +54,12 @@ export default function DashboardPage() {
   const [analytics, setAnalytics]     = useState<AnalyticsOverview | null>(null);
   const [escalations, setEscalations] = useState<TicketSummary[]>([]);
   const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState<string | null>(null);
+  const [retryCount, setRetryCount]   = useState(0);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     async function load() {
       try {
         const [a, e] = await Promise.all([getAnalytics(), getEscalations()]);
@@ -63,12 +67,13 @@ export default function DashboardPage() {
         setEscalations(e);
       } catch (err) {
         console.error("Dashboard load failed:", err);
+        setError(err instanceof Error ? err.message : "Failed to load dashboard data");
       } finally {
         setLoading(false);
       }
     }
     load();
-  }, []);
+  }, [retryCount]);
 
   if (loading) {
     return (
@@ -82,6 +87,27 @@ export default function DashboardPage() {
           }}
         />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        style={{
+          display: "flex", flexDirection: "column", alignItems: "center",
+          justifyContent: "center", height: "100%", gap: 12,
+        }}
+      >
+        <p style={{ fontSize: 14, fontWeight: 600, color: "var(--error)" }}>Unable to load dashboard</p>
+        <p style={{ fontSize: 12, color: "var(--text-muted)", maxWidth: 300, textAlign: "center" }}>{error}</p>
+        <button
+          onClick={() => setRetryCount(c => c + 1)}
+          className="btn-pill btn-pill-accent"
+          style={{ padding: "8px 20px", fontSize: 13 }}
+        >
+          Retry
+        </button>
       </div>
     );
   }

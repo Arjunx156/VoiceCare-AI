@@ -50,9 +50,16 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db():
-    """Create all tables — used for initial setup."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """
+    Dev-only: create missing tables from SQLAlchemy models.
+    In production, Alembic is the sole schema authority — run `alembic upgrade head`
+    before starting the app. Skipped here so model drift can't silently overwrite
+    a production schema.
+    """
+    from app.core.config import get_settings as _get_settings
+    if _get_settings().environment != "production":
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
 
 async def close_db():

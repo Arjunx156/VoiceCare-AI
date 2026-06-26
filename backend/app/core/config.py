@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     admin_email: str = "admin@voicecare.ai"
     admin_password: str = "change_this_in_production"
 
+    # ---- Upstash Redis (durable multi-turn memory) ----
+    upstash_redis_rest_url: Optional[str] = None
+    upstash_redis_rest_token: Optional[str] = None
+
     # ---- Observability ----
     sentry_dsn: Optional[str] = None  # set to enable Sentry error tracking
 

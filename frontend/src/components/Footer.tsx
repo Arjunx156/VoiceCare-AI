@@ -25,6 +25,10 @@ interface FooterProps {
   setTextInput: (text: string) => void;
   handleTextSubmit: (e: React.FormEvent) => void;
   setBhashiniWarning: (show: boolean) => void;
+  startNewConversation: () => void;
+  hasResponse: boolean;
+  phone: string;
+  setPhone: (v: string) => void;
 }
 
 export default function Footer({
@@ -40,6 +44,10 @@ export default function Footer({
   setTextInput,
   handleTextSubmit,
   setBhashiniWarning,
+  startNewConversation,
+  hasResponse,
+  phone,
+  setPhone,
 }: FooterProps) {
   const { t } = useI18n();
 
@@ -72,6 +80,38 @@ export default function Footer({
           </button>
         ))}
       </motion.div>
+      {/* Optional phone — lets the backend look up a real order on turn 1 */}
+      {!hasResponse && (
+        <motion.div
+          custom={3.5}
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+          style={{ width: "100%", maxWidth: 280 }}
+        >
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Phone number (optional)"
+            disabled={isListening || isProcessing}
+            style={{
+              width: "100%",
+              padding: "8px 16px",
+              borderRadius: 999,
+              fontSize: 13,
+              outline: "none",
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border-subtle)",
+              color: "var(--text-secondary)",
+              fontFamily: "var(--font-sans)",
+              textAlign: "center",
+              opacity: isListening || isProcessing ? 0.4 : 1,
+              boxSizing: "border-box",
+            }}
+          />
+        </motion.div>
+      )}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, width: "100%" }}>
         {!showTextMode ? (
           <div style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
@@ -138,20 +178,42 @@ export default function Footer({
           </form>
         )}
       </div>
-      <button
-        onClick={() => { setShowTextMode(!showTextMode); setBhashiniWarning(false); }}
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          fontSize: 12,
-          color: "var(--text-muted)",
-          fontFamily: "var(--font-sans)",
-          transition: "color 150ms",
-        }}
-      >
-        {showTextMode ? t("footer.switchToVoice") : t("footer.switchToText")}
-      </button>
+      <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+        <button
+          onClick={() => { setShowTextMode(!showTextMode); setBhashiniWarning(false); }}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontSize: 12,
+            color: "var(--text-muted)",
+            fontFamily: "var(--font-sans)",
+            transition: "color 150ms",
+          }}
+        >
+          {showTextMode ? t("footer.switchToVoice") : t("footer.switchToText")}
+        </button>
+        {hasResponse && (
+          <button
+            onClick={startNewConversation}
+            disabled={isListening || isProcessing}
+            style={{
+              background: "none",
+              border: "1px solid var(--border-subtle)",
+              borderRadius: 999,
+              cursor: isListening || isProcessing ? "not-allowed" : "pointer",
+              fontSize: 12,
+              color: "var(--text-secondary)",
+              fontFamily: "var(--font-sans)",
+              padding: "4px 12px",
+              opacity: isListening || isProcessing ? 0.4 : 1,
+              transition: "color 150ms, border-color 150ms",
+            }}
+          >
+            {t("footer.newConversation")}
+          </button>
+        )}
+      </div>
     </footer>
   );
 }

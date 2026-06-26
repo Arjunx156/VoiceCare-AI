@@ -233,6 +233,23 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
 
 
 # ================================================================
+# Session Reset (clears multi-turn memory for a session)
+# ================================================================
+
+@router.delete("/session/{session_id}")
+async def clear_session(session_id: str):
+    """Clear conversation history and identity context for a session (new conversation)."""
+    try:
+        memory = await get_memory_service()
+        await memory.clear_conversation(session_id)
+        logger.info("session_cleared", session_id=session_id)
+        return {"cleared": True, "session_id": session_id}
+    except Exception as exc:
+        logger.error("session_clear_failed", session_id=session_id, error=str(exc))
+        raise HTTPException(status_code=500, detail="Failed to clear session")
+
+
+# ================================================================
 # Helpers
 # ================================================================
 

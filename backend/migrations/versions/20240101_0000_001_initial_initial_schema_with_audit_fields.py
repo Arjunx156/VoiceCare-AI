@@ -214,15 +214,16 @@ def upgrade() -> None:
         sa.Column("updated_by", sa.String(100), nullable=True),
     )
 
-    # ---- customer_sentiments ----
+    # ---- customer_sentiment ----
+    # Table name is singular to match the SQLAlchemy model __tablename__
     op.create_table(
-        "customer_sentiments",
+        "customer_sentiment",
         sa.Column("sentiment_id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("ticket_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("support_tickets.ticket_id"), nullable=False),
         sa.Column("sentiment_label", sa.String(20), nullable=False),
-        sa.Column("confidence", sa.Float(), nullable=True),
+        sa.Column("confidence_score", sa.Float(), nullable=True),
         sa.Column("raw_text_snippet", sa.Text(), nullable=True),
-        sa.Column("detected_at", sa.DateTime(), nullable=False),
+        sa.Column("recorded_at", sa.DateTime(), nullable=False),
     )
 
     # ---- policy_documents ----
@@ -241,7 +242,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("policy_documents")
-    op.drop_table("customer_sentiments")
+    op.drop_table("customer_sentiment")
     op.drop_table("support_resolutions")
     op.drop_table("support_messages")
     op.drop_table("support_tickets")

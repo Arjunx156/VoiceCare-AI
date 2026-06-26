@@ -32,6 +32,7 @@ function isRaised(priority: string) {
 export default function EscalationsPage() {
   const [escalations, setEscalations] = useState<TicketSummary[]>([]);
   const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState<string | null>(null);
   const [claiming, setClaiming]       = useState<string | null>(null);
 
   const handleClaim = useCallback(async (ticketId: string, e: React.MouseEvent) => {
@@ -56,10 +57,11 @@ export default function EscalationsPage() {
       controller = new AbortController();
       try {
         const data = await getEscalations(controller.signal);
-        if (mounted) setEscalations(data);
+        if (mounted) { setEscalations(data); setError(null); }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === "AbortError") return;
         console.error("Failed to load escalations:", err);
+        if (mounted) setError(err instanceof Error ? err.message : "Failed to load escalations");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -85,6 +87,15 @@ export default function EscalationsPage() {
           animation: "spin 1s linear infinite",
         }} />
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    );
+  }
+
+  if (error && escalations.length === 0) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 256, gap: 10 }}>
+        <p style={{ fontSize: 14, fontWeight: 600, color: "var(--error)" }}>Unable to load escalations</p>
+        <p style={{ fontSize: 12, color: "var(--text-muted)", maxWidth: 300, textAlign: "center" }}>{error}</p>
       </div>
     );
   }

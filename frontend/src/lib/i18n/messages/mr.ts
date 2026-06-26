@@ -18,6 +18,7 @@ const mr: Messages = {
   "footer.placeholder": "कोणत्याही भाषेत तुमचा प्रश्न टाइप करा…",
   "footer.switchToVoice": "व्हॉइसवर जा",
   "footer.switchToText": "मजकुरावर जा",
+  "footer.newConversation": "नवीन संवाद",
 
   "status.processing": "प्रक्रिया होत आहे",
   "status.complete": "पूर्ण",

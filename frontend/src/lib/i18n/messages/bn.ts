@@ -18,6 +18,7 @@ const bn: Messages = {
   "footer.placeholder": "যেকোনো ভাষায় আপনার প্রশ্ন টাইপ করুন…",
   "footer.switchToVoice": "ভয়েসে যান",
   "footer.switchToText": "টেক্সটে যান",
+  "footer.newConversation": "নতুন কথোপকথন",
 
   "status.processing": "প্রক্রিয়াকরণ হচ্ছে",
   "status.complete": "সম্পন্ন",

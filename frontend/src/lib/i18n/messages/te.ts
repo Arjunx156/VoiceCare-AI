@@ -18,6 +18,7 @@ const te: Messages = {
   "footer.placeholder": "ఏ భాషలోనైనా మీ ప్రశ్నను టైప్ చేయండి…",
   "footer.switchToVoice": "వాయిస్‌కు మారండి",
   "footer.switchToText": "టెక్స్ట్‌కు మారండి",
+  "footer.newConversation": "కొత్త సంభాషణ",
 
   "status.processing": "ప్రాసెస్ అవుతోంది",
   "status.complete": "పూర్తయింది",

@@ -62,9 +62,12 @@ const selectStyle: React.CSSProperties = {
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<TicketSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState<string | null>(null);
   const [filter, setFilter]   = useState({ status: "", priority: "" });
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     async function load() {
       try {
         const data = await getTickets({
@@ -74,6 +77,7 @@ export default function TicketsPage() {
         setTickets(data);
       } catch (err) {
         console.error("Failed to load tickets:", err);
+        setError(err instanceof Error ? err.message : "Failed to load tickets");
       } finally {
         setLoading(false);
       }
@@ -93,8 +97,11 @@ export default function TicketsPage() {
         <div>
           <span className="eyebrow">SUPPORT TICKETS</span>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
-            {loading ? "Loading…" : `${tickets.length} ticket${tickets.length !== 1 ? "s" : ""}`}
+            {loading ? "Loading…" : error ? "Error" : `${tickets.length} ticket${tickets.length !== 1 ? "s" : ""}`}
           </h1>
+          {error && (
+            <p style={{ fontSize: 12, color: "var(--error)", marginTop: 4 }}>{error}</p>
+          )}
         </div>
 
         {/* Filter pills */}

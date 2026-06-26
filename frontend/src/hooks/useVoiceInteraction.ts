@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { createWebSocket, type VoiceQueryResponse } from "@/lib/api";
+import { createWebSocket, clearConversation, type VoiceQueryResponse } from "@/lib/api";
 import { LANG_TO_BCP47 } from "@/lib/constants";
 
 // Stable error codes — translated in the view layer via t("error.<code>")
@@ -23,11 +23,17 @@ interface SpeechRecognitionEvent {
 
 const MAX_WS_RETRIES = 3;
 const LS_LANG_KEY = "vc_lang";
+const LS_SESSION_KEY = "vc_session";
 const DEFAULT_LANG = "Hindi";
 
 function readStoredLang(): string {
   if (typeof window === "undefined") return DEFAULT_LANG;
   return localStorage.getItem(LS_LANG_KEY) ?? DEFAULT_LANG;
+}
+
+function readStoredSession(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(LS_SESSION_KEY);
 }
 
 export function useVoiceInteraction() {
@@ -41,7 +47,8 @@ export function useVoiceInteraction() {
   // after the refactor it will hold a VoiceErrorCode; VoiceView maps it via t()
   const [errorCode, setErrorCode]         = useState<VoiceErrorCode | null>(null);
   const [selectedLanguage, setSelectedLanguageState] = useState<string>(DEFAULT_LANG);
-  const [sessionId, setSessionId]         = useState<string | null>(null);
+  const [sessionId, setSessionId]         = useState<string | null>(() => readStoredSession());
+  const [phone, setPhone]                 = useState<string>("");
   const [textInput, setTextInput]         = useState("");
   const [showTextMode, setShowTextMode]   = useState(false);
   const [liveTranscript, setLiveTranscript] = useState("");
@@ -179,7 +186,12 @@ export function useVoiceInteraction() {
       setCurrentStage(1);
 
       const currentSessionId = sessionId || crypto.randomUUID();
-      if (!sessionId) setSessionId(currentSessionId);
+      if (!sessionId) {
+        setSessionId(currentSessionId);
+        if (typeof window !== "undefined") {
+          localStorage.setItem(LS_SESSION_KEY, currentSessionId);
+        }
+      }
 
       let completed = false;
 
@@ -191,6 +203,7 @@ export function useVoiceInteraction() {
             text: overrides.text,
             audio_base64: overrides.audio_base64,
             language: selectedLanguage,
+            phone: phone || undefined,
           }));
         };
 
@@ -349,6 +362,27 @@ export function useVoiceInteraction() {
     setTextInput("");
   }, [textInput, isProcessing, processQuery]);
 
+  const startNewConversation = useCallback(async () => {
+    stopCurrentTTS();
+    // Clear server-side memory for the current session
+    if (sessionId) {
+      try { await clearConversation(sessionId); } catch { /* best-effort */ }
+    }
+    // Generate a fresh session and reset all UI state
+    const newId = crypto.randomUUID();
+    setSessionId(newId);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(LS_SESSION_KEY, newId);
+    }
+    setResponse(null);
+    setIsComplete(false);
+    setCurrentStage(0);
+    setErrorCode(null);
+    setLiveTranscript("");
+    setTextInput("");
+    setPhone("");
+  }, [sessionId, stopCurrentTTS]);
+
   return {
     isListening,
     isProcessing,
@@ -359,6 +393,8 @@ export function useVoiceInteraction() {
     errorCode,
     selectedLanguage,
     setSelectedLanguage,
+    phone,
+    setPhone,
     textInput,
     setTextInput,
     showTextMode,
@@ -369,5 +405,7 @@ export function useVoiceInteraction() {
     startRecording,
     stopRecording,
     handleTextSubmit,
+    startNewConversation,
+    sessionId,
   };
 }

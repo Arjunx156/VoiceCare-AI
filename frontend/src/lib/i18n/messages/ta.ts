@@ -18,6 +18,7 @@ const ta: Messages = {
   "footer.placeholder": "எந்த மொழியிலும் உங்கள் கேள்வியைத் தட்டச்சு செய்யுங்கள்…",
   "footer.switchToVoice": "குரலுக்கு மாறு",
   "footer.switchToText": "உரைக்கு மாறு",
+  "footer.newConversation": "புதிய உரையாடல்",
 
   "status.processing": "செயலாக்கப்படுகிறது",
   "status.complete": "முடிந்தது",

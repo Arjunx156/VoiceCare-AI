@@ -18,6 +18,7 @@ const ml: Messages = {
   "footer.placeholder": "ഏത് ഭാഷയിലും നിങ്ങളുടെ ചോദ്യം ടൈപ്പ് ചെയ്യൂ…",
   "footer.switchToVoice": "വോയിസിലേക്ക് മാറുക",
   "footer.switchToText": "ടെക്സ്റ്റിലേക്ക് മാറുക",
+  "footer.newConversation": "പുതിയ സംഭാഷണം",
 
   "status.processing": "പ്രോസസ്സ് ചെയ്യുന്നു",
   "status.complete": "പൂർത്തിയായി",

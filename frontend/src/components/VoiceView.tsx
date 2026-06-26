@@ -58,6 +58,9 @@ export default function VoiceView(props: VoiceState) {
     startRecording,
     stopRecording,
     handleTextSubmit,
+    startNewConversation,
+    phone,
+    setPhone,
   } = props;
 
   const { t } = useI18n();
@@ -221,6 +224,10 @@ export default function VoiceView(props: VoiceState) {
         setTextInput={setTextInput}
         handleTextSubmit={handleTextSubmit}
         setBhashiniWarning={setBhashiniWarning}
+        startNewConversation={startNewConversation}
+        hasResponse={!!response}
+        phone={phone}
+        setPhone={setPhone}
       />
     </main>
   );

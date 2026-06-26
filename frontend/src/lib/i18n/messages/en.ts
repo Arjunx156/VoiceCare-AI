@@ -24,6 +24,7 @@ const en = {
   "footer.placeholder": "Type your query in any language…",
   "footer.switchToVoice": "Switch to Voice",
   "footer.switchToText": "Switch to Text",
+  "footer.newConversation": "New conversation",
 
   // Status stream
   "status.processing": "PROCESSING",

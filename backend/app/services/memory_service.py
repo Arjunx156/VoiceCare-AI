@@ -145,16 +145,61 @@ class MemoryService:
             return json.loads(state)
         return None
 
+    # ---- Session Context (identity across turns) ----
+
+    async def set_session_context(self, session_id: str, context: dict, ttl_seconds: int = 7200):
+        """Persist compact identity context so follow-up turns can reuse phone/order_id."""
+        key = f"session:{session_id}:context"
+        _memory_store[key] = json.dumps(context, default=str)
+        _expiry_store[key] = datetime.now() + timedelta(seconds=ttl_seconds)
+
+    async def get_session_context(self, session_id: str) -> Optional[dict]:
+        """Retrieve session identity context."""
+        key = f"session:{session_id}:context"
+        self._clean_expired(key)
+        raw = _memory_store.get(key)
+        if raw:
+            return json.loads(raw)
+        return None
+
     async def close(self):
         """Close connection (no-op)."""
         pass
 
 
-# Global singleton
-_memory_service: Optional[MemoryService] = None
+# Global singleton — type is Union[MemoryService, RedisMemoryService] at runtime
+_memory_service = None
 
-async def get_memory_service() -> MemoryService:
+
+async def get_memory_service():
+    """
+    Return the memory backend singleton.
+    Prefers Upstash Redis when UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN are set;
+    falls back to the in-process dict (MemoryService) if absent — safe for local dev / tests.
+    """
     global _memory_service
-    if _memory_service is None:
-        _memory_service = MemoryService()
+    if _memory_service is not None:
+        return _memory_service
+
+    from app.core.config import get_settings
+    settings = get_settings()
+
+    url = getattr(settings, "upstash_redis_rest_url", None)
+    token = getattr(settings, "upstash_redis_rest_token", None)
+
+    if url and token:
+        try:
+            from app.services.redis_memory_service import RedisMemoryService
+            svc = RedisMemoryService(url=url, token=token)
+            reachable = await svc.ping()
+            if reachable:
+                logger.info("memory_backend", backend="upstash_redis")
+                _memory_service = svc
+                return _memory_service
+            logger.warning("upstash_redis_unreachable", fallback="in_process")
+        except Exception as exc:
+            logger.warning("upstash_redis_init_failed", error=str(exc), fallback="in_process")
+
+    logger.info("memory_backend", backend="in_process")
+    _memory_service = MemoryService()
     return _memory_service
