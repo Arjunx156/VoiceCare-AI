@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     admin_email: str = "admin@voicecare.ai"
     admin_password: str = "change_this_in_production"
 
+    # ---- CORS ----
+    # When true, any https://*.vercel.app origin is allowed even in production.
+    # Off by default (tighter), but handy when the frontend lives on a Vercel
+    # preview/production URL that changes between deploys.
+    cors_allow_vercel_previews: bool = False
+
     # ---- Upstash Redis (durable multi-turn memory) ----
     upstash_redis_rest_url: Optional[str] = None
     upstash_redis_rest_token: Optional[str] = None
@@ -103,10 +109,20 @@ class Settings(BaseSettings):
 
     @property
     def allowed_origins(self) -> list[str]:
-        """Narrow CORS origin list based on environment."""
+        """Narrow CORS origin list based on environment.
+
+        `frontend_url` may be a single origin or a comma-separated list, so a
+        production deployment can allow several front-ends (e.g. the canonical
+        Vercel domain plus a custom domain) without re-enabling a broad wildcard.
+        """
+        configured = [
+            o.strip().rstrip("/")
+            for o in self.frontend_url.split(",")
+            if o.strip()
+        ]
         if self.is_production:
-            return [self.frontend_url]
-        return [self.frontend_url, "http://localhost:3000", "http://localhost:3001"]
+            return configured
+        return [*configured, "http://localhost:3000", "http://localhost:3001"]
 
 
 @lru_cache()

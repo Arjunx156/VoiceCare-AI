@@ -163,11 +163,13 @@ class RequestTimingMiddleware(BaseHTTPMiddleware):
 app.add_middleware(RequestTimingMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
-# CORS — production only allows the explicit frontend URL.
-# The vercel.app wildcard is restricted to non-production to prevent
-# any Vercel deployment from cross-origin access to production data.
-_cors_origins = settings.allowed_origins  # narrows to [frontend_url] in production
-_cors_origin_regex = r"https://.*\.vercel\.app" if not settings.is_production else None
+# CORS — production allows the explicit frontend URL(s) from FRONTEND_URL.
+# The vercel.app wildcard is always on outside production, and can be opted
+# into for production via CORS_ALLOW_VERCEL_PREVIEWS=true when the frontend
+# lives on a Vercel URL that changes between deploys.
+_cors_origins = settings.allowed_origins  # narrows to FRONTEND_URL list in production
+_allow_vercel = (not settings.is_production) or settings.cors_allow_vercel_previews
+_cors_origin_regex = r"https://.*\.vercel\.app" if _allow_vercel else None
 
 app.add_middleware(
     CORSMiddleware,

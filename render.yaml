@@ -30,4 +30,6 @@ services:
       - key: BHASHINI_PIPELINE_URL
         value: https://dhruva-api.bhashini.gov.in/services/inference
       - key: FRONTEND_URL
-        sync: false   # set to your Vercel URL after deploy
+        sync: false   # set to your exact Vercel URL (no trailing slash); comma-separated list allowed
+      - key: CORS_ALLOW_VERCEL_PREVIEWS
+        value: "true"   # allow any https://*.vercel.app origin (frontend lives on Vercel)
