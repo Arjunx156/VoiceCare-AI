@@ -143,7 +143,8 @@ async function apiFetch<T>(path: string, options?: RequestInit & { timeoutMs?: n
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const controller = new AbortController();
-  const timeoutMs = options?.timeoutMs ?? 10_000;
+  // 20 s default — long enough for dashboard API calls; callers can override.
+  const timeoutMs = options?.timeoutMs ?? 20_000;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
@@ -158,6 +159,11 @@ async function apiFetch<T>(path: string, options?: RequestInit & { timeoutMs?: n
       clearAuthToken();
       if (typeof window !== "undefined") window.location.href = "/login";
       throw new Error("Session expired. Please log in again.");
+    }
+    if (res.status === 429) {
+      const retryAfter = res.headers.get("Retry-After");
+      const wait = retryAfter ? ` Please wait ${retryAfter} seconds.` : "";
+      throw new Error(`Too many requests.${wait}`);
     }
     if (!res.ok) {
       const error = await res.json().catch(() => ({ detail: res.statusText }));

@@ -85,6 +85,18 @@ class Settings(BaseSettings):
             )
         return v
 
+    @field_validator("nextauth_secret")
+    @classmethod
+    def validate_jwt_secret(cls, v: str, info) -> str:
+        """Prevent the default dev JWT secret from being used in production."""
+        environment = (info.data or {}).get("environment", "development")
+        if v == "dev-secret-change-in-production" and environment == "production":
+            raise ValueError(
+                "JWT secret must be changed from the default value in production! "
+                "Set NEXTAUTH_SECRET to a strong random value."
+            )
+        return v
+
     @model_validator(mode="after")
     def validate_required_secrets(self) -> "Settings":
         """Fail fast in production if critical secrets are empty."""

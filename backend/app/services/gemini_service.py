@@ -11,7 +11,7 @@ from tenacity import (
     retry,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
+    retry_if_exception,
 )
 import google.generativeai as genai
 
@@ -19,6 +19,25 @@ from app.core.config import get_settings
 
 logger = structlog.get_logger()
 settings = get_settings()
+
+
+def _is_gemini_retryable(exc: Exception) -> bool:
+    """Return True only for transient errors that are worth retrying.
+
+    Skip retrying permanent failures (auth, bad-request, quota hard-limit) —
+    they will keep failing and only waste time and quota.
+    """
+    try:
+        import google.api_core.exceptions as _gapi
+        if isinstance(exc, (_gapi.InvalidArgument, _gapi.PermissionDenied,
+                             _gapi.NotFound, _gapi.Unauthenticated)):
+            return False
+    except ImportError:
+        pass
+    # Retry server-side / transient errors
+    if hasattr(exc, "status_code") and exc.status_code < 500:  # type: ignore[attr-defined]
+        return False
+    return True
 
 
 class GeminiService:
@@ -31,7 +50,7 @@ class GeminiService:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=8),
-        retry=retry_if_exception_type((Exception,)),
+        retry=retry_if_exception(_is_gemini_retryable),
         before_sleep=lambda retry_state: logger.warning(
             "gemini_retry",
             attempt=retry_state.attempt_number,

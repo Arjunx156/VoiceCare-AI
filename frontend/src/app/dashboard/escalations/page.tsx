@@ -52,28 +52,39 @@ export default function EscalationsPage() {
   useEffect(() => {
     let mounted = true;
     let controller = new AbortController();
+    let pollDelay = 5_000;       // start at 5 s, back off to 60 s on errors
+    let timeoutId: ReturnType<typeof setTimeout>;
 
     async function load() {
+      if (!mounted) return;
       controller = new AbortController();
       try {
         const data = await getEscalations(controller.signal);
-        if (mounted) { setEscalations(data); setError(null); }
+        if (mounted) {
+          setEscalations(data);
+          setError(null);
+          pollDelay = 5_000; // reset backoff on success
+        }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === "AbortError") return;
         console.error("Failed to load escalations:", err);
-        if (mounted) setError(err instanceof Error ? err.message : "Failed to load escalations");
+        if (mounted) {
+          setError(err instanceof Error ? err.message : "Failed to load escalations");
+          pollDelay = Math.min(pollDelay * 2, 60_000); // back off up to 60 s
+        }
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+          // Schedule next poll with current (possibly backed-off) delay
+          timeoutId = setTimeout(load, pollDelay);
+        }
       }
     }
     load();
 
-    // Poll every 5 seconds for real-time updates
-    const intervalId = setInterval(load, 5000);
-
     return () => {
       mounted = false;
-      clearInterval(intervalId);
+      clearTimeout(timeoutId);
       controller.abort();
     };
   }, []);

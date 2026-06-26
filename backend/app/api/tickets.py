@@ -147,20 +147,19 @@ async def get_analytics(db: AsyncSession = Depends(get_db)):
     """Dashboard analytics overview."""
     _active = SupportTicket.deleted_at.is_(None)
 
-    # Total counts (exclude soft-deleted)
-    total = await db.scalar(select(func.count(SupportTicket.ticket_id)).where(_active))
-    open_count = await db.scalar(
-        select(func.count(SupportTicket.ticket_id))
-        .where(_active, SupportTicket.status == "Open")
-    )
-    escalated = await db.scalar(
-        select(func.count(SupportTicket.ticket_id))
-        .where(_active, SupportTicket.status == "Escalated")
-    )
-    resolved = await db.scalar(
-        select(func.count(SupportTicket.ticket_id))
-        .where(_active, SupportTicket.status == "Resolved")
-    )
+    # All four status counts in a single round-trip (SUM/CASE pattern)
+    counts_row = (await db.execute(
+        select(
+            func.count(SupportTicket.ticket_id).label("total"),
+            func.sum(case((SupportTicket.status == "Open", 1), else_=0)).label("open_count"),
+            func.sum(case((SupportTicket.status == "Escalated", 1), else_=0)).label("escalated"),
+            func.sum(case((SupportTicket.status == "Resolved", 1), else_=0)).label("resolved"),
+        ).where(_active)
+    )).one()
+    total = counts_row.total or 0
+    open_count = counts_row.open_count or 0
+    escalated = counts_row.escalated or 0
+    resolved = counts_row.resolved or 0
 
     # By language
     lang_result = await db.execute(
@@ -194,10 +193,6 @@ async def get_analytics(db: AsyncSession = Depends(get_db)):
     )
     by_sentiment = {row[0]: row[1] for row in sent_result.all()}
 
-    total = total or 0
-    resolved = resolved or 0
-    escalated = escalated or 0
-
     return AnalyticsOverview(
         total_tickets=total,
         open_tickets=open_count or 0,
@@ -222,8 +217,15 @@ async def get_ticket(ticket_id: str, db: AsyncSession = Depends(get_db)):
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ticket ID")
 
+    # Eager-load user + order in one shot; messages/resolution/sentiment are
+    # already auto-loaded via lazy="selectin" on the model relationships.
     result = await db.execute(
-        select(SupportTicket).where(
+        select(SupportTicket)
+        .options(
+            selectinload(SupportTicket.user),
+            selectinload(SupportTicket.order),
+        )
+        .where(
             SupportTicket.ticket_id == tid,
             SupportTicket.deleted_at.is_(None),
         )
@@ -232,31 +234,10 @@ async def get_ticket(ticket_id: str, db: AsyncSession = Depends(get_db)):
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    # Get user
-    user = None
-    if ticket.user_id:
-        user_result = await db.execute(select(User).where(User.user_id == ticket.user_id))
-        user = user_result.scalar_one_or_none()
-
-    # Get order
-    order = None
-    if ticket.order_id:
-        order_result = await db.execute(select(Order).where(Order.order_id == ticket.order_id))
-        order = order_result.scalar_one_or_none()
-
-    # Get resolution
-    res_result = await db.execute(
-        select(SupportResolution).where(SupportResolution.ticket_id == tid)
-    )
-    resolution = res_result.scalar_one_or_none()
-
-    # Get messages
-    msg_result = await db.execute(
-        select(SupportMessage)
-        .where(SupportMessage.ticket_id == tid)
-        .order_by(SupportMessage.timestamp)
-    )
-    messages = msg_result.scalars().all()
+    user = ticket.user
+    order = ticket.order
+    resolution = ticket.resolution  # loaded via lazy="selectin" on the model
+    messages = sorted(ticket.messages, key=lambda m: m.timestamp)  # loaded via lazy="selectin"
 
     # Parse agent trace
     agent_trace = []

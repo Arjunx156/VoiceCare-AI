@@ -210,6 +210,9 @@ export function useVoiceInteraction() {
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
 
+          // Server keep-alive ping — ignore silently
+          if (data.type === "ping") return;
+
           if (data.type === "response") {
             completed = true;
             setCurrentStage(9);
@@ -222,7 +225,9 @@ export function useVoiceInteraction() {
             setCurrentStage(data.stage_number);
           } else if (data.error) {
             completed = true;
-            setErrorCode("generic");
+            // Map known error codes to specific VoiceErrorCode values
+            const code = data.error === "VALIDATION_ERROR" ? "generic" : "generic";
+            setErrorCode(code);
             setIsProcessing(false);
             ws.close();
           }

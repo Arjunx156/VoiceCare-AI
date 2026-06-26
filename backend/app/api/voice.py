@@ -26,6 +26,8 @@ settings = get_settings()
 
 # ~10 MB audio limit expressed as base64 character count (10 * 1024 * 1024 * 4 / 3)
 _MAX_AUDIO_B64_LEN = 14_316_558
+# Max plain-text query length to prevent LLM abuse / DoS via massive prompts
+_MAX_TEXT_LEN = 5_000
 
 
 # ================================================================
@@ -136,10 +138,23 @@ async def process_voice_query(
 @router.websocket("/ws/{session_id}")
 async def voice_websocket(websocket: WebSocket, session_id: str):
     """WebSocket endpoint for real-time pipeline status streaming."""
+    import asyncio as _asyncio
     await websocket.accept()
 
     async def on_stage_update(update: dict):
         await websocket.send_json(update)
+
+    # Keep-alive: send a server-side ping every 20 s so the connection is never
+    # idle long enough for Render / load balancers to tear it down mid-pipeline.
+    async def _keep_alive():
+        try:
+            while True:
+                await _asyncio.sleep(20)
+                await websocket.send_json({"type": "ping"})
+        except Exception:
+            pass
+
+    ping_task = _asyncio.create_task(_keep_alive())
 
     try:
         while True:
@@ -149,12 +164,21 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
             try:
                 ws_request = VoiceQueryRequest(**data)
             except Exception as ve:
-                await websocket.send_json({"error": f"Invalid request: {ve}"})
+                await websocket.send_json({"error": "VALIDATION_ERROR", "detail": str(ve)})
                 continue
 
-            # Reject oversized audio payloads before any processing
+            # Reject oversized inputs before any processing
+            if ws_request.text and len(ws_request.text) > _MAX_TEXT_LEN:
+                await websocket.send_json({
+                    "error": "VALIDATION_ERROR",
+                    "detail": f"Text input exceeds {_MAX_TEXT_LEN} character limit.",
+                })
+                continue
             if ws_request.audio_base64 and len(ws_request.audio_base64) > _MAX_AUDIO_B64_LEN:
-                await websocket.send_json({"error": "Audio payload exceeds 10 MB limit."})
+                await websocket.send_json({
+                    "error": "VALIDATION_ERROR",
+                    "detail": "Audio payload exceeds 10 MB limit.",
+                })
                 continue
 
             # Get a fresh DB session for WebSocket
@@ -216,8 +240,12 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
                     # handler never crashes after a failed commit.
                     try:
                         await db.rollback()
-                    except Exception:
-                        pass
+                    except Exception as rb_exc:
+                        logger.warning(
+                            "websocket_db_rollback_failed",
+                            session_id=session_id,
+                            error=str(rb_exc),
+                        )
                     logger.error(
                         "websocket_db_commit_failed",
                         session_id=session_id,
@@ -229,7 +257,12 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
         logger.info("websocket_disconnected", session_id=session_id)
     except Exception as e:
         logger.error("websocket_error", session_id=session_id, error=str(e))
-        await websocket.close(code=1011)
+        try:
+            await websocket.close(code=1011)
+        except Exception:
+            pass
+    finally:
+        ping_task.cancel()
 
 
 # ================================================================
