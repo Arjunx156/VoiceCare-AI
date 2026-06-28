@@ -271,6 +271,97 @@ class TestAgent9SessionPersistence:
 
 
 # ---------------------------------------------------------------------------
+# Agent 9: One ticket per conversation (real in-memory DB)
+# ---------------------------------------------------------------------------
+class TestAgent9TicketReuse:
+
+    @staticmethod
+    def _turn(session_id, text, response, **over):
+        from app.agents.state import PipelineState
+        return PipelineState(
+            session_id=session_id,
+            transcript_original=text,
+            transcript_english=text,
+            response_text=response,
+            response_english=response,
+            intent="order_status",
+            language_detected="English",
+            extracted_phone="9999900000",
+            summary_english="Order status query",
+            recommended_action="Inform",
+            confidence_score=0.9,
+            **over,
+        )
+
+    @pytest.mark.asyncio
+    async def test_followup_reuses_same_ticket(self, db_session):
+        """A follow-up turn with the same session_id continues ONE ticket."""
+        from sqlalchemy import select
+        from app.agents.pipeline import VoiceCarePipeline
+        from app.db.models import SupportTicket, SupportMessage, SupportResolution
+
+        sid = str(uuid.uuid4())
+        pipeline = VoiceCarePipeline(db=db_session)
+
+        r1 = await pipeline.agent_ticket_creation(
+            self._turn(sid, "Where is my order?", "It is on the way.")
+        )
+        assert r1.has_error is False
+        first_ticket = r1.ticket_id
+        assert first_ticket is not None
+
+        r2 = await pipeline.agent_ticket_creation(
+            self._turn(sid, "Still not delivered!", "Let me check for you.",
+                       priority="High", sentiment="Negative")
+        )
+        assert r2.has_error is False
+        # Same ticket reused across the two turns.
+        assert r2.ticket_id == first_ticket
+
+        # Scope to this conversation (the session-scoped test engine retains
+        # rows from sibling tests, so don't count globally).
+        tickets = (await db_session.execute(
+            select(SupportTicket).where(SupportTicket.session_id == uuid.UUID(sid))
+        )).scalars().all()
+        assert len(tickets) == 1
+
+        msgs = (await db_session.execute(
+            select(SupportMessage).where(
+                SupportMessage.ticket_id == uuid.UUID(first_ticket)
+            )
+        )).scalars().all()
+        assert len(msgs) == 4  # 2 customer + 2 AI
+
+        # One resolution row, updated to the latest turn's response.
+        resolutions = (await db_session.execute(
+            select(SupportResolution).where(
+                SupportResolution.ticket_id == uuid.UUID(first_ticket)
+            )
+        )).scalars().all()
+        assert len(resolutions) == 1
+        assert resolutions[0].final_response_text == "Let me check for you."
+
+    @pytest.mark.asyncio
+    async def test_distinct_sessions_create_distinct_tickets(self, db_session):
+        """Different session_ids (e.g. after 'New conversation') get new tickets."""
+        from sqlalchemy import select
+        from app.agents.pipeline import VoiceCarePipeline
+        from app.db.models import SupportTicket
+
+        sid1, sid2 = str(uuid.uuid4()), str(uuid.uuid4())
+        pipeline = VoiceCarePipeline(db=db_session)
+        r1 = await pipeline.agent_ticket_creation(self._turn(sid1, "Q1", "A1"))
+        r2 = await pipeline.agent_ticket_creation(self._turn(sid2, "Q2", "A2"))
+        assert r1.ticket_id != r2.ticket_id
+        # Each distinct session owns exactly one ticket.
+        for sid in (sid1, sid2):
+            owned = (await db_session.execute(
+                select(SupportTicket).where(SupportTicket.session_id == uuid.UUID(sid))
+            )).scalars().all()
+            assert len(owned) == 1
+
+
+# ---------------------------------------------------------------------------
 # Full pipeline end-to-end (mocked)
 # ---------------------------------------------------------------------------
 class TestFullPipeline:

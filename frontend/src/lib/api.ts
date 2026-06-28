@@ -214,17 +214,32 @@ export async function getHandoffNote(ticketId: string): Promise<HandoffNote> {
 }
 
 export async function adminLogin(email: string, password: string): Promise<void> {
-  const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Login failed." }));
-    throw new Error(err.detail || "Login failed.");
+  // Abort after 45s — generous enough to survive a Render cold start, but
+  // guarantees the request can't hang forever (which left the button stuck on
+  // "Signing in…" with no error and no recovery).
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45_000);
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Login failed." }));
+      throw new Error(err.detail || "Login failed.");
+    }
+    const data = await res.json();
+    setAuthToken(data.access_token);
+  } catch (e: unknown) {
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw new Error("Server is taking too long to respond. Please try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-  const data = await res.json();
-  setAuthToken(data.access_token);
 }
 
 export async function claimTicket(ticketId: string): Promise<{ ticket_id: string; status: string; assigned_to: string }> {

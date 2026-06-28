@@ -37,8 +37,11 @@ async def engine():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    # Import Base after engine creation to avoid circular imports
+    # Import Base after engine creation to avoid circular imports. Importing the
+    # models module registers every table on Base.metadata so create_all builds
+    # them (without this, real-DB tests hit "no such table").
     from app.core.database import Base
+    import app.db.models  # noqa: F401  (registers ORM models on Base.metadata)
     async with eng.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield eng

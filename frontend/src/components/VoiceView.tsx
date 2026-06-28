@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import StatusStream from "@/components/StatusStream";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import ResponsePanel from "@/components/ResponsePanel";
+import ConversationThread from "@/components/ConversationThread";
 import BhashiniWarning from "@/components/BhashiniWarning";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { useVoiceInteraction } from "@/hooks/useVoiceInteraction";
@@ -45,6 +45,7 @@ export default function VoiceView(props: VoiceState) {
     audioLevel,
     currentStage,
     response,
+    turns,
     errorCode,
     selectedLanguage,
     setSelectedLanguage,
@@ -187,11 +188,7 @@ export default function VoiceView(props: VoiceState) {
           <StatusStream currentStage={currentStage} isComplete={isComplete} />
         </div>
 
-        <AnimatePresence>
-          {response && isComplete && (
-            <ResponsePanel response={response} />
-          )}
-        </AnimatePresence>
+        <ConversationThread turns={turns} />
 
         {errorCode && (
           <motion.div

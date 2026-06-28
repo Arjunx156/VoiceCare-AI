@@ -639,35 +639,86 @@ class VoiceCarePipeline:
                 if state.order_data:
                     order_id = uuid.UUID(state.order_data["order_id"])
 
-                # VoiceSession.session_id is the PK — always use a fresh UUID.
-                # state.session_id is only for conversation-memory lookups.
-                session = VoiceSession(
-                    session_id=uuid.uuid4(),
-                    user_id=user_id,
-                    language_detected=state.language_detected,
-                    transcript_original=state.transcript_original,
-                    transcript_english=state.transcript_english,
-                    started_at=state.started_at,
-                    ended_at=datetime.utcnow(),
-                )
-                self.db.add(session)
+                # Tie everything to a STABLE conversation session so follow-up
+                # turns continue the SAME ticket instead of spawning a new one
+                # each time. state.session_id is the conversation id the frontend
+                # persists across mic presses (reset only on "New conversation").
+                try:
+                    conv_id = uuid.UUID(str(state.session_id))
+                except (ValueError, TypeError, AttributeError):
+                    conv_id = uuid.uuid4()
+
+                # Get-or-create the VoiceSession keyed by the conversation id.
+                session = (await self.db.execute(
+                    select(VoiceSession).where(VoiceSession.session_id == conv_id)
+                )).scalar_one_or_none()
+                if session is None:
+                    session = VoiceSession(
+                        session_id=conv_id,
+                        user_id=user_id,
+                        language_detected=state.language_detected,
+                        transcript_original=state.transcript_original,
+                        transcript_english=state.transcript_english,
+                        started_at=state.started_at,
+                        ended_at=datetime.utcnow(),
+                    )
+                    self.db.add(session)
+                else:
+                    if user_id and session.user_id is None:
+                        session.user_id = user_id
+                    session.transcript_original = state.transcript_original
+                    session.transcript_english = state.transcript_english
+                    session.ended_at = datetime.utcnow()
                 await self.db.flush()
 
-                ticket = SupportTicket(
-                    user_id=user_id,
-                    order_id=order_id,
-                    session_id=session.session_id,
-                    ticket_type=self._intent_to_ticket_type(state.intent),
-                    priority=state.priority,
-                    status="Escalated" if state.is_escalated else "Resolved",
-                    language=state.language_detected,
-                    sentiment=state.sentiment,
-                    summary=state.summary_english,
-                    escalated_at=datetime.utcnow() if state.is_escalated else None,
-                    resolved_at=datetime.utcnow() if not state.is_escalated else None,
-                )
-                self.db.add(ticket)
-                await self.db.flush()
+                # Reuse the existing ticket for this conversation if there is one.
+                ticket = (await self.db.execute(
+                    select(SupportTicket)
+                    .where(SupportTicket.session_id == conv_id)
+                    .order_by(SupportTicket.created_at.desc())
+                    .limit(1)
+                )).scalar_one_or_none()
+
+                # Statuses an admin owns — an AI turn must never downgrade these.
+                _ADMIN_MANAGED = {"In Progress", "Closed"}
+                is_new_ticket = ticket is None
+
+                if is_new_ticket:
+                    ticket = SupportTicket(
+                        user_id=user_id,
+                        order_id=order_id,
+                        session_id=session.session_id,
+                        ticket_type=self._intent_to_ticket_type(state.intent),
+                        priority=state.priority,
+                        status="Escalated" if state.is_escalated else "Resolved",
+                        language=state.language_detected,
+                        sentiment=state.sentiment,
+                        summary=state.summary_english,
+                        escalated_at=datetime.utcnow() if state.is_escalated else None,
+                        resolved_at=datetime.utcnow() if not state.is_escalated else None,
+                    )
+                    self.db.add(ticket)
+                    await self.db.flush()
+                else:
+                    # Continue the same ticket: refresh latest-turn fields without
+                    # clobbering an admin's status or a prior escalation.
+                    if order_id and ticket.order_id is None:
+                        ticket.order_id = order_id
+                    ticket.ticket_type = self._intent_to_ticket_type(state.intent)
+                    ticket.priority = state.priority
+                    ticket.language = state.language_detected
+                    ticket.sentiment = state.sentiment
+                    if state.summary_english:
+                        ticket.summary = state.summary_english
+                    if state.is_escalated:
+                        if ticket.status not in _ADMIN_MANAGED:
+                            ticket.status = "Escalated"
+                        if ticket.escalated_at is None:
+                            ticket.escalated_at = datetime.utcnow()
+                    elif ticket.status in ("Open", "Resolved"):
+                        ticket.status = "Resolved"
+                        ticket.resolved_at = datetime.utcnow()
+                    ticket.updated_by = "ai"
 
                 state.ticket_id = str(ticket.ticket_id)
 
@@ -690,15 +741,29 @@ class VoiceCarePipeline:
                     [step.model_dump(mode="json") for step in state.agent_trace],
                     default=str,
                 )
-                self.db.add(SupportResolution(
-                    ticket_id=ticket.ticket_id,
-                    recommended_action=state.recommended_action or "Inform",
-                    policy_reference=state.policy_reference,
-                    final_response_text=state.response_text or "",
-                    internal_note=state.internal_note,
-                    confidence_score=state.confidence_score,
-                    agent_trace=trace_json,
-                ))
+                # One resolution row per ticket — update it in place on reuse so
+                # the admin always sees the latest turn's recommendation/trace.
+                resolution = None if is_new_ticket else (await self.db.execute(
+                    select(SupportResolution).where(SupportResolution.ticket_id == ticket.ticket_id)
+                )).scalar_one_or_none()
+                if resolution is None:
+                    self.db.add(SupportResolution(
+                        ticket_id=ticket.ticket_id,
+                        recommended_action=state.recommended_action or "Inform",
+                        policy_reference=state.policy_reference,
+                        final_response_text=state.response_text or "",
+                        internal_note=state.internal_note,
+                        confidence_score=state.confidence_score,
+                        agent_trace=trace_json,
+                    ))
+                else:
+                    resolution.recommended_action = state.recommended_action or "Inform"
+                    resolution.policy_reference = state.policy_reference
+                    resolution.final_response_text = state.response_text or ""
+                    resolution.internal_note = state.internal_note
+                    resolution.confidence_score = state.confidence_score
+                    resolution.agent_trace = trace_json
+
                 self.db.add(CustomerSentiment(
                     ticket_id=ticket.ticket_id,
                     sentiment_label=state.sentiment,
@@ -712,7 +777,7 @@ class VoiceCarePipeline:
                     agent_name="Ticket Creation",
                     stage_number=9,
                     input_summary=f"User: {user_id}, Escalated: {state.is_escalated}",
-                    output_summary=f"Ticket {state.ticket_id} created",
+                    output_summary=f"Ticket {state.ticket_id} {'created' if is_new_ticket else 'continued'}",
                     decision="Ticket persisted to Postgres",
                     duration_ms=(time.time() - start) * 1000,
                 )

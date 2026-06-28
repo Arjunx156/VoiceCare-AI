@@ -5,6 +5,12 @@ import { LANG_TO_BCP47 } from "@/lib/constants";
 // Stable error codes — translated in the view layer via t("error.<code>")
 export type VoiceErrorCode = "micDenied" | "connection" | "connectionLost" | "generic";
 
+// One completed exchange in the visible conversation thread.
+export interface ConversationTurn {
+  customer: string;          // what the customer said/typed ("" for voice with no transcript)
+  ai: VoiceQueryResponse;    // the assistant's full response for this turn
+}
+
 // Minimal type shim for the browser Web Speech API (not in TS lib by default)
 interface SpeechRecognitionInstance {
   lang: string;
@@ -43,6 +49,9 @@ export function useVoiceInteraction() {
   const [currentStage, setCurrentStage]   = useState(0);
   const [isComplete, setIsComplete]       = useState(false);
   const [response, setResponse]           = useState<VoiceQueryResponse | null>(null);
+  // Full visible history of completed turns this conversation (persists across
+  // mic presses; cleared only on "New conversation").
+  const [turns, setTurns]                 = useState<ConversationTurn[]>([]);
   // error holds a translated string (set by the view) or a raw error code string
   // after the refactor it will hold a VoiceErrorCode; VoiceView maps it via t()
   const [errorCode, setErrorCode]         = useState<VoiceErrorCode | null>(null);
@@ -217,6 +226,7 @@ export function useVoiceInteraction() {
             completed = true;
             setCurrentStage(9);
             setResponse(data as VoiceQueryResponse);
+            setTurns((prev) => [...prev, { customer: overrides.text ?? "", ai: data as VoiceQueryResponse }]);
             setIsComplete(true);
             playAudioResponse(data.response_audio_base64, data.response_text, selectedLanguage);
             setIsProcessing(false);
@@ -380,6 +390,7 @@ export function useVoiceInteraction() {
       localStorage.setItem(LS_SESSION_KEY, newId);
     }
     setResponse(null);
+    setTurns([]);
     setIsComplete(false);
     setCurrentStage(0);
     setErrorCode(null);
@@ -395,6 +406,7 @@ export function useVoiceInteraction() {
     audioLevel,
     currentStage,
     response,
+    turns,
     errorCode,
     selectedLanguage,
     setSelectedLanguage,
