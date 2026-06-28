@@ -218,11 +218,11 @@ export async function getHandoffNote(ticketId: string): Promise<HandoffNote> {
 }
 
 export async function adminLogin(email: string, password: string): Promise<void> {
-  // Abort after 45s — generous enough to survive a Render cold start, but
-  // guarantees the request can't hang forever (which left the button stuck on
-  // "Signing in…" with no error and no recovery).
+  // Abort after 65s — Render free-tier cold starts can take 50-90 s, so we
+  // need headroom beyond 45 s. The UI shows a "waking up server" notice after
+  // 10 s so the user knows why it's slow (see login/page.tsx).
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 45_000);
+  const timer = setTimeout(() => controller.abort(), 65_000);
   try {
     const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
       method: "POST",
@@ -238,7 +238,7 @@ export async function adminLogin(email: string, password: string): Promise<void>
     setAuthToken(data.access_token);
   } catch (e: unknown) {
     if (e instanceof DOMException && e.name === "AbortError") {
-      throw new Error("Server is taking too long to respond. Please try again.");
+      throw new Error("Server is still starting up. Please wait a moment and try again.");
     }
     throw e;
   } finally {
@@ -284,10 +284,12 @@ export async function clearConversation(sessionId: string): Promise<void> {
 }
 
 export function createWebSocket(sessionId: string): WebSocket {
-  let wsUrl = BACKEND_URL;
-  if (!wsUrl && typeof window !== "undefined") {
-    wsUrl = window.location.origin;
-  }
-  wsUrl = wsUrl.replace(/^http/, "ws");
+  // WebSocket connections MUST go directly to the backend URL — Vercel's
+  // serverless edge cannot proxy the HTTP→WS upgrade that rewrites() handles
+  // for regular HTTP requests. Use NEXT_PUBLIC_BACKEND_URL (set it in Vercel
+  // env vars to https://voicecare-backend.onrender.com). In local dev, falls
+  // back to localhost:8000.
+  const base = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+  const wsUrl = base.replace(/^http/, "ws");
   return new WebSocket(`${wsUrl}/api/voice/ws/${sessionId}`);
 }

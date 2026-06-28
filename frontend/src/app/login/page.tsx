@@ -19,11 +19,19 @@ function LoginForm() {
   const [loading, setLoading]   = useState(false);
 
   const expired = params.get("expired") === "1";
+  const [warmingUp, setWarmingUp] = useState(false);
 
   // Already logged in → go straight to dashboard (hard nav, see handleSubmit).
   useEffect(() => {
     if (getAuthToken()) window.location.assign(safeDest(params.get("from")));
   }, [params]);
+
+  // Show a "server waking up" message if login is taking > 10 s (Render cold start).
+  useEffect(() => {
+    if (!loading) { setWarmingUp(false); return; }
+    const t = setTimeout(() => setWarmingUp(true), 10_000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -130,6 +138,12 @@ function LoginForm() {
         >
           {loading ? "Signing in…" : "Sign in"}
         </button>
+
+        {warmingUp && (
+          <p style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", margin: 0, lineHeight: 1.5 }}>
+            Server is waking up — this can take up to 60 s on free hosting. Please wait…
+          </p>
+        )}
       </form>
     </div>
   );

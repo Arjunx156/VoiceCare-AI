@@ -62,11 +62,9 @@ async def rate_limit_dependency(request: VoiceQueryRequest) -> None:
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("rate_limit_service_unavailable", error=str(exc))
-        raise HTTPException(
-            status_code=503,
-            detail="Rate limit service temporarily unavailable. Please try again shortly.",
-        )
+        # Fail open: if the rate-limit store is unavailable, allow the voice
+        # query through rather than blocking customers with a 503.
+        logger.warning("voice_rate_limit_unavailable_fail_open", error=str(exc))
 
 
 # ================================================================

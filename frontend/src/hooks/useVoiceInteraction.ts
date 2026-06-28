@@ -269,7 +269,7 @@ export function useVoiceInteraction() {
         setIsProcessing(false);
       }
     },
-    [selectedLanguage, sessionId, playAudioResponse]
+    [selectedLanguage, sessionId, phone, playAudioResponse]
   );
 
   const monitorAudio = useCallback((stream: MediaStream) => {

@@ -46,8 +46,9 @@ async def _ticket_rate_limit(request: Request) -> None:
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("ticket_rate_limit_service_unavailable", error=str(exc))
-        raise HTTPException(status_code=503, detail="Rate limit service temporarily unavailable.")
+        # Fail open: if the rate-limit store is unavailable, allow the request
+        # through rather than blocking all dashboard access with a 503.
+        logger.warning("ticket_rate_limit_unavailable_fail_open", error=str(exc))
 
 
 router = APIRouter(

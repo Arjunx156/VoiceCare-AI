@@ -8,7 +8,7 @@
 
 import React, { useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { clearAuthToken, getAuthToken } from "@/lib/api";
 
@@ -72,7 +72,6 @@ function NavIcon({ name, active }: { name: string; active: boolean }) {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   // Client-side guard: if there's no token, don't render the dashboard shell —
   // send the user to login. (API data is already protected server-side by
@@ -83,7 +82,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   function handleLogout() {
     clearAuthToken();
-    router.push("/login");
+    window.location.assign("/login");
   }
 
   return (
