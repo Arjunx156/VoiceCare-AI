@@ -6,11 +6,11 @@
  * no glassmorphism, editorial feel.
  */
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { clearAuthToken } from "@/lib/api";
+import { clearAuthToken, getAuthToken } from "@/lib/api";
 
 class DashboardErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -73,6 +73,13 @@ function NavIcon({ name, active }: { name: string; active: boolean }) {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+
+  // Client-side guard: if there's no token, don't render the dashboard shell —
+  // send the user to login. (API data is already protected server-side by
+  // require_admin; this just avoids showing an empty/erroring dashboard.)
+  useEffect(() => {
+    if (!getAuthToken()) window.location.assign("/login");
+  }, []);
 
   function handleLogout() {
     clearAuthToken();

@@ -157,7 +157,11 @@ async function apiFetch<T>(path: string, options?: RequestInit & { timeoutMs?: n
 
     if (res.status === 401) {
       clearAuthToken();
-      if (typeof window !== "undefined") window.location.href = "/login";
+      // Redirect to login with a clear reason, but never loop if we're already
+      // on the login page (e.g. the post-login verify call returning 401).
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        window.location.assign("/login?expired=1");
+      }
       throw new Error("Session expired. Please log in again.");
     }
     if (res.status === 429) {
@@ -239,6 +243,31 @@ export async function adminLogin(email: string, password: string): Promise<void>
     throw e;
   } finally {
     clearTimeout(timer);
+  }
+
+  // Verify the freshly-issued token end-to-end against a lightweight, auth-only
+  // endpoint BEFORE the caller redirects. This guarantees we never navigate to
+  // the dashboard with a token the backend will reject (e.g. a NEXTAUTH_SECRET
+  // mismatch on the server), which previously looked like a silent "glitch".
+  // A definitive 401 is fatal; a transient network/timeout is tolerated.
+  const vController = new AbortController();
+  const vTimer = setTimeout(() => vController.abort(), 10_000);
+  try {
+    const token = getAuthToken();
+    const verify = await fetch(`${BACKEND_URL}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: vController.signal,
+    });
+    if (verify.status === 401) {
+      clearAuthToken();
+      throw new Error("Signed in, but the server rejected the session. Please try again.");
+    }
+  } catch (e: unknown) {
+    // Re-throw only our explicit rejection; ignore transient network/timeout so
+    // a flaky verify never blocks an otherwise-valid login.
+    if (e instanceof Error && e.message.startsWith("Signed in, but")) throw e;
+  } finally {
+    clearTimeout(vTimer);
   }
 }
 

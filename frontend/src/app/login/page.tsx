@@ -1,21 +1,29 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { adminLogin, getAuthToken } from "@/lib/api";
 
+// Only honor internal, single-slash paths as a redirect target — never an
+// absolute URL or protocol-relative "//host" (open-redirect protection).
+function safeDest(from: string | null): string {
+  if (from && from.startsWith("/") && !from.startsWith("//")) return from;
+  return "/dashboard";
+}
+
 function LoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [error, setError]       = useState<string | null>(null);
   const [loading, setLoading]   = useState(false);
 
-  // Already logged in → go straight to dashboard
+  const expired = params.get("expired") === "1";
+
+  // Already logged in → go straight to dashboard (hard nav, see handleSubmit).
   useEffect(() => {
-    if (getAuthToken()) router.replace(params.get("from") || "/dashboard");
-  }, [router, params]);
+    if (getAuthToken()) window.location.assign(safeDest(params.get("from")));
+  }, [params]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,10 +32,13 @@ function LoginForm() {
     setError(null);
     try {
       await adminLogin(email.trim(), password);
-      router.replace(params.get("from") || "/dashboard");
+      // Hard navigation (full document load), NOT router.replace. A soft App
+      // Router navigation here could silently no-op and strand the user on the
+      // login page while already authenticated — the original bug. A full load
+      // mounts the dashboard fresh with the token present.
+      window.location.assign(safeDest(params.get("from")));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed.");
-    } finally {
       setLoading(false);
     }
   }
@@ -38,9 +49,25 @@ function LoginForm() {
       <h1 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", marginTop: 8, marginBottom: 6 }}>
         Sign in to VoiceCare
       </h1>
-      <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 28 }}>
+      <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: expired ? 16 : 28 }}>
         Dashboard access is restricted to administrators.
       </p>
+
+      {expired && (
+        <p
+          style={{
+            fontSize: 13,
+            color: "var(--status-medium, #d4a017)",
+            background: "rgba(212,160,23,0.10)",
+            border: "1px solid rgba(212,160,23,0.25)",
+            borderRadius: 10,
+            padding: "10px 12px",
+            marginBottom: 20,
+          }}
+        >
+          Your session expired — please sign in again.
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
