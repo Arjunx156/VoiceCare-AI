@@ -94,7 +94,10 @@ class GeminiService:
                             "https://api.groq.com/openai/v1/chat/completions",
                             headers={"Authorization": f"Bearer {settings.groq_api_key}"},
                             json={
-                                "model": "llama3-70b-8192",
+                                # llama3-70b-8192 was decommissioned by Groq; use the
+                                # current 70B model so this fallback actually works when
+                                # Gemini hits its free-tier quota (429).
+                                "model": "llama-3.3-70b-versatile",
                                 "messages": [{"role": "user", "content": prompt}],
                                 "temperature": 0.3,
                                 "response_format": {"type": "json_object"}
