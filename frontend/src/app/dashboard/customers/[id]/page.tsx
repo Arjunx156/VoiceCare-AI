@@ -28,6 +28,17 @@ const SENTIMENT_COLOR: Record<string, string> = {
   "High-risk Escalation": "var(--status-critical)",
 };
 
+function Detail({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+      {label}:{" "}
+      <span style={{ color: "var(--text-secondary)", fontWeight: 500, fontVariantNumeric: mono ? "tabular-nums" : undefined }}>
+        {value}
+      </span>
+    </span>
+  );
+}
+
 export default function CustomerProfilePage() {
   const params = useParams();
   const customerId = params.id as string;
@@ -129,24 +140,80 @@ export default function CustomerProfilePage() {
         {profile.orders.length === 0 ? (
           <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 8 }}>No orders on record.</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
             {profile.orders.map((o) => (
-              <div key={o.order_id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: "1px solid var(--border-subtle)" }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>
-                  {new Date(o.order_date).toLocaleDateString()}
-                </span>
-                {o.order_number && (
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontVariantNumeric: "tabular-nums" }}>
-                    {o.order_number}
+              <div
+                key={o.order_id}
+                style={{
+                  borderRadius: 12,
+                  border: "1px solid var(--border-subtle)",
+                  background: "var(--bg-panel-raised)",
+                  padding: "14px 16px",
+                }}
+              >
+                {/* Order header */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  {o.order_number && (
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", fontVariantNumeric: "tabular-nums" }}>
+                      {o.order_number}
+                    </span>
+                  )}
+                  <span style={{ fontSize: 12, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>
+                    {new Date(o.order_date).toLocaleDateString()}
                   </span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: STATUS_COLOR[o.status] || "var(--text-secondary)" }}>
+                    {o.status}
+                  </span>
+                  <span style={{ flex: 1 }} />
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                    ₹{o.total_amount.toLocaleString()}
+                  </span>
+                </div>
+
+                {/* Line items / products */}
+                {o.items.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 10 }}>
+                    {o.items.map((it, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 13 }}>
+                        <span style={{ color: "var(--text-primary)", flex: 1, minWidth: 0 }}>
+                          {it.product_name}
+                          {it.category && (
+                            <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 6 }}>{it.category}</span>
+                          )}
+                        </span>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>
+                          {it.quantity} × ₹{it.price_at_purchase.toLocaleString()}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", width: 84, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                          ₹{it.line_total.toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 )}
-                <span style={{ fontSize: 13, color: "var(--text-primary)", flex: 1 }}>{o.status}</span>
-                {o.shipment && (
-                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{o.shipment.status}</span>
+
+                {/* Shipment / tracking + payment + address */}
+                {(o.shipment || o.payment || o.shipping_address) && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 20px", marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--border-subtle)" }}>
+                    {o.shipment && (
+                      <Detail label="Shipment" value={`${o.shipment.status} · ${o.shipment.courier}`} />
+                    )}
+                    {o.shipment?.tracking_number && (
+                      <Detail label="Tracking" value={o.shipment.tracking_number} mono />
+                    )}
+                    {o.shipment?.actual_delivery ? (
+                      <Detail label="Delivered" value={new Date(o.shipment.actual_delivery).toLocaleDateString()} />
+                    ) : o.shipment?.expected_delivery ? (
+                      <Detail label="Expected" value={new Date(o.shipment.expected_delivery).toLocaleDateString()} />
+                    ) : null}
+                    {o.payment && (
+                      <Detail label="Payment" value={`${o.payment.method} · ${o.payment.status}`} />
+                    )}
+                    {o.shipping_address && (
+                      <Detail label="Ship to" value={o.shipping_address} />
+                    )}
+                  </div>
                 )}
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                  ₹{o.total_amount.toLocaleString()}
-                </span>
               </div>
             ))}
           </div>

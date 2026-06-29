@@ -328,7 +328,17 @@ export interface CustomerProfile extends CustomerSummary {
     order_date: string;
     status: string;
     total_amount: number;
-    shipment: { status: string; courier: string; tracking_number: string | null; expected_delivery: string | null } | null;
+    shipping_address?: string | null;
+    items: {
+      product_name: string;
+      category: string | null;
+      sku: string | null;
+      quantity: number;
+      price_at_purchase: number;
+      line_total: number;
+    }[];
+    shipment: { status: string; courier: string; tracking_number: string | null; expected_delivery: string | null; actual_delivery?: string | null } | null;
+    payment: { method: string; status: string; amount: number } | null;
   }[];
   tickets: {
     ticket_id: string;

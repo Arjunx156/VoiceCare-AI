@@ -16,7 +16,8 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.api.auth import require_admin
 from app.db.models import (
-    User, Order, Shipment, SupportTicket, CustomerSentiment,
+    User, Order, OrderItem, Product, Shipment, Payment,
+    SupportTicket, CustomerSentiment,
 )
 
 logger = structlog.get_logger()
@@ -112,10 +113,16 @@ async def get_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Customer not found")
     uid = user.user_id
 
-    # Orders with their shipment, most recent first.
+    # Orders with their shipment, line items (+ product), and payments — most
+    # recent first. Eager-load everything so the admin sees the full picture of
+    # what each customer ordered without extra round-trips.
     orders = (await db.execute(
         select(Order)
-        .options(selectinload(Order.shipment))
+        .options(
+            selectinload(Order.shipment),
+            selectinload(Order.order_items).selectinload(OrderItem.product),
+            selectinload(Order.payments),
+        )
         .where(Order.user_id == uid)
         .order_by(Order.order_date.desc())
         .limit(50)
@@ -148,6 +155,30 @@ async def get_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
             "courier": s.courier_partner,
             "tracking_number": s.tracking_number,
             "expected_delivery": s.expected_delivery_date.isoformat() if s.expected_delivery_date else None,
+            "actual_delivery": s.actual_delivery_date.isoformat() if s.actual_delivery_date else None,
+        }
+
+    def _items(o: Order):
+        return [
+            {
+                "product_name": it.product.name if it.product else "Unknown product",
+                "category": it.product.category if it.product else None,
+                "sku": it.product.sku if it.product else None,
+                "quantity": it.quantity,
+                "price_at_purchase": float(it.price_at_purchase),
+                "line_total": float(it.price_at_purchase) * it.quantity,
+            }
+            for it in o.order_items
+        ]
+
+    def _payment(o: Order):
+        if not o.payments:
+            return None
+        p = o.payments[-1]  # most recent attempt
+        return {
+            "method": p.payment_method,
+            "status": p.status,
+            "amount": float(p.amount),
         }
 
     return {
@@ -167,7 +198,10 @@ async def get_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
                 "order_date": o.order_date.isoformat(),
                 "status": o.status,
                 "total_amount": float(o.total_amount),
+                "shipping_address": o.shipping_address,
+                "items": _items(o),
                 "shipment": _shipment(o),
+                "payment": _payment(o),
             }
             for o in orders
         ],
