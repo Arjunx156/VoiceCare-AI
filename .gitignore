@@ -94,6 +94,13 @@ docker-compose.override.yml
 audio_uploads/
 audio_responses/
 
+# ---------- Local-only working docs (kept on disk, not in repo) ----------
+CLAUDE.md
+prompt.md
+prompt1.md
+IMPLEMENTATION_STATUS.md
+.agents/
+
 # ---------- Misc ----------
 *.bak
 *.tmp
