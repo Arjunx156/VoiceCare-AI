@@ -184,11 +184,25 @@ export default function VoiceView(props: VoiceState) {
           )}
         </AnimatePresence>
 
-        <div style={{ width: "100%", marginTop: 16 }}>
-          <StatusStream currentStage={currentStage} isComplete={isComplete} />
-        </div>
-
         <ConversationThread turns={turns} />
+
+        <AnimatePresence>
+          {isProcessing && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              style={{ width: "100%", marginTop: 16 }}
+            >
+              <StatusStream
+                currentStage={currentStage}
+                isComplete={isComplete}
+                isProcessing={isProcessing}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {errorCode && (
           <motion.div

@@ -18,6 +18,7 @@ from app.core.config import get_settings
 from app.core.database import init_db, close_db
 from app.api.voice import router as voice_router
 from app.api.tickets import router as tickets_router
+from app.api.customers import router as customers_router
 from app.api.auth import router as auth_router
 from app.api.auth import require_admin
 
@@ -184,6 +185,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(voice_router)
 app.include_router(tickets_router)
+app.include_router(customers_router)
 
 
 @app.get("/health")

@@ -11,7 +11,15 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { getTicketDetail, getHandoffNote, type TicketDetail, type HandoffNote } from "@/lib/api";
+import {
+  getTicketDetail,
+  getHandoffNote,
+  replyToTicket,
+  resolveTicket,
+  claimTicket,
+  type TicketDetail,
+  type HandoffNote,
+} from "@/lib/api";
 
 const PRIORITY_COLOR: Record<string, string> = {
   Critical: "var(--status-critical)",
@@ -42,22 +50,71 @@ export default function TicketDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"detail" | "replay" | "handoff">("detail");
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await getTicketDetail(ticketId);
-        setTicket(data);
-        if (data.status === "Escalated") {
-          try { setHandoff(await getHandoffNote(ticketId)); } catch {}
-        }
-      } catch (err) {
-        console.error("Failed to load ticket:", err);
-      } finally {
-        setLoading(false);
+  const [replyText, setReplyText] = useState("");
+  const [acting, setActing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  async function load() {
+    try {
+      const data = await getTicketDetail(ticketId);
+      setTicket(data);
+      if (data.status === "Escalated") {
+        try { setHandoff(await getHandoffNote(ticketId)); } catch {}
       }
+    } catch (err) {
+      console.error("Failed to load ticket:", err);
+    } finally {
+      setLoading(false);
     }
+  }
+
+  useEffect(() => {
     if (ticketId) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketId]);
+
+  async function handleSendReply() {
+    if (!replyText.trim() || acting) return;
+    setActing(true);
+    setActionError(null);
+    try {
+      await replyToTicket(ticketId, replyText.trim());
+      setReplyText("");
+      await load();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Failed to send reply.");
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function handleResolve() {
+    if (acting) return;
+    setActing(true);
+    setActionError(null);
+    try {
+      await resolveTicket(ticketId);
+      await load();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Failed to resolve.");
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function handleClaim() {
+    if (acting) return;
+    setActing(true);
+    setActionError(null);
+    try {
+      await claimTicket(ticketId);
+      await load();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Failed to claim.");
+    } finally {
+      setActing(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -236,12 +293,18 @@ export default function TicketDetailPage() {
                         maxWidth: "78%",
                         padding: "10px 14px",
                         borderRadius: msg.sender_type === "Customer" ? "4px 18px 18px 18px" : "18px 4px 18px 18px",
-                        background: msg.sender_type === "Customer" ? "var(--bg-panel-raised)" : "var(--accent-dim)",
-                        border: msg.sender_type === "Customer" ? "1px solid var(--border-subtle)" : "1px solid var(--accent-border)",
+                        background:
+                          msg.sender_type === "Customer" ? "var(--bg-panel-raised)"
+                          : msg.sender_type === "Human" ? "rgba(76,175,115,0.10)"
+                          : "var(--accent-dim)",
+                        border:
+                          msg.sender_type === "Customer" ? "1px solid var(--border-subtle)"
+                          : msg.sender_type === "Human" ? "1px solid rgba(76,175,115,0.35)"
+                          : "1px solid var(--accent-border)",
                       }}
                     >
-                      <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", marginBottom: 4, color: "var(--text-muted)" }}>
-                        {msg.sender_type.toUpperCase()}
+                      <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", marginBottom: 4, color: msg.sender_type === "Human" ? "var(--status-low)" : "var(--text-muted)" }}>
+                        {msg.sender_type === "Human" ? "AGENT (YOU)" : msg.sender_type.toUpperCase()}
                       </p>
                       <p style={{ fontSize: 13, color: "var(--text-primary)", lineHeight: 1.5 }}>{msg.message_text}</p>
                     </div>
@@ -250,6 +313,75 @@ export default function TicketDetailPage() {
               </div>
             </div>
           )}
+
+          {/* Agent action bar: reply + resolve */}
+          <div className="panel" style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+            <span className="eyebrow">RESPOND AS AGENT</span>
+            <textarea
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Type a reply to the customer…"
+              rows={3}
+              disabled={acting || ticket.status === "Resolved"}
+              style={{
+                width: "100%",
+                resize: "vertical",
+                padding: "12px 14px",
+                borderRadius: 12,
+                fontSize: 14,
+                fontFamily: "var(--font-sans)",
+                background: "var(--bg-panel-raised)",
+                border: "1px solid var(--border-subtle)",
+                color: "var(--text-primary)",
+                lineHeight: 1.5,
+              }}
+            />
+            {actionError && (
+              <p style={{ fontSize: 12, color: "var(--status-high)" }}>{actionError}</p>
+            )}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                onClick={handleSendReply}
+                disabled={acting || !replyText.trim() || ticket.status === "Resolved"}
+                style={{
+                  padding: "9px 20px", borderRadius: 999, border: "none",
+                  fontSize: 13, fontWeight: 600, cursor: acting || !replyText.trim() ? "not-allowed" : "pointer",
+                  background: "var(--accent)", color: "#fff", opacity: acting || !replyText.trim() || ticket.status === "Resolved" ? 0.5 : 1,
+                  fontFamily: "var(--font-sans)",
+                }}
+              >
+                {acting ? "Sending…" : "Send reply"}
+              </button>
+              {(ticket.status === "Escalated" || ticket.status === "Open") && (
+                <button
+                  onClick={handleClaim}
+                  disabled={acting}
+                  style={{
+                    padding: "9px 20px", borderRadius: 999, fontSize: 13, fontWeight: 600,
+                    cursor: acting ? "not-allowed" : "pointer", fontFamily: "var(--font-sans)",
+                    background: "transparent", color: "var(--text-secondary)",
+                    border: "1px solid var(--border-subtle)",
+                  }}
+                >
+                  Claim
+                </button>
+              )}
+              {ticket.status !== "Resolved" && (
+                <button
+                  onClick={handleResolve}
+                  disabled={acting}
+                  style={{
+                    padding: "9px 20px", borderRadius: 999, fontSize: 13, fontWeight: 600,
+                    cursor: acting ? "not-allowed" : "pointer", fontFamily: "var(--font-sans)",
+                    background: "rgba(76,175,115,0.12)", color: "var(--status-low)",
+                    border: "1px solid rgba(76,175,115,0.35)",
+                  }}
+                >
+                  Mark resolved
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

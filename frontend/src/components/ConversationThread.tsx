@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import ResponsePanel from "@/components/ResponsePanel";
 import { useI18n } from "@/lib/i18n/I18nProvider";
@@ -12,6 +13,14 @@ import type { ConversationTurn } from "@/hooks/useVoiceInteraction";
  */
 export default function ConversationThread({ turns }: { turns: ConversationTurn[] }) {
   const { t } = useI18n();
+  const endRef = useRef<HTMLDivElement>(null);
+
+  // Bring each newly completed turn into view so the conversation reads
+  // like a chat that scrolls as it grows.
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [turns.length]);
+
   if (turns.length === 0) return null;
 
   return (
@@ -39,9 +48,10 @@ export default function ConversationThread({ turns }: { turns: ConversationTurn[
               {turn.customer?.trim() || `🎤 ${t("voice.eyebrow.listening")}`}
             </div>
           </motion.div>
-          <ResponsePanel response={turn.ai} />
+          <ResponsePanel response={turn.ai} animateText={i === turns.length - 1} />
         </div>
       ))}
+      <div ref={endRef} />
     </div>
   );
 }

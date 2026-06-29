@@ -279,6 +279,73 @@ export async function releaseTicket(ticketId: string): Promise<{ ticket_id: stri
   return apiFetch(`/api/tickets/${ticketId}/release`, { method: "PATCH" });
 }
 
+export async function replyToTicket(
+  ticketId: string,
+  messageText: string,
+): Promise<{ message_id: string; sender_type: string; message_text: string; language: string; timestamp: string; ticket_status: string }> {
+  return apiFetch(`/api/tickets/${ticketId}/reply`, {
+    method: "POST",
+    body: JSON.stringify({ message_text: messageText }),
+  });
+}
+
+export async function resolveTicket(ticketId: string): Promise<{ ticket_id: string; status: string }> {
+  return apiFetch(`/api/tickets/${ticketId}/resolve`, { method: "PATCH" });
+}
+
+export async function reassignTicket(
+  ticketId: string,
+  assignedTo: string,
+): Promise<{ ticket_id: string; assigned_to: string }> {
+  return apiFetch(`/api/tickets/${ticketId}/reassign`, {
+    method: "PATCH",
+    body: JSON.stringify({ assigned_to: assignedTo }),
+  });
+}
+
+export interface CustomerSummary {
+  user_id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  city: string | null;
+  customer_segment: string;
+  preferred_language: string;
+  ticket_count: number;
+  last_contact: string | null;
+}
+
+export interface CustomerProfile extends CustomerSummary {
+  created_at: string;
+  orders: {
+    order_id: string;
+    order_date: string;
+    status: string;
+    total_amount: number;
+    shipment: { status: string; courier: string; tracking_number: string | null; expected_delivery: string | null } | null;
+  }[];
+  tickets: {
+    ticket_id: string;
+    ticket_type: string;
+    status: string;
+    priority: string;
+    sentiment: string | null;
+    summary: string | null;
+    created_at: string;
+    resolved_at: string | null;
+  }[];
+  sentiment_timeline: { label: string; confidence: number | null; recorded_at: string }[];
+}
+
+export async function getCustomers(search?: string): Promise<CustomerSummary[]> {
+  const qs = search ? `?search=${encodeURIComponent(search)}` : "";
+  return apiFetch<CustomerSummary[]>(`/api/customers/${qs}`);
+}
+
+export async function getCustomerProfile(customerId: string): Promise<CustomerProfile> {
+  return apiFetch<CustomerProfile>(`/api/customers/${customerId}`);
+}
+
 export async function clearConversation(sessionId: string): Promise<void> {
   await apiFetch(`/api/voice/session/${sessionId}`, { method: "DELETE" });
 }

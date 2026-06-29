@@ -8,6 +8,7 @@ import structlog
 from datetime import datetime, timedelta
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case, and_, update
 from sqlalchemy.orm import selectinload
@@ -56,6 +57,22 @@ router = APIRouter(
     tags=["tickets"],
     dependencies=[Depends(require_admin), Depends(_ticket_rate_limit)],
 )
+
+
+class ReplyBody(BaseModel):
+    message_text: str = Field(..., min_length=1, max_length=4000)
+    language: Optional[str] = None
+
+
+class ReassignBody(BaseModel):
+    assigned_to: str = Field(..., min_length=1, max_length=100)
+
+
+def _parse_ticket_id(ticket_id: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(ticket_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid ticket ID")
 
 
 @router.get("/", response_model=List[TicketSummary])
@@ -349,6 +366,116 @@ async def release_ticket(
     await db.commit()
     logger.info("ticket_released", ticket_id=ticket_id, agent=admin_email)
     return {"ticket_id": ticket_id, "status": "Escalated", "assigned_to": None}
+
+
+@router.post("/{ticket_id}/reply", status_code=201)
+async def reply_to_ticket(
+    ticket_id: str,
+    body: ReplyBody,
+    db: AsyncSession = Depends(get_db),
+    admin_email: str = Depends(require_admin),
+):
+    """Post a human agent reply into a ticket conversation."""
+    tid = _parse_ticket_id(ticket_id)
+
+    result = await db.execute(
+        select(SupportTicket).where(
+            SupportTicket.ticket_id == tid,
+            SupportTicket.deleted_at.is_(None),
+        )
+    )
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    message = SupportMessage(
+        ticket_id=tid,
+        session_id=ticket.session_id,
+        sender_type="Human",
+        message_text=body.message_text.strip(),
+        language=body.language or ticket.language,
+        created_by=admin_email,
+    )
+    db.add(message)
+    # An agent actively responding implies the ticket is being worked.
+    if ticket.status in ("Escalated", "Open"):
+        ticket.status = "In Progress"
+        if not ticket.assigned_to:
+            ticket.assigned_to = admin_email
+    ticket.updated_by = admin_email
+    await db.commit()
+    await db.refresh(message)
+
+    logger.info("ticket_reply_posted", ticket_id=ticket_id, agent=admin_email)
+    return {
+        "message_id": str(message.message_id),
+        "sender_type": message.sender_type,
+        "message_text": message.message_text,
+        "language": message.language,
+        "timestamp": message.timestamp.isoformat(),
+        "ticket_status": ticket.status,
+    }
+
+
+@router.patch("/{ticket_id}/resolve")
+async def resolve_ticket(
+    ticket_id: str,
+    db: AsyncSession = Depends(get_db),
+    admin_email: str = Depends(require_admin),
+):
+    """Mark a ticket Resolved."""
+    tid = _parse_ticket_id(ticket_id)
+
+    result = await db.execute(
+        select(SupportTicket).where(
+            SupportTicket.ticket_id == tid,
+            SupportTicket.deleted_at.is_(None),
+        )
+    )
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    if ticket.status == "Resolved":
+        raise HTTPException(status_code=409, detail="Ticket is already resolved")
+
+    await db.execute(
+        update(SupportTicket)
+        .where(SupportTicket.ticket_id == tid)
+        .values(status="Resolved", resolved_at=datetime.utcnow(), updated_by=admin_email)
+    )
+    await db.commit()
+    logger.info("ticket_resolved", ticket_id=ticket_id, agent=admin_email)
+    return {"ticket_id": ticket_id, "status": "Resolved"}
+
+
+@router.patch("/{ticket_id}/reassign")
+async def reassign_ticket(
+    ticket_id: str,
+    body: ReassignBody,
+    db: AsyncSession = Depends(get_db),
+    admin_email: str = Depends(require_admin),
+):
+    """Reassign a ticket to another agent."""
+    tid = _parse_ticket_id(ticket_id)
+
+    result = await db.execute(
+        select(SupportTicket).where(
+            SupportTicket.ticket_id == tid,
+            SupportTicket.deleted_at.is_(None),
+        )
+    )
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    await db.execute(
+        update(SupportTicket)
+        .where(SupportTicket.ticket_id == tid)
+        .values(assigned_to=body.assigned_to.strip(), updated_by=admin_email)
+    )
+    await db.commit()
+    logger.info("ticket_reassigned", ticket_id=ticket_id, agent=admin_email, to=body.assigned_to)
+    return {"ticket_id": ticket_id, "assigned_to": body.assigned_to.strip()}
 
 
 @router.get("/{ticket_id}/handoff", response_model=HandoffNote)

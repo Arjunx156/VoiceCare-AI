@@ -3,9 +3,17 @@
 import { motion } from "framer-motion";
 import { type VoiceQueryResponse } from "@/lib/api";
 import { useI18n } from "@/lib/i18n/I18nProvider";
+import { useTypewriter } from "@/hooks/useTypewriter";
 
-export default function ResponsePanel({ response }: { response: VoiceQueryResponse }) {
+export default function ResponsePanel({
+  response,
+  animateText = false,
+}: {
+  response: VoiceQueryResponse;
+  animateText?: boolean;
+}) {
   const { t } = useI18n();
+  const shownText = useTypewriter(response.response_text ?? "", animateText);
 
   return (
     <motion.div
@@ -35,7 +43,7 @@ export default function ResponsePanel({ response }: { response: VoiceQueryRespon
       </div>
       <div className="divider" style={{ marginBottom: 14 }} />
       <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-primary)" }}>
-        {response.response_text}
+        {shownText}
       </p>
       {response.policy_reference && (
         <p style={{ fontSize: 12, marginTop: 12, color: "var(--text-secondary)", fontStyle: "italic" }}>

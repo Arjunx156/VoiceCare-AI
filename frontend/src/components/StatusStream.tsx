@@ -19,6 +19,7 @@ const STAGE_KEYS: MessageKey[] = [
 interface StatusStreamProps {
   currentStage: number;
   isComplete: boolean;
+  isProcessing: boolean;
   message?: string;
 }
 
@@ -37,10 +38,13 @@ function Checkmark() {
   );
 }
 
-export default function StatusStream({ currentStage, isComplete, message }: StatusStreamProps) {
+export default function StatusStream({ currentStage, isComplete, isProcessing, message }: StatusStreamProps) {
   const { t } = useI18n();
 
-  if (currentStage === 0 && !isComplete) return null;
+  // The status stream is purely a live, in-flight indicator. Once the turn
+  // finishes (isProcessing flips false) the completed Q&A lives in the chat
+  // transcript instead, so the stream disappears rather than lingering.
+  if (!isProcessing) return null;
 
   return (
     <div className="w-full panel" style={{ padding: "20px 24px" }}>
