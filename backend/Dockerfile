@@ -21,5 +21,10 @@ RUN mkdir -p /app/chroma_data
 # Port
 EXPOSE 8000
 
-# Run — single worker is fine for Render free tier
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Run — apply any pending DB migrations, then start the server.
+# `alembic upgrade head` is idempotent (no-op when already at head); running it
+# on every boot keeps the live schema in lockstep with the ORM models so new
+# columns never 500 the API after a deploy. Soft-fail (|| echo) so a migration
+# hiccup doesn't take the whole service offline; `exec` hands signals to uvicorn.
+# Single worker is fine for the Render free tier.
+CMD ["sh", "-c", "alembic upgrade head || echo 'WARNING: alembic upgrade head failed; starting anyway'; exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1"]
