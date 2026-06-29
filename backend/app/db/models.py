@@ -28,6 +28,9 @@ class User(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    # Short, human-readable customer code (e.g. CUST-7K3F) — used in the
+    # dashboard URL/profile so we never surface the long internal UUID.
+    customer_code: Mapped[Optional[str]] = mapped_column(String(16), unique=True, nullable=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)

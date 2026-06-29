@@ -88,7 +88,10 @@ export default function CustomerProfilePage() {
 
       {/* Header */}
       <div>
-        <span className="eyebrow">{profile.customer_segment.toUpperCase()} · {profile.preferred_language}</span>
+        <span className="eyebrow">
+          {profile.customer_segment.toUpperCase()} · {profile.preferred_language}
+          {profile.customer_code ? ` · ${profile.customer_code}` : ""}
+        </span>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
           {profile.name}
         </h1>
@@ -132,6 +135,11 @@ export default function CustomerProfilePage() {
                 <span style={{ fontSize: 12, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>
                   {new Date(o.order_date).toLocaleDateString()}
                 </span>
+                {o.order_number && (
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontVariantNumeric: "tabular-nums" }}>
+                    {o.order_number}
+                  </span>
+                )}
                 <span style={{ fontSize: 13, color: "var(--text-primary)", flex: 1 }}>{o.status}</span>
                 {o.shipment && (
                   <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{o.shipment.status}</span>

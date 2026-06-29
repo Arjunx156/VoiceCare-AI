@@ -81,7 +81,7 @@ export default function CustomersPage() {
           {customers.map((c) => (
             <Link
               key={c.user_id}
-              href={`/dashboard/customers/${c.user_id}`}
+              href={`/dashboard/customers/${c.customer_code || c.user_id}`}
               style={{
                 display: "flex", alignItems: "center", gap: 16,
                 padding: "14px 16px", borderRadius: 12, textDecoration: "none",
@@ -89,7 +89,14 @@ export default function CustomersPage() {
               }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{c.name}</p>
+                <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                  {c.name}
+                  {c.customer_code && (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginLeft: 8, fontVariantNumeric: "tabular-nums" }}>
+                      {c.customer_code}
+                    </span>
+                  )}
+                </p>
                 <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   {c.phone}{c.city ? ` · ${c.city}` : ""}
                 </p>

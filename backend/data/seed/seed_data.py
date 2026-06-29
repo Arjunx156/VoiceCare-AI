@@ -12,14 +12,14 @@ PRODUCT_IDS = [uuid.UUID(f"10000000-0000-0000-0000-00000000000{i}") for i in ran
 ORDER_IDS = [uuid.UUID(f"20000000-0000-0000-0000-00000000000{i}") for i in range(1, 9)]
 
 SEED_USERS = [
-    {"user_id": USER_IDS[0], "name": "Rajesh Kumar", "phone": "9876543210", "city": "Delhi", "preferred_language": "Hindi", "customer_segment": "Premium"},
-    {"user_id": USER_IDS[1], "name": "Priya Nair", "phone": "9876543211", "city": "Kochi", "preferred_language": "Malayalam", "customer_segment": "Regular"},
-    {"user_id": USER_IDS[2], "name": "Muthu Selvam", "phone": "9876543212", "city": "Chennai", "preferred_language": "Tamil", "customer_segment": "Regular"},
-    {"user_id": USER_IDS[3], "name": "Ananya Reddy", "phone": "9876543213", "city": "Hyderabad", "preferred_language": "Telugu", "customer_segment": "Premium"},
-    {"user_id": USER_IDS[4], "name": "Kavitha Shetty", "phone": "9876543214", "city": "Bangalore", "preferred_language": "Kannada", "customer_segment": "New"},
-    {"user_id": USER_IDS[5], "name": "Sourav Das", "phone": "9876543215", "city": "Kolkata", "preferred_language": "Bengali", "customer_segment": "Regular"},
-    {"user_id": USER_IDS[6], "name": "Sneha Patil", "phone": "9876543216", "city": "Pune", "preferred_language": "Marathi", "customer_segment": "Premium"},
-    {"user_id": USER_IDS[7], "name": "Amit Sharma", "phone": "9876543217", "city": "Mumbai", "preferred_language": "Hinglish", "customer_segment": "Regular"},
+    {"user_id": USER_IDS[0], "customer_code": "CUST-RK24", "name": "Rajesh Kumar", "phone": "9876543210", "city": "Delhi", "preferred_language": "Hindi", "customer_segment": "Premium"},
+    {"user_id": USER_IDS[1], "customer_code": "CUST-PN37", "name": "Priya Nair", "phone": "9876543211", "city": "Kochi", "preferred_language": "Malayalam", "customer_segment": "Regular"},
+    {"user_id": USER_IDS[2], "customer_code": "CUST-MS52", "name": "Muthu Selvam", "phone": "9876543212", "city": "Chennai", "preferred_language": "Tamil", "customer_segment": "Regular"},
+    {"user_id": USER_IDS[3], "customer_code": "CUST-AR81", "name": "Ananya Reddy", "phone": "9876543213", "city": "Hyderabad", "preferred_language": "Telugu", "customer_segment": "Premium"},
+    {"user_id": USER_IDS[4], "customer_code": "CUST-KS49", "name": "Kavitha Shetty", "phone": "9876543214", "city": "Bangalore", "preferred_language": "Kannada", "customer_segment": "New"},
+    {"user_id": USER_IDS[5], "customer_code": "CUST-SD75", "name": "Sourav Das", "phone": "9876543215", "city": "Kolkata", "preferred_language": "Bengali", "customer_segment": "Regular"},
+    {"user_id": USER_IDS[6], "customer_code": "CUST-SP38", "name": "Sneha Patil", "phone": "9876543216", "city": "Pune", "preferred_language": "Marathi", "customer_segment": "Premium"},
+    {"user_id": USER_IDS[7], "customer_code": "CUST-AS63", "name": "Amit Sharma", "phone": "9876543217", "city": "Mumbai", "preferred_language": "Hinglish", "customer_segment": "Regular"},
 ]
 
 now = datetime.utcnow()

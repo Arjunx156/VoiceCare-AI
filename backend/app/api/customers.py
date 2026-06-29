@@ -75,6 +75,7 @@ async def list_customers(
     return [
         {
             "user_id": str(u.user_id),
+            "customer_code": u.customer_code,
             "name": u.name,
             "phone": u.phone,
             "email": u.email,
@@ -91,15 +92,25 @@ async def list_customers(
 
 @router.get("/{customer_id}")
 async def get_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
-    """Full customer profile: orders, ticket history, and sentiment timeline."""
-    try:
-        uid = uuid.UUID(customer_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid customer ID")
+    """Full customer profile: orders, ticket history, and sentiment timeline.
 
-    user = (await db.execute(select(User).where(User.user_id == uid))).scalar_one_or_none()
+    `customer_id` may be a short customer code (e.g. CUST-7K3F) or, for
+    backward-compatible/bookmarked links, the internal UUID.
+    """
+    if customer_id.upper().startswith("CUST-"):
+        user = (await db.execute(
+            select(User).where(User.customer_code == customer_id.upper())
+        )).scalar_one_or_none()
+    else:
+        try:
+            uid = uuid.UUID(customer_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid customer ID")
+        user = (await db.execute(select(User).where(User.user_id == uid))).scalar_one_or_none()
+
     if not user:
         raise HTTPException(status_code=404, detail="Customer not found")
+    uid = user.user_id
 
     # Orders with their shipment, most recent first.
     orders = (await db.execute(
@@ -141,6 +152,7 @@ async def get_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
 
     return {
         "user_id": str(user.user_id),
+        "customer_code": user.customer_code,
         "name": user.name,
         "phone": user.phone,
         "email": user.email,
@@ -151,6 +163,7 @@ async def get_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
         "orders": [
             {
                 "order_id": str(o.order_id),
+                "order_number": o.order_number,
                 "order_date": o.order_date.isoformat(),
                 "status": o.status,
                 "total_amount": float(o.total_amount),

@@ -309,6 +309,7 @@ export async function reassignTicket(
 
 export interface CustomerSummary {
   user_id: string;
+  customer_code?: string;
   name: string;
   phone: string;
   email: string | null;
@@ -323,6 +324,7 @@ export interface CustomerProfile extends CustomerSummary {
   created_at: string;
   orders: {
     order_id: string;
+    order_number?: string;
     order_date: string;
     status: string;
     total_amount: number;

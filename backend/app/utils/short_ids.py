@@ -34,6 +34,11 @@ def generate_ticket_number(exists: Optional[Callable[[str], bool]] = None) -> st
     return _generate("TKT", 5, exists)
 
 
+def generate_customer_code(exists: Optional[Callable[[str], bool]] = None) -> str:
+    """Generate a customer code like 'CUST-7K3F'."""
+    return _generate("CUST", 4, exists)
+
+
 def _generate(prefix: str, length: int, exists: Optional[Callable[[str], bool]]) -> str:
     for _ in range(10):
         code = _random_code(prefix, length)

@@ -27,7 +27,7 @@ from app.db.models import (
     VoiceSession, SupportTicket, SupportMessage, SupportResolution,
     CustomerSentiment,
 )
-from app.utils.short_ids import generate_ticket_number
+from app.utils.short_ids import generate_ticket_number, generate_customer_code
 
 logger = structlog.get_logger()
 
@@ -700,9 +700,21 @@ class VoiceCarePipeline:
                     if existing:
                         user_id = existing.user_id
                     else:
+                        async def _code_taken(code: str) -> bool:
+                            return (await self.db.execute(
+                                select(User.user_id).where(User.customer_code == code)
+                            )).first() is not None
+
+                        customer_code = generate_customer_code()
+                        for _ in range(5):
+                            if not await _code_taken(customer_code):
+                                break
+                            customer_code = generate_customer_code()
+
                         new_user = User(
                             name=state.extracted_name or "Anonymous Caller",
                             phone=phone_val,
+                            customer_code=customer_code,
                             customer_segment="Anonymous",
                             created_by="pipeline-anon",
                         )
