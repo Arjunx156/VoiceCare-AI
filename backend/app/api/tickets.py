@@ -107,6 +107,7 @@ async def list_tickets(
     return [
         TicketSummary(
             ticket_id=t.ticket_id,
+            ticket_number=t.ticket_number,
             user_name=t.user.name if t.user else "Unknown",
             phone=t.user.phone if t.user else "",
             ticket_type=t.ticket_type,
@@ -144,6 +145,7 @@ async def list_escalations(
     return [
         TicketSummary(
             ticket_id=t.ticket_id,
+            ticket_number=t.ticket_number,
             user_name=t.user.name if t.user else "Unknown",
             phone=t.user.phone if t.user else "",
             ticket_type=t.ticket_type,
@@ -267,6 +269,7 @@ async def get_ticket(ticket_id: str, db: AsyncSession = Depends(get_db)):
 
     return TicketDetail(
         ticket_id=ticket.ticket_id,
+        ticket_number=ticket.ticket_number,
         user_name=user.name if user else "Unknown",
         phone=user.phone if user else "",
         ticket_type=ticket.ticket_type,
@@ -280,6 +283,7 @@ async def get_ticket(ticket_id: str, db: AsyncSession = Depends(get_db)):
         escalated_at=ticket.escalated_at,
         assigned_to=ticket.assigned_to,
         order_id=ticket.order_id,
+        order_number=order.order_number if order else None,
         order_status=order.status if order else None,
         order_amount=float(order.total_amount) if order else None,
         order_date=order.order_date if order else None,

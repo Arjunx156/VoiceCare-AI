@@ -77,13 +77,13 @@ class TestAgent1VoiceIntake:
 
 
 # ---------------------------------------------------------------------------
-# Agent 2: Customer Identification
+# Agent 3 (pipeline order): Order Lookup
 # ---------------------------------------------------------------------------
 class TestAgent2CustomerIdentification:
 
     @pytest.mark.asyncio
     async def test_phone_lookup_populates_user_data(self, sample_user_data):
-        """DB lookup by phone sets user_id, name, and language."""
+        """DB lookup by phone populates user_data dict."""
         from app.agents.state import PipelineState
         from app.agents.pipeline import VoiceCarePipeline
 
@@ -93,32 +93,35 @@ class TestAgent2CustomerIdentification:
         mock_user = MagicMock()
         mock_user.user_id = uuid.UUID(sample_user_data["user_id"])
         mock_user.name = sample_user_data["name"]
+        mock_user.phone = "9876543210"
         mock_user.preferred_language = sample_user_data["preferred_language"]
         mock_user.customer_segment = sample_user_data["customer_segment"]
         mock_db.execute.return_value.scalar_one_or_none = MagicMock(return_value=mock_user)
 
         pipeline = VoiceCarePipeline(db=mock_db)
-        result = await pipeline.agent_customer_identification(state)
+        result = await pipeline.agent_order_lookup(state)
 
-        assert result.user_id == str(mock_user.user_id)
-        assert result.customer_name == "Priya Sharma"
-        assert result.preferred_language == "Hindi"
+        assert result.user_data is not None
+        assert result.user_data["name"] == "Priya Sharma"
+        assert result.user_data["preferred_language"] == "Hindi"
         assert result.has_error is False
 
     @pytest.mark.asyncio
-    async def test_unknown_phone_returns_guest(self):
-        """Unknown phone number: treated as guest user, no error."""
+    async def test_unknown_phone_returns_no_user_data(self):
+        """Unknown phone number: user_data stays None, no error."""
         from app.agents.state import PipelineState
         from app.agents.pipeline import VoiceCarePipeline
 
         state = PipelineState(phone="0000000000")
         mock_db = _make_mock_db()
         mock_db.execute.return_value.scalar_one_or_none = MagicMock(return_value=None)
+        mock_db.execute.return_value.scalars.return_value.all = MagicMock(return_value=[])
 
         pipeline = VoiceCarePipeline(db=mock_db)
-        result = await pipeline.agent_customer_identification(state)
+        result = await pipeline.agent_order_lookup(state)
 
-        assert result.user_id is None or result.customer_name == "Guest"
+        assert result.user_data is None
+        assert result.has_error is False
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +139,7 @@ class TestAgent3IntentClassification:
 
         with patch("app.agents.pipeline.get_gemini_service", return_value=mock_gemini_service):
             pipeline = VoiceCarePipeline(db=_make_mock_db())
-            result = await pipeline.agent_intent_classification(state)
+            result = await pipeline.agent_intent_analysis(state)
 
         assert result.intent == "order_status"
         assert result.sentiment == "Neutral"
@@ -154,7 +157,7 @@ class TestAgent3IntentClassification:
 
         with patch("app.agents.pipeline.get_gemini_service", return_value=mock_gemini):
             pipeline = VoiceCarePipeline(db=_make_mock_db())
-            result = await pipeline.agent_intent_classification(state)
+            result = await pipeline.agent_intent_analysis(state)
 
         assert result.has_error is False
         assert result.intent == "general_inquiry"
@@ -250,16 +253,17 @@ class TestAgent9SessionPersistence:
             pytest.fail(f"agent_ticket_creation crashed with invalid session_id: {e}")
 
     @pytest.mark.asyncio
-    async def test_none_session_id_handled(self):
-        """None session_id does not cause a crash."""
+    async def test_missing_session_id_uses_default(self):
+        """PipelineState always has a valid session_id via default_factory; agent_ticket_creation must not crash."""
         from app.agents.state import PipelineState
         from app.agents.pipeline import VoiceCarePipeline
 
+        # session_id defaults to a new UUID; omitting it is the safe path.
         state = PipelineState(
-            session_id=None,
             transcript_english="Test query",
             final_response_text="Response text",
         )
+        assert state.session_id  # always a non-empty string
 
         mock_db = _make_mock_db()
         pipeline = VoiceCarePipeline(db=mock_db)
@@ -267,7 +271,7 @@ class TestAgent9SessionPersistence:
         try:
             result = await pipeline.agent_ticket_creation(state)
         except Exception as e:
-            pytest.fail(f"agent_ticket_creation crashed with None session_id: {e}")
+            pytest.fail(f"agent_ticket_creation crashed: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -390,14 +394,16 @@ class TestFullPipeline:
         with patches[0], patches[1], patches[2], patches[3]:
             pipeline = VoiceCarePipeline(db=mock_db)
             result = await pipeline.run(
-                phone="9876543210",
-                raw_text="Where is my order?",
-                language_code="en",
+                PipelineState(
+                    phone="9876543210",
+                    raw_text="Where is my order?",
+                    language_code="en",
+                )
             )
 
         assert result is not None
         assert result.has_error is False
-        assert result.final_response_text is not None
+        assert result.response_text is not None
 
     @pytest.mark.asyncio
     async def test_full_pipeline_records_agent_trace(
@@ -418,12 +424,15 @@ class TestFullPipeline:
             mock_memory_service,
         )
 
+        from app.agents.state import PipelineState
         with patches[0], patches[1], patches[2], patches[3]:
             pipeline = VoiceCarePipeline(db=mock_db)
             result = await pipeline.run(
-                phone="9876543210",
-                raw_text="Where is my order?",
-                language_code="en",
+                PipelineState(
+                    phone="9876543210",
+                    raw_text="Where is my order?",
+                    language_code="en",
+                )
             )
 
         assert len(result.agent_trace) >= 1
@@ -454,12 +463,15 @@ class TestFullPipeline:
             mock_memory_service,
         )
 
+        from app.agents.state import PipelineState
         with patches[0], patches[1], patches[2], patches[3]:
             pipeline = VoiceCarePipeline(db=mock_db)
             result = await pipeline.run(
-                phone="9876543210",
-                raw_text="Any query",
-                language_code="en",
+                PipelineState(
+                    phone="9876543210",
+                    raw_text="Any query",
+                    language_code="en",
+                )
             )
 
         # Should not crash; should produce some response (even apologetic)

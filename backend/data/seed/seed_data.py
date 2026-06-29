@@ -37,27 +37,27 @@ SEED_PRODUCTS = [
 
 SEED_ORDERS = [
     # Order 1: Rajesh — delayed delivery (demo scenario 1)
-    {"order_id": ORDER_IDS[0], "user_id": USER_IDS[0], "order_date": now - timedelta(days=10),
-     "status": "Shipped", "total_amount": 12999.00},
+    {"order_id": ORDER_IDS[0], "user_id": USER_IDS[0], "order_number": "ORD-RK24",
+     "order_date": now - timedelta(days=10), "status": "Shipped", "total_amount": 12999.00},
     # Order 2: Priya — refund delay (demo scenario 2)
-    {"order_id": ORDER_IDS[1], "user_id": USER_IDS[1], "order_date": now - timedelta(days=20),
-     "status": "Delivered", "total_amount": 8495.00},
+    {"order_id": ORDER_IDS[1], "user_id": USER_IDS[1], "order_number": "ORD-PN37",
+     "order_date": now - timedelta(days=20), "status": "Delivered", "total_amount": 8495.00},
     # Order 3: Muthu — damaged product (demo scenario 3)
-    {"order_id": ORDER_IDS[2], "user_id": USER_IDS[2], "order_date": now - timedelta(days=5),
-     "status": "Delivered", "total_amount": 2899.00},
+    {"order_id": ORDER_IDS[2], "user_id": USER_IDS[2], "order_number": "ORD-MS52",
+     "order_date": now - timedelta(days=5), "status": "Delivered", "total_amount": 2899.00},
     # Order 4: Ananya — payment failed (demo scenario 4)
-    {"order_id": ORDER_IDS[3], "user_id": USER_IDS[3], "order_date": now - timedelta(days=1),
-     "status": "Cancelled", "total_amount": 24900.00},
+    {"order_id": ORDER_IDS[3], "user_id": USER_IDS[3], "order_number": "ORD-AR81",
+     "order_date": now - timedelta(days=1), "status": "Cancelled", "total_amount": 24900.00},
     # Order 5: Amit — angry repeat complaint (demo scenario 5)
-    {"order_id": ORDER_IDS[4], "user_id": USER_IDS[7], "order_date": now - timedelta(days=15),
-     "status": "Delivered", "total_amount": 12999.00},
+    {"order_id": ORDER_IDS[4], "user_id": USER_IDS[7], "order_number": "ORD-AS63",
+     "order_date": now - timedelta(days=15), "status": "Delivered", "total_amount": 12999.00},
     # Additional orders
-    {"order_id": ORDER_IDS[5], "user_id": USER_IDS[4], "order_date": now - timedelta(days=3),
-     "status": "Placed", "total_amount": 2799.00},
-    {"order_id": ORDER_IDS[6], "user_id": USER_IDS[5], "order_date": now - timedelta(days=7),
-     "status": "Delivered", "total_amount": 899.00},
-    {"order_id": ORDER_IDS[7], "user_id": USER_IDS[6], "order_date": now - timedelta(days=12),
-     "status": "Shipped", "total_amount": 1899.00},
+    {"order_id": ORDER_IDS[5], "user_id": USER_IDS[4], "order_number": "ORD-KS49",
+     "order_date": now - timedelta(days=3), "status": "Placed", "total_amount": 2799.00},
+    {"order_id": ORDER_IDS[6], "user_id": USER_IDS[5], "order_number": "ORD-SD75",
+     "order_date": now - timedelta(days=7), "status": "Delivered", "total_amount": 899.00},
+    {"order_id": ORDER_IDS[7], "user_id": USER_IDS[6], "order_number": "ORD-SP38",
+     "order_date": now - timedelta(days=12), "status": "Shipped", "total_amount": 1899.00},
 ]
 
 SEED_SHIPMENTS = [

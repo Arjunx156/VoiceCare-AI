@@ -114,6 +114,8 @@ async def process_voice_query(
     return VoiceQueryResponse(
         session_id=state.session_id,
         ticket_id=state.ticket_id or "",
+        ticket_number=state.ticket_number,
+        order_number=(state.order_data or {}).get("order_number"),
         response_text=state.response_text or "",
         response_audio_base64=state.response_audio_base64,
         language=state.language_detected,
@@ -207,6 +209,8 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
                     "type": "response",
                     "session_id": state.session_id,
                     "ticket_id": state.ticket_id or "",
+                    "ticket_number": state.ticket_number,
+                    "order_number": (state.order_data or {}).get("order_number"),
                     "response_text": state.response_text or "",
                     "response_audio_base64": state.response_audio_base64,
                     "language": state.language_detected,

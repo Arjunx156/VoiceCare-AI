@@ -80,6 +80,8 @@ class Order(Base):
     order_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    # Short, customer-facing order code (e.g. "ORD-7K3F"). The UUID stays the PK.
+    order_number: Mapped[Optional[str]] = mapped_column(String(16), unique=True, nullable=True)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False
     )
@@ -292,6 +294,8 @@ class SupportTicket(Base):
     ticket_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    # Short, customer-facing ticket code (e.g. "TKT-9QXM2"). The UUID stays the PK.
+    ticket_number: Mapped[Optional[str]] = mapped_column(String(16), unique=True, nullable=True)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False
     )

@@ -36,6 +36,8 @@ class VoiceQueryResponse(BaseModel):
     """Response from the voice query pipeline."""
     session_id: str
     ticket_id: str
+    ticket_number: Optional[str] = None   # short customer-facing code, e.g. TKT-9QXM2
+    order_number: Optional[str] = None    # short order code, e.g. ORD-7K3F (if order looked up)
     response_text: str
     response_audio_base64: Optional[str] = None
     language: str
@@ -57,6 +59,7 @@ class VoiceQueryResponse(BaseModel):
 class TicketSummary(BaseModel):
     """Ticket list item."""
     ticket_id: uuid.UUID
+    ticket_number: Optional[str] = None
     user_name: str
     phone: str
     ticket_type: str
@@ -89,8 +92,11 @@ class TicketDetail(BaseModel):
     escalated_at: Optional[datetime]
     assigned_to: Optional[str] = None
 
+    ticket_number: Optional[str] = None
+
     # Order info
     order_id: Optional[uuid.UUID]
+    order_number: Optional[str] = None
     order_status: Optional[str]
     order_amount: Optional[float]
     order_date: Optional[datetime]

@@ -59,7 +59,7 @@ export default function ResponsePanel({
           color: "var(--text-muted)",
         }}
       >
-        <span>{t("response.ticket")} {response.ticket_id?.substring(0, 8)}…</span>
+        <span>{t("response.ticket")} {response.ticket_number ?? response.ticket_id?.substring(0, 8) + "…"}</span>
         {response.confidence_score != null && (
           <span>{t("response.confidence")} {(response.confidence_score * 100).toFixed(0)}%</span>
         )}

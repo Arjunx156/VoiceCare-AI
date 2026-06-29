@@ -29,17 +29,11 @@ interface SpeechRecognitionEvent {
 
 const MAX_WS_RETRIES = 3;
 const LS_LANG_KEY = "vc_lang";
-const LS_SESSION_KEY = "vc_session";
 const DEFAULT_LANG = "Hindi";
 
 function readStoredLang(): string {
   if (typeof window === "undefined") return DEFAULT_LANG;
   return localStorage.getItem(LS_LANG_KEY) ?? DEFAULT_LANG;
-}
-
-function readStoredSession(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(LS_SESSION_KEY);
 }
 
 export function useVoiceInteraction() {
@@ -56,7 +50,11 @@ export function useVoiceInteraction() {
   // after the refactor it will hold a VoiceErrorCode; VoiceView maps it via t()
   const [errorCode, setErrorCode]         = useState<VoiceErrorCode | null>(null);
   const [selectedLanguage, setSelectedLanguageState] = useState<string>(DEFAULT_LANG);
-  const [sessionId, setSessionId]         = useState<string | null>(() => readStoredSession());
+  // Session is in-memory only: each fresh page mount starts a new conversation,
+  // so a new complaint after navigating away never merges with an old one.
+  // Follow-ups within a single visit still continue (the hook isn't remounted
+  // between mic presses).
+  const [sessionId, setSessionId]         = useState<string | null>(null);
   const [phone, setPhone]                 = useState<string>("");
   const [textInput, setTextInput]         = useState("");
   const [showTextMode, setShowTextMode]   = useState(false);
@@ -197,9 +195,6 @@ export function useVoiceInteraction() {
       const currentSessionId = sessionId || crypto.randomUUID();
       if (!sessionId) {
         setSessionId(currentSessionId);
-        if (typeof window !== "undefined") {
-          localStorage.setItem(LS_SESSION_KEY, currentSessionId);
-        }
       }
 
       let completed = false;
@@ -386,9 +381,6 @@ export function useVoiceInteraction() {
     // Generate a fresh session and reset all UI state
     const newId = crypto.randomUUID();
     setSessionId(newId);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(LS_SESSION_KEY, newId);
-    }
     setResponse(null);
     setTurns([]);
     setIsComplete(false);

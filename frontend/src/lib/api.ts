@@ -39,6 +39,8 @@ export interface VoiceQueryRequest {
 export interface VoiceQueryResponse {
   session_id: string;
   ticket_id: string;
+  ticket_number?: string;   // short customer-facing code, e.g. TKT-9QXM2
+  order_number?: string;    // short order code, e.g. ORD-7K3F
   response_text: string;
   response_audio_base64?: string;
   language: string;
@@ -66,6 +68,7 @@ export interface AgentTraceStep {
 
 export interface TicketSummary {
   ticket_id: string;
+  ticket_number?: string;
   user_name: string;
   phone: string;
   ticket_type: string;
@@ -83,6 +86,7 @@ export interface TicketDetail extends TicketSummary {
   escalated_at?: string;
   assigned_to?: string;
   order_id?: string;
+  order_number?: string;
   order_status?: string;
   order_amount?: number;
   order_date?: string;

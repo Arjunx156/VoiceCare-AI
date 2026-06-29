@@ -50,6 +50,10 @@ class PipelineState(BaseModel):
     extracted_phone: Optional[str] = None
     extracted_name: Optional[str] = None
 
+    # Identity confirmation: set when a caller is matched only loosely (e.g. by
+    # name) and must confirm their order number / phone before we share details.
+    identity_needs_confirmation: bool = False
+
     # Stage 3: Order Lookup
     user_data: Optional[dict] = None
     order_data: Optional[dict] = None
@@ -87,6 +91,7 @@ class PipelineState(BaseModel):
 
     # Stage 9: Ticket Creation
     ticket_id: Optional[str] = None
+    ticket_number: Optional[str] = None       # short, customer-facing code (TKT-xxxxx)
     ticket_created: bool = False
 
     # Trace

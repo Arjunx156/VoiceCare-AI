@@ -160,7 +160,7 @@ export default function TicketDetailPage() {
         <span>›</span>
         <Link href="/dashboard/tickets" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Tickets</Link>
         <span>›</span>
-        <span style={{ color: "var(--text-secondary)" }}>{ticketId.substring(0, 8)}…</span>
+        <span style={{ color: "var(--text-secondary)" }}>{ticket.ticket_number ?? ticketId.substring(0, 8) + "…"}</span>
       </nav>
 
       {/* Header */}

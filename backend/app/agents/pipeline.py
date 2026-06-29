@@ -27,6 +27,7 @@ from app.db.models import (
     VoiceSession, SupportTicket, SupportMessage, SupportResolution,
     CustomerSentiment,
 )
+from app.utils.short_ids import generate_ticket_number
 
 logger = structlog.get_logger()
 
@@ -280,6 +281,7 @@ class VoiceCarePipeline:
                     if order:
                         state.order_data = {
                             "order_id": str(order.order_id),
+                            "order_number": order.order_number,
                             "order_date": str(order.order_date),
                             "status": order.status,
                             "total_amount": float(order.total_amount),
@@ -346,12 +348,54 @@ class VoiceCarePipeline:
 
                         state.lookup_successful = True
 
+            # ---- Name-only fallback ----
+            # If the caller didn't provide a phone/order ID but we extracted a
+            # name, search by name and set a confirmation flag so the response
+            # agent asks the customer to verify before sharing order details.
+            if not state.user_data and state.extracted_name:
+                name_results = (await self.db.execute(
+                    select(User)
+                    .where(User.name.ilike(f"%{state.extracted_name.strip()}%"))
+                    .limit(5)
+                )).scalars().all()
+
+                state.identity_needs_confirmation = True
+
+                if len(name_results) == 1:
+                    candidate = name_results[0]
+                    state.user_data = {
+                        "user_id": str(candidate.user_id),
+                        "name": candidate.name,
+                        "phone": candidate.phone,
+                        "preferred_language": candidate.preferred_language,
+                        "customer_segment": candidate.customer_segment,
+                    }
+                    # Load their most recent order as a *candidate* — we won't
+                    # reveal details until the customer confirms their identity.
+                    order_result = await self.db.execute(
+                        select(Order)
+                        .where(Order.user_id == candidate.user_id)
+                        .order_by(Order.order_date.desc())
+                        .limit(1)
+                    )
+                    candidate_order = order_result.scalar_one_or_none()
+                    if candidate_order:
+                        state.order_data = {
+                            "order_id": str(candidate_order.order_id),
+                            "order_number": candidate_order.order_number,
+                            "order_date": str(candidate_order.order_date),
+                            "status": candidate_order.status,
+                            "total_amount": float(candidate_order.total_amount),
+                        }
+                # If 0 or multiple matches: user_data stays None, confirmation
+                # flag still set so the agent asks for more identification.
+
             state.add_trace(
                 agent_name="Order Lookup",
                 stage_number=3,
                 input_summary=f"Phone: {phone}, Order: {state.input_order_id or state.extracted_order_id}",
-                output_summary=f"Found: user={state.user_data is not None}, order={state.order_data is not None}",
-                decision="Data retrieved from Postgres" if state.lookup_successful else "No matching records",
+                output_summary=f"Found: user={state.user_data is not None}, order={state.order_data is not None}, needs_confirmation={state.identity_needs_confirmation}",
+                decision="Data retrieved from Postgres" if state.lookup_successful else ("Name match — awaiting identity confirmation" if state.identity_needs_confirmation else "No matching records"),
                 duration_ms=(time.time() - start) * 1000,
             )
         except Exception as e:
@@ -421,6 +465,30 @@ class VoiceCarePipeline:
         await self._notify_stage(5, "Determining the best resolution...")
 
         try:
+            # Short-circuit: if the caller was matched only by name, we need
+            # them to confirm their identity before revealing order details.
+            if state.identity_needs_confirmation:
+                if state.order_data:
+                    hint = f"found an order ({state.order_data.get('order_number') or 'an order'}) under the name '{state.user_data.get('name') if state.user_data else state.extracted_name}'"
+                else:
+                    hint = "could not find a unique account for that name"
+                state.recommended_action = "RequestIdentity"
+                state.resolution_summary = (
+                    f"Name-only lookup: {hint}. "
+                    "Ask the customer to confirm their order number or registered phone number before sharing any order details."
+                )
+                state.confidence_score = 0.9
+                state.add_trace(
+                    agent_name="Resolution",
+                    stage_number=5,
+                    input_summary=f"Name lookup — identity_needs_confirmation=True",
+                    output_summary="RequestIdentity — waiting for customer to confirm order/phone",
+                    decision="Short-circuit: name-only match requires confirmation",
+                    reasoning=state.resolution_summary,
+                    duration_ms=(time.time() - start) * 1000,
+                )
+                return state
+
             query = state.transcript_english or state.transcript_original
             result = await self.gemini.generate_resolution(
                 query=query,
@@ -617,10 +685,15 @@ class VoiceCarePipeline:
                 if state.user_data:
                     user_id = uuid.UUID(state.user_data["user_id"])
                 else:
-                    # Get-or-create: if Gemini extracted a phone that already
-                    # exists in the DB, look it up instead of inserting a
-                    # duplicate (which would raise a UniqueViolation).
-                    phone_val = state.extracted_phone or f"temp-{uuid.uuid4().hex[:10]}"
+                    # Get-or-create: if Gemini extracted a phone, look it up; if
+                    # not, key the placeholder to the conversation ID (not a random
+                    # UUID) so an anonymous caller never creates more than one ghost
+                    # row per conversation regardless of how many turns they send.
+                    if state.extracted_phone:
+                        phone_val = state.extracted_phone
+                    else:
+                        conv_hex = str(state.session_id).replace("-", "")[:16]
+                        phone_val = f"anon-{conv_hex}"
                     existing = (await self.db.execute(
                         select(User).where(User.phone == phone_val)
                     )).scalar_one_or_none()
@@ -628,8 +701,10 @@ class VoiceCarePipeline:
                         user_id = existing.user_id
                     else:
                         new_user = User(
-                            name=state.extracted_name or "Anonymous Customer",
+                            name=state.extracted_name or "Anonymous Caller",
                             phone=phone_val,
+                            customer_segment="Anonymous",
+                            created_by="pipeline-anon",
                         )
                         self.db.add(new_user)
                         await self.db.flush()
@@ -684,10 +759,24 @@ class VoiceCarePipeline:
                 is_new_ticket = ticket is None
 
                 if is_new_ticket:
+                    # Generate a short, customer-facing code, retrying on the rare
+                    # collision against the unique ticket_number column.
+                    async def _ticket_number_taken(code: str) -> bool:
+                        return (await self.db.execute(
+                            select(SupportTicket.ticket_id).where(SupportTicket.ticket_number == code)
+                        )).first() is not None
+
+                    ticket_number = generate_ticket_number()
+                    for _ in range(5):
+                        if not await _ticket_number_taken(ticket_number):
+                            break
+                        ticket_number = generate_ticket_number()
+
                     ticket = SupportTicket(
                         user_id=user_id,
                         order_id=order_id,
                         session_id=session.session_id,
+                        ticket_number=ticket_number,
                         ticket_type=self._intent_to_ticket_type(state.intent),
                         priority=state.priority,
                         status="Escalated" if state.is_escalated else "Resolved",
@@ -721,6 +810,7 @@ class VoiceCarePipeline:
                     ticket.updated_by = "ai"
 
                 state.ticket_id = str(ticket.ticket_id)
+                state.ticket_number = ticket.ticket_number
 
                 self.db.add(SupportMessage(
                     ticket_id=ticket.ticket_id,

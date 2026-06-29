@@ -36,7 +36,14 @@ async def list_customers(
     db: AsyncSession = Depends(get_db),
 ):
     """List/search customers with ticket counts and last contact time."""
-    query = select(User).order_by(User.created_at.desc())
+    # Exclude anonymous/temporary placeholders — their tickets are still visible
+    # in the Tickets view; we just don't want them polluting the real directory.
+    _real_customer = (
+        User.customer_segment != "Anonymous",
+        ~User.phone.like("anon-%"),
+        ~User.phone.like("temp-%"),
+    )
+    query = select(User).where(*_real_customer).order_by(User.created_at.desc())
     if search:
         like = f"%{search.strip()}%"
         query = query.where(

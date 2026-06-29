@@ -218,7 +218,8 @@ Rules:
 - Base your decision on the provided policy if relevant.
 - If no specific policy covers this case, use standard e-commerce best practices (e.g., apologize, inform, track).
 - Set confidence_score high (0.8+) if you can reasonably address the query, even without strict policy.
-- ONLY set recommended_action to "Escalate" and requires_human_review to true if the issue is highly sensitive, involves fraud, or strictly requires a human manager."""
+- ONLY set recommended_action to "Escalate" and requires_human_review to true if the issue is highly sensitive, involves fraud, or strictly requires a human manager.
+- When referring to the order, use the short "order_number" (e.g. ORD-7K3F). NEVER use the long internal "order_id" UUID."""
 
         try:
             result = await self._call_gemini(prompt)
@@ -275,7 +276,8 @@ Rules:
 - Don't use markdown, bullet points, or formatting — use natural spoken language
 - LENGTH: Be concise and adaptive. Simple queries (order status, tracking) → 1-2 sentences.
   Complex complaints (damaged/wrong product, refund disputes) → at most 3-4 sentences (~120 words max).
-- Lead with the answer/resolution, then ONE key detail (order ID, date, or amount), then the next step.
+- Lead with the answer/resolution, then ONE key detail (short order number like ORD-7K3F, date, or amount), then the next step.
+- When referencing an order use the short "order_number" field (e.g. ORD-7K3F). NEVER read the long internal UUID order_id.
 - No filler, no repetition, no restating the question back. Every sentence must add information."""
 
         try:
