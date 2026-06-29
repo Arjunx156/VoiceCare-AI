@@ -171,7 +171,7 @@ export default function CustomerProfilePage() {
                 </div>
 
                 {/* Line items / products */}
-                {o.items.length > 0 && (
+                {o.items && o.items.length > 0 && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 10 }}>
                     {o.items.map((it, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 13 }}>
