@@ -57,7 +57,9 @@ class GeminiService:
             wait=retry_state.next_action.sleep,
         ),
     )
-    async def _call_gemini(self, prompt: str, system_instruction: str = "") -> str:
+    async def _call_gemini(
+        self, prompt: str, system_instruction: str = "", max_output_tokens: int = 2048
+    ) -> str:
         """Make a Gemini API call with retry logic and Groq fallback."""
         try:
             import google.api_core.exceptions as _gapi_exc
@@ -65,7 +67,7 @@ class GeminiService:
                 prompt,
                 generation_config=genai.GenerationConfig(
                     temperature=0.3,
-                    max_output_tokens=2048,
+                    max_output_tokens=max_output_tokens,
                     response_mime_type="application/json",
                 ),
                 request_options={"timeout": 30},
@@ -194,7 +196,7 @@ Relevant company policy sections:
 Return a JSON object with exactly these fields:
 {{
     "recommended_action": "<one of: Inform, Refund, Replace, Escalate, Reject, Apologize, Track>",
-    "resolution_summary": "<what you're recommending and why>",
+    "resolution_summary": "<ONE concise sentence: what you're recommending and why>",
     "policy_reference": "<exact quote or reference from the policy, or 'Standard Practice' if none provided>",
     "internal_note": "<note for the support team about this resolution>",
     "confidence_score": <0.0 to 1.0>,
@@ -260,10 +262,14 @@ Rules:
 - If the resolution involves tracking, provide the tracking details
 - If escalating, explain that a human agent will follow up soon
 - Keep the response conversational since it will be spoken aloud (TTS)
-- Don't use markdown, bullet points, or formatting — use natural spoken language"""
+- Don't use markdown, bullet points, or formatting — use natural spoken language
+- LENGTH: Be concise and adaptive. Simple queries (order status, tracking) → 1-2 sentences.
+  Complex complaints (damaged/wrong product, refund disputes) → at most 3-4 sentences (~120 words max).
+- Lead with the answer/resolution, then ONE key detail (order ID, date, or amount), then the next step.
+- No filler, no repetition, no restating the question back. Every sentence must add information."""
 
         try:
-            result = await self._call_gemini(prompt)
+            result = await self._call_gemini(prompt, max_output_tokens=768)
             return self._parse_json(result)
         except Exception as e:
             logger.error("generate_response_fallback", error=str(e))
