@@ -63,13 +63,23 @@ class GeminiService:
         """Make a Gemini API call with retry logic and Groq fallback."""
         try:
             import google.api_core.exceptions as _gapi_exc
+            gen_config_kwargs: dict = {
+                "temperature": 0.3,
+                "max_output_tokens": max_output_tokens,
+                "response_mime_type": "application/json",
+            }
+            # Disable thinking on gemini-2.5-* — thinking tokens eat into
+            # max_output_tokens and cause JSON truncation on non-Latin scripts.
+            try:
+                gen_config_kwargs["thinking_config"] = {"thinking_budget": 0}
+                generation_config = genai.GenerationConfig(**gen_config_kwargs)
+            except (TypeError, AttributeError):
+                gen_config_kwargs.pop("thinking_config", None)
+                generation_config = genai.GenerationConfig(**gen_config_kwargs)
+
             response = self.model.generate_content(
                 prompt,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.3,
-                    max_output_tokens=max_output_tokens,
-                    response_mime_type="application/json",
-                ),
+                generation_config=generation_config,
                 request_options={"timeout": 30},
             )
             return response.text
@@ -269,7 +279,7 @@ Rules:
 - No filler, no repetition, no restating the question back. Every sentence must add information."""
 
         try:
-            result = await self._call_gemini(prompt, max_output_tokens=768)
+            result = await self._call_gemini(prompt, max_output_tokens=2048)
             return self._parse_json(result)
         except Exception as e:
             logger.error("generate_response_fallback", error=str(e))
