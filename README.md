@@ -99,7 +99,7 @@ Only **3 of the 9 agents** make LLM calls. The rest are deterministic — fast, 
 - **Ticket Detail** — 3 tabs: Details, Agent Replay Timeline (full `agent_trace`), Handoff Note
 - **Escalations** — priority queue with Claim / Release workflow
 - **Analytics** — Recharts bar/pie/line charts
-- **JWT Auth** — 24-hour tokens, route-guarded with Next.js middleware proxy
+- **JWT Auth** — 8-hour tokens, route-guarded with Next.js middleware
 
 ### Observability
 - `GET /health` — DB ping + Chroma collection count
@@ -184,14 +184,15 @@ npm run dev
 
 ## Security
 
-- JWT auth (HS256, 24-hour expiry) on all admin routes
-- Secrets validated at startup in production — server refuses to start with empty keys
-- Security headers on every response (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `X-XSS-Protection`)
-- CORS restricted to `FRONTEND_URL` + Vercel preview wildcard
-- WebSocket payloads validated with Pydantic; audio size capped at 10 MB
-- Rate limiting: 5 voice queries/min per session (fail-secure — 503 on limiter failure)
+- **Admin auth** — JWT (HS256, 8-hour expiry) on all `/api/tickets`, `/api/customers`, and `/metrics` routes; constant-time credential comparison (bcrypt); login rate-limited per IP (5 attempts / 15 min). Admin login returns **403 when default secrets are still configured** outside development, so a deploy that forgets `ENVIRONMENT` cannot run with forgeable tokens.
+- **Customer identity verification** — a phone number alone is treated as a claim, not proof. Order/refund/payment details are only shared once the caller corroborates identity (an order ID belonging to the account, a matching name, or a previously verified session). Verification persists per session, so customers are challenged at most once per conversation.
+- **Rate limiting** — REST voice queries: 10/min per IP (anonymous included) + 5/min per phone; voice WebSocket: Origin allowlist, 3 concurrent connections per IP, and a per-message budget sharing the REST counter; dashboard reads: 60/min per IP. If the shared store (Upstash Redis) is unreachable, limiting **degrades to an in-process per-worker counter** rather than disappearing (fail-open with fallback, not fail-secure 503 — a store blip should not take the product down).
+- **Input limits** — request bodies over 15 MB rejected at Content-Length; text ≤ 5 000 chars and audio ≤ 10 MB enforced by schema on both REST and WebSocket.
+- **Error hygiene** — clients never see raw exception text: voice 500s, `/health`, and WebSocket validation errors return generic or field-level messages only; real errors are logged server-side.
+- **Privacy** — `ALLOW_GTTS_FALLBACK=false` disables the Google-Translate TTS fallback (which otherwise ships response text to Google when Bhashini is down); `send_default_pii: false` in Sentry.
+- Security headers on every response (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `X-XSS-Protection`); CORS restricted to `FRONTEND_URL` + Vercel preview wildcard
 - Soft deletes on Users, Orders, and Tickets — data never hard-deleted
-- `send_default_pii: false` in Sentry — no IP or user data sent to error tracking
+- Next.js `middleware.ts` redirects logged-out visitors away from `/dashboard` (UX-only; the API enforces auth server-side)
 
 ---
 
