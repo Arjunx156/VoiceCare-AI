@@ -25,6 +25,35 @@ def event_loop_policy():
 
 
 # ---------------------------------------------------------------------------
+# Memory backend isolation — a developer .env with Upstash credentials would
+# otherwise make tests hit real Redis. Force the in-process backend.
+# ---------------------------------------------------------------------------
+@pytest.fixture(scope="session", autouse=True)
+def _force_in_process_memory():
+    import app.services.memory_service as memory_module
+
+    memory_module._memory_service = memory_module.MemoryService()
+    yield
+    memory_module._memory_service = None
+
+
+# ---------------------------------------------------------------------------
+# Rate-limit isolation — counters live in module-level dicts and would bleed
+# across tests (every test shares the same client IP), so reset before each.
+# ---------------------------------------------------------------------------
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    from app.core import rate_limit
+    from app.services.memory_service import _expiry_store, _memory_store
+
+    for store in (_memory_store, _expiry_store):
+        for key in [k for k in store if k.startswith("rate_limit:")]:
+            store.pop(key, None)
+    rate_limit.reset_in_process_counters()
+    yield
+
+
+# ---------------------------------------------------------------------------
 # In-memory async SQLite DB for fast, isolated tests
 # ---------------------------------------------------------------------------
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"

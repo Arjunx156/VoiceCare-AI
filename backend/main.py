@@ -67,6 +67,14 @@ from data.policies.policy_documents import get_all_policies
 async def lifespan(app: FastAPI):
     """Application startup and shutdown events."""
     logger.info("starting_app", environment=settings.environment)
+    if settings.has_default_secrets:
+        logger.warning(
+            "default_secrets_in_use",
+            hint=(
+                "NEXTAUTH_SECRET and/or ADMIN_PASSWORD are still the shipped defaults. "
+                "Admin login is disabled outside development until they are replaced."
+            ),
+        )
     await init_db()
     logger.info("database_initialized")
     

@@ -10,6 +10,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _REQUIRED_IN_PRODUCTION = ["database_url", "gemini_api_key", "nextauth_secret"]
 
+# Known shipped defaults — any deployed environment must replace these.
+DEFAULT_JWT_SECRET = "dev-secret-change-in-production"
+DEFAULT_ADMIN_PASSWORD = "change_this_in_production"
+
+# Environments where default secrets are tolerated. Anything else (production,
+# staging, or an unset/typo'd ENVIRONMENT on a real deploy) is held to
+# production rules.
+DEV_LIKE_ENVIRONMENTS = ("development", "test")
+
+
+def _is_production_like(environment: str) -> bool:
+    return str(environment).lower() not in DEV_LIKE_ENVIRONMENTS
+
 
 class Settings(BaseSettings):
     """Application configuration loaded from environment variables."""
@@ -47,9 +60,9 @@ class Settings(BaseSettings):
     chroma_persist_dir: str = "./chroma_data"
 
     # ---- Auth ----
-    nextauth_secret: str = "dev-secret-change-in-production"
+    nextauth_secret: str = DEFAULT_JWT_SECRET
     admin_email: str = "admin@voicecare.ai"
-    admin_password: str = "change_this_in_production"
+    admin_password: str = DEFAULT_ADMIN_PASSWORD
 
     # ---- CORS ----
     # When true, any https://*.vercel.app origin is allowed even in production.
@@ -69,6 +82,15 @@ class Settings(BaseSettings):
     gemini_base_delay: float = 1.0
     bhashini_timeout: float = 30.0
     voice_rate_limit_per_minute: int = 5  # max voice queries per phone per minute
+    voice_rate_limit_ip_per_minute: int = 10  # per-IP cap, applies to anonymous callers too
+    login_rate_limit_per_15min: int = 5  # admin login attempts per IP per 15 minutes
+    ws_max_connections_per_ip: int = 3  # concurrent voice WebSocket connections per IP
+
+    # ---- Privacy ----
+    # gTTS fallback sends the response text to translate.google.com when
+    # Bhashini TTS fails. Set false for privacy-sensitive deployments
+    # (response is then delivered text-only when Bhashini is down).
+    allow_gtts_fallback: bool = True
 
     # ----------------------------------------------------------------
     # Validators
@@ -77,37 +99,38 @@ class Settings(BaseSettings):
     @field_validator("admin_password")
     @classmethod
     def validate_admin_password(cls, v: str, info) -> str:
-        """Prevent default/weak passwords in production deployments."""
+        """Prevent default/weak passwords in any deployed (non-dev) environment."""
         environment = (info.data or {}).get("environment", "development")
-        if "change_this" in v.lower() and environment == "production":
+        if "change_this" in v.lower() and _is_production_like(environment):
             raise ValueError(
-                "Admin password must be changed from the default value in production!"
+                "Admin password must be changed from the default value "
+                f"(environment={environment!r})."
             )
         return v
 
     @field_validator("nextauth_secret")
     @classmethod
     def validate_jwt_secret(cls, v: str, info) -> str:
-        """Prevent the default dev JWT secret from being used in production."""
+        """Prevent the default dev JWT secret in any deployed (non-dev) environment."""
         environment = (info.data or {}).get("environment", "development")
-        if v == "dev-secret-change-in-production" and environment == "production":
+        if v == DEFAULT_JWT_SECRET and _is_production_like(environment):
             raise ValueError(
-                "JWT secret must be changed from the default value in production! "
-                "Set NEXTAUTH_SECRET to a strong random value."
+                "JWT secret must be changed from the default value "
+                f"(environment={environment!r}). Set NEXTAUTH_SECRET to a strong random value."
             )
         return v
 
     @model_validator(mode="after")
     def validate_required_secrets(self) -> "Settings":
-        """Fail fast in production if critical secrets are empty."""
-        if self.environment == "production":
+        """Fail fast in deployed environments if critical secrets are empty."""
+        if _is_production_like(self.environment):
             missing = [
                 k for k in _REQUIRED_IN_PRODUCTION
                 if not getattr(self, k, None)
             ]
             if missing:
                 raise ValueError(
-                    f"Required secrets not set for production: {', '.join(missing)}"
+                    f"Required secrets not set for {self.environment}: {', '.join(missing)}"
                 )
         return self
 
@@ -118,6 +141,14 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def has_default_secrets(self) -> bool:
+        """True when either shipped default secret is still configured."""
+        return (
+            self.nextauth_secret == DEFAULT_JWT_SECRET
+            or "change_this" in self.admin_password.lower()
+        )
 
     @property
     def allowed_origins(self) -> list[str]:

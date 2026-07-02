@@ -14,6 +14,7 @@ class TestAdminLogin:
     async def test_login_success(self, test_client):
         """Valid credentials return a JWT access_token."""
         with patch("app.api.auth.settings") as mock_settings:
+            mock_settings.environment = "development"
             mock_settings.admin_email = "admin@test.com"
             mock_settings.admin_password = "testpassword123"
             mock_settings.nextauth_secret = "test-secret"
@@ -33,6 +34,7 @@ class TestAdminLogin:
     async def test_login_wrong_password(self, test_client):
         """Wrong password returns 401."""
         with patch("app.api.auth.settings") as mock_settings:
+            mock_settings.environment = "development"
             mock_settings.admin_email = "admin@test.com"
             mock_settings.admin_password = "correctpassword"
             mock_settings.nextauth_secret = "test-secret"
@@ -48,6 +50,7 @@ class TestAdminLogin:
     async def test_login_wrong_email(self, test_client):
         """Wrong email returns 401."""
         with patch("app.api.auth.settings") as mock_settings:
+            mock_settings.environment = "development"
             mock_settings.admin_email = "admin@test.com"
             mock_settings.admin_password = "testpassword123"
             mock_settings.nextauth_secret = "test-secret"
@@ -128,6 +131,113 @@ class TestRequireAdminDependency:
             with pytest.raises(HTTPException) as exc_info:
                 await require_admin(credentials=creds)
             assert exc_info.value.status_code == 401
+
+
+class TestDefaultCredentialGuard:
+
+    @pytest.mark.asyncio
+    async def test_login_blocked_with_defaults_outside_development(self, test_client):
+        """403 when default secrets are configured in a production-like env."""
+        from app.core.config import DEFAULT_ADMIN_PASSWORD
+
+        with patch("app.api.auth.settings") as mock_settings:
+            mock_settings.environment = "staging"
+            mock_settings.admin_email = "admin@test.com"
+            mock_settings.admin_password = DEFAULT_ADMIN_PASSWORD
+            mock_settings.nextauth_secret = "real-secret"
+
+            response = await test_client.post(
+                "/api/auth/login",
+                json={"email": "admin@test.com", "password": DEFAULT_ADMIN_PASSWORD},
+            )
+
+        assert response.status_code == 403
+        assert "default credentials" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_login_allowed_with_defaults_in_development(self, test_client):
+        """Local dev keeps working with the shipped defaults."""
+        from app.core.config import DEFAULT_ADMIN_PASSWORD, DEFAULT_JWT_SECRET
+
+        with patch("app.api.auth.settings") as mock_settings:
+            mock_settings.environment = "development"
+            mock_settings.admin_email = "admin@voicecare.ai"
+            mock_settings.admin_password = DEFAULT_ADMIN_PASSWORD
+            mock_settings.nextauth_secret = DEFAULT_JWT_SECRET
+
+            response = await test_client.post(
+                "/api/auth/login",
+                json={"email": "admin@voicecare.ai", "password": DEFAULT_ADMIN_PASSWORD},
+            )
+
+        assert response.status_code == 200
+        assert "access_token" in response.json()
+
+    @pytest.mark.asyncio
+    async def test_default_jwt_secret_alone_blocks_login(self, test_client):
+        """A changed password but default JWT secret still blocks (forgeable tokens)."""
+        from app.core.config import DEFAULT_JWT_SECRET
+
+        with patch("app.api.auth.settings") as mock_settings:
+            mock_settings.environment = "production"
+            mock_settings.admin_email = "admin@test.com"
+            mock_settings.admin_password = "a-strong-password"
+            mock_settings.nextauth_secret = DEFAULT_JWT_SECRET
+
+            response = await test_client.post(
+                "/api/auth/login",
+                json={"email": "admin@test.com", "password": "a-strong-password"},
+            )
+
+        assert response.status_code == 403
+
+
+class TestLoginRateLimit:
+
+    @pytest.mark.asyncio
+    async def test_login_rate_limited_after_repeated_attempts(self, test_client):
+        """The attempt after the per-IP limit returns 429 with Retry-After."""
+        from app.core.config import get_settings
+
+        limit = get_settings().login_rate_limit_per_15min
+        with patch("app.api.auth.settings") as mock_settings:
+            mock_settings.environment = "development"
+            mock_settings.admin_email = "admin@test.com"
+            mock_settings.admin_password = "correcthorse"
+            mock_settings.nextauth_secret = "test-secret"
+
+            for _ in range(limit):
+                response = await test_client.post(
+                    "/api/auth/login",
+                    json={"email": "admin@test.com", "password": "wrong"},
+                )
+                assert response.status_code == 401
+
+            response = await test_client.post(
+                "/api/auth/login",
+                json={"email": "admin@test.com", "password": "wrong"},
+            )
+
+        assert response.status_code == 429
+        assert "Retry-After" in response.headers
+
+
+class TestTokenExpiry:
+
+    def test_token_expires_in_eight_hours(self):
+        """Access tokens carry an 8-hour expiry claim."""
+        from jose import jwt as jose_jwt
+
+        from app.api.auth import _TOKEN_EXPIRE_HOURS, _create_token
+
+        assert _TOKEN_EXPIRE_HOURS == 8
+
+        with patch("app.api.auth.settings") as mock_settings:
+            mock_settings.nextauth_secret = "expiry-secret"
+            token = _create_token("admin@test.com")
+            claims = jose_jwt.decode(token, "expiry-secret", algorithms=["HS256"])
+
+        assert claims["exp"] - claims["iat"] == 8 * 3600
 
 
 class TestWhoamiEndpoint:
