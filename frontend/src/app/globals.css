@@ -20,7 +20,12 @@
   /* ---- Text ---- */
   --text-primary:   #F5F5F5;
   --text-secondary: #9A9A9A;
-  --text-muted:     #5A5A5A;
+  /* Muted must stay AA-readable (~5.6:1 on --bg-base) — it is used for real
+     copy (dates, subtitles, empty states), not just decoration. */
+  --text-muted:     #8A8A8A;
+  /* Faint is for purely decorative marks (dividers, ghost glyphs) — never
+     for text that must be read. */
+  --text-faint:     #5A5A5A;
 
   /* ---- Borders / Depth (no shadows — only contrast + 1px) ---- */
   --border-subtle:  #262626;
@@ -34,15 +39,8 @@
   --status-calm:    #607D8B;      /* grey-blue */
   --status-angry:   #E53935;
 
-  /* ---- Legacy aliases (keeps existing components working) ---- */
-  --primary:        #FF5A2B;
-  --primary-light:  #FF7B55;
-  --accent-light:   #FF7B55;
-  --success:        #4CAF73;
-  --warning:        #D4A017;
+  /* ---- Semantic alias ---- */
   --error:          #E53935;
-  --info:           #607D8B;
-  --text-muted-old: #5A5A5A;
 
   /* ---- Font ---- */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -68,6 +66,28 @@ body {
   background: var(--bg-base);
   color: var(--text-primary);
   min-height: 100vh;
+}
+
+/* ---- Focus (keyboard users get a visible coral ring; mouse users don't) ---- */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ---- Screen-reader-only utility ---- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ---- Scrollbar ---- */
@@ -100,16 +120,17 @@ body {
   border-color: var(--border-raised);
 }
 
-/* ---- Legacy glass-card alias (keeps old components building) ---- */
-.glass-card {
-  background: var(--bg-panel);
-  border: 1px solid var(--border-subtle);
-  border-radius: 18px;
-  transition: transform 150ms ease-out, border-color 150ms ease-out;
+/* ---- Spinner (single definition — replaces per-page inline keyframes) ---- */
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
-.glass-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--border-raised);
+.spinner {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--border-subtle);
+  border-top-color: var(--accent);
+  animation: spin 1s linear infinite;
 }
 
 /* ---- Pill Button ---- */
@@ -125,7 +146,6 @@ body {
   font-weight: 600;
   cursor: pointer;
   border: none;
-  outline: none;
   transition: transform 150ms ease-out, filter 150ms ease-out;
   white-space: nowrap;
 }
@@ -176,7 +196,7 @@ body {
 .status-dot.active    { background: var(--status-low); }
 .status-dot.escalated { background: var(--status-high); }
 .status-dot.pending   { background: var(--status-medium); }
-.status-dot.open      { background: var(--info); }
+.status-dot.open      { background: var(--status-calm); }
 
 /* ---- Language Pill (trust bar) ---- */
 .lang-pill {
