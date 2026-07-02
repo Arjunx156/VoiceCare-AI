@@ -8,7 +8,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ConversationThread from "@/components/ConversationThread";
 import BhashiniWarning from "@/components/BhashiniWarning";
-import { GlowBackdrop, GrainOverlay } from "@/components/ui";
+import { AuroraBackdrop, GrainOverlay } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { useVoiceInteraction } from "@/hooks/useVoiceInteraction";
 
@@ -97,11 +97,8 @@ export default function VoiceView(props: VoiceState) {
       }}
     >
       {/* Atmosphere — decorative, behind all content */}
+      <AuroraBackdrop />
       <GrainOverlay />
-      <GlowBackdrop
-        size={620}
-        style={{ top: "22%", left: "50%", transform: "translateX(-50%)" }}
-      />
 
       <Header />
 

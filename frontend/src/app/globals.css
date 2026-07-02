@@ -465,6 +465,30 @@ body {
 }
 .glow-animate { animation: glow-drift 9s ease-in-out infinite; }
 
+/* ---- Aurora backdrop: 4 drifting coral blobs (adapted from 21st.dev,
+   rethemed to tokens; GPU-only transform/opacity, decorative). ---- */
+.aurora {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(110px);
+  will-change: transform, opacity;
+}
+.aurora-blob.b1 { left: 8%;  top: 14%;    width: 460px; height: 460px; background: var(--accent);   opacity: 0.30; animation: aurora-1 20s ease-in-out infinite; }
+.aurora-blob.b2 { right: 12%; top: 34%;   width: 380px; height: 380px; background: var(--accent-2); opacity: 0.24; animation: aurora-2 25s ease-in-out infinite; }
+.aurora-blob.b3 { left: 28%; bottom: 16%; width: 420px; height: 420px; background: var(--accent);   opacity: 0.20; animation: aurora-3 22s ease-in-out infinite; }
+.aurora-blob.b4 { right: 22%; bottom: 24%; width: 320px; height: 320px; background: var(--accent-2); opacity: 0.22; animation: aurora-4 28s ease-in-out infinite; }
+@keyframes aurora-1 { 0%,100% { transform: translate3d(0,0,0) scale(1); } 33% { transform: translate3d(48px,-28px,0) scale(1.1); } 66% { transform: translate3d(-28px,38px,0) scale(0.95); } }
+@keyframes aurora-2 { 0%,100% { transform: translate3d(0,0,0) scale(1); } 33% { transform: translate3d(-38px,48px,0) scale(1.05); } 66% { transform: translate3d(56px,-18px,0) scale(0.9); } }
+@keyframes aurora-3 { 0%,100% { transform: translate3d(0,0,0) scale(1); } 33% { transform: translate3d(-48px,-38px,0) scale(1.08); } 66% { transform: translate3d(38px,28px,0) scale(0.92); } }
+@keyframes aurora-4 { 0%,100% { transform: translate3d(0,0,0) scale(1); } 33% { transform: translate3d(42px,32px,0) scale(0.95); } 66% { transform: translate3d(-32px,-42px,0) scale(1.1); } }
+
 /* ---- Reduced motion overrides ---- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

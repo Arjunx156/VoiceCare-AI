@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { adminLogin, getAuthToken, clearAuthToken } from "@/lib/api";
-import { Button, GlowBackdrop, GrainOverlay, Panel } from "@/components/ui";
+import { AuroraBackdrop, Button, GrainOverlay, Panel } from "@/components/ui";
 
 // Only honor internal, single-slash paths as a redirect target — never an
 // absolute URL or protocol-relative "//host" (open-redirect protection).
@@ -208,9 +208,8 @@ export default function LoginPage() {
         padding: "48px 24px",
       }}
     >
+      <AuroraBackdrop />
       <GrainOverlay />
-      <GlowBackdrop size={640} style={{ top: "-10%", left: "-8%" }} />
-      <GlowBackdrop size={520} animate={false} style={{ bottom: "-14%", right: "-6%", opacity: 0.35 }} />
 
       <div
         className="login-shell"

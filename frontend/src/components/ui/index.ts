@@ -1,3 +1,4 @@
+export { AuroraBackdrop } from "./AuroraBackdrop";
 export { Badge, PriorityBadge, SentimentBadge, StatusBadge } from "./Badge";
 export { Button } from "./Button";
 export { CountUp } from "./CountUp";
