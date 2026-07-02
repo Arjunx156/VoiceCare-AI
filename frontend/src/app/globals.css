@@ -346,6 +346,32 @@ body {
   color: var(--text-primary);
 }
 
+/* ---- Quick-query suggestion chip (one tap sends the query) ---- */
+.query-chip {
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: border-color 150ms ease-out, background 150ms ease-out, transform 150ms ease-out;
+}
+.query-chip:hover:not(:disabled) {
+  border-color: var(--accent-border);
+  background: var(--bg-panel-raised);
+  transform: translateY(-1px);
+}
+.query-chip:active:not(:disabled) {
+  transform: translateY(0);
+}
+.query-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ---- Record Button Active Ring ---- */
 @keyframes record-ring {
   0%   { transform: scale(1);   opacity: 0.4; }

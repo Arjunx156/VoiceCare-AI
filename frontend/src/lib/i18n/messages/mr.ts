@@ -7,6 +7,9 @@ const mr: Messages = {
   "voice.eyebrow.done": "पूर्ण",
   "voice.eyebrow.idle": "व्हॉइस सहाय्य",
   "voice.restored": "या संभाषणात आधी",
+  "voice.chip.order": "माझी ऑर्डर कुठे आहे?",
+  "voice.chip.refund": "माझ्या रिफंडचे काय झाले?",
+  "voice.chip.damaged": "मला खराब झालेले प्रॉडक्ट मिळाले",
 
   "voice.headline.listening": "मी ऐकत आहे…",
   "voice.headline.thinking": "काम सुरू आहे…",

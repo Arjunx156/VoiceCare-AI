@@ -454,6 +454,16 @@ export function useVoiceInteraction() {
     setTextInput("");
   }, [textInput, isProcessing, processQuery]);
 
+  // One-tap text query (quick-suggestion chips) — same pipeline as typed input.
+  const submitText = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || isProcessing || isListening) return;
+      processQuery({ text: trimmed });
+    },
+    [processQuery, isProcessing, isListening],
+  );
+
   const startNewConversation = useCallback(async () => {
     stopCurrentTTS();
     // Clear server-side memory for the current session
@@ -499,6 +509,7 @@ export function useVoiceInteraction() {
     startRecording,
     stopRecording,
     handleTextSubmit,
+    submitText,
     startNewConversation,
     sessionId,
   };

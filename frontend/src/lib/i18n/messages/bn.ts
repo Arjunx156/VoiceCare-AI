@@ -7,6 +7,9 @@ const bn: Messages = {
   "voice.eyebrow.done": "সম্পন্ন",
   "voice.eyebrow.idle": "ভয়েস সহায়তা",
   "voice.restored": "এই কথোপকথনের আগের অংশ",
+  "voice.chip.order": "আমার অর্ডার কোথায়?",
+  "voice.chip.refund": "আমার রিফান্ডের কী অবস্থা?",
+  "voice.chip.damaged": "আমি একটি ক্ষতিগ্রস্ত পণ্য পেয়েছি",
 
   "voice.headline.listening": "আমি শুনছি…",
   "voice.headline.thinking": "কাজ চলছে…",

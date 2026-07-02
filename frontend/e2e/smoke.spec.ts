@@ -45,6 +45,11 @@ test("voice landing page renders the hero and language pills", async ({ page }) 
   // Language trust bar
   await expect(page.getByRole("button", { name: "Tamil" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Hindi" })).toBeVisible();
+
+  // One-tap starter query chips (idle/first-visit only). Default UI language
+  // is Hindi, so the chip text is the Hindi catalog entry — this also guards
+  // the i18n wiring.
+  await expect(page.getByRole("button", { name: "मेरा ऑर्डर कहाँ है?" })).toBeVisible();
 });
 
 test("unauthenticated /dashboard is redirected to /login by middleware", async ({ page }) => {

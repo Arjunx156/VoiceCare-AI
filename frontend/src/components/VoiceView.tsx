@@ -125,6 +125,7 @@ export default function VoiceView(props: VoiceState) {
     startRecording,
     stopRecording,
     handleTextSubmit,
+    submitText,
     startNewConversation,
     phone,
     setPhone,
@@ -269,6 +270,37 @@ export default function VoiceView(props: VoiceState) {
             />
           </Suspense>
         </motion.div>
+
+        {/* One-tap starter queries — first-visit only, in the selected language */}
+        {showLanguageLine && (
+          <motion.div
+            custom={2.5}
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              gap: 8,
+              marginTop: 20,
+            }}
+          >
+            {(["voice.chip.order", "voice.chip.refund", "voice.chip.damaged"] as const).map(
+              (key) => (
+                <button
+                  key={key}
+                  type="button"
+                  className="query-chip"
+                  disabled={isListening || isProcessing}
+                  onClick={() => submitText(t(key))}
+                >
+                  {t(key)}
+                </button>
+              ),
+            )}
+          </motion.div>
+        )}
 
         <AnimatePresence>
           {isListening && liveTranscript && (

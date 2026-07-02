@@ -9,7 +9,9 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getAnalytics, getEscalations, type AnalyticsOverview, type TicketSummary } from "@/lib/api";
+import { chartTooltipStyle } from "@/lib/theme";
 import { useMotionSafe } from "@/lib/motion";
 import { Button, EmptyState, LanguageLabel, LoadingBlock, PriorityBadge, StatCard } from "@/components/ui";
 
@@ -67,14 +69,17 @@ export default function DashboardPage() {
   const { analytics, escalations } = current;
   const total = analytics.total_tickets || 0;
 
-  const stats = [
-    { label: "TOTAL",      value: total,                              hint: "all time" },
-    { label: "OPEN",       value: analytics.open_tickets || 0,        hint: "awaiting resolution" },
-    { label: "ESCALATED",  value: analytics.escalated_tickets || 0,   hint: "needs human" },
-    { label: "RESOLVED",   value: analytics.resolved_tickets || 0,    hint: "closed" },
+  const escalatedCount = analytics.escalated_tickets || 0;
+
+  // The two numbers an operator checks first, at featured size; the rest compact.
+  const compactStats = [
+    { label: "TOTAL",      value: total,                                hint: "all time" },
+    { label: "RESOLVED",   value: analytics.resolved_tickets || 0,      hint: "closed" },
     { label: "RESOLUTION", value: `${analytics.resolution_rate || 0}%`, hint: "resolution rate" },
     { label: "ESCALATION", value: `${analytics.escalation_rate || 0}%`, hint: "escalation rate" },
   ];
+
+  const trend = analytics.tickets_over_time || [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
@@ -87,14 +92,79 @@ export default function DashboardPage() {
         </p>
       </motion.div>
 
-      {/* Stats — 4 primary + 2 rate */}
+      {/* Featured pair — what needs attention right now */}
+      <div className="grid-half">
+        <motion.div {...entry(0.05)}>
+          <StatCard
+            featured
+            label="OPEN NOW"
+            value={analytics.open_tickets || 0}
+            hint="awaiting resolution"
+          />
+        </motion.div>
+        <motion.div {...entry(0.1)}>
+          <StatCard
+            featured
+            label="ESCALATED"
+            value={escalatedCount}
+            tone={escalatedCount > 0 ? "danger" : "default"}
+            hint={escalatedCount > 0 ? "need a human now" : "queue is clear"}
+          />
+        </motion.div>
+      </div>
+
+      {/* Compact stat row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
-        {stats.map((s, i) => (
-          <motion.div key={s.label} {...entry(i * 0.06)}>
+        {compactStats.map((s, i) => (
+          <motion.div key={s.label} {...entry(0.15 + i * 0.05)}>
             <StatCard {...s} />
           </motion.div>
         ))}
       </div>
+
+      {/* Ticket volume trend — the pipeline's heartbeat over time */}
+      {trend.length > 1 && (
+        <motion.div {...entry(0.3)} className="panel" style={{ padding: "24px 28px 10px" }}>
+          <span className="eyebrow">VOLUME</span>
+          <h2 className="section-title" style={{ marginBottom: 16 }}>
+            Tickets Over Time
+          </h2>
+          <ResponsiveContainer width="100%" height={150}>
+            <AreaChart data={trend} margin={{ left: -24, right: 4, top: 4 }}>
+              <defs>
+                <linearGradient id="volumeFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#FF5A2B" stopOpacity={0.25} />
+                  <stop offset="100%" stopColor="#FF5A2B" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis
+                dataKey="date"
+                tick={{ fill: "#8A8A8A", fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fill: "#8A8A8A", fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+                width={32}
+              />
+              <Tooltip {...chartTooltipStyle} />
+              <Area
+                type="monotone"
+                dataKey="count"
+                stroke="#FF5A2B"
+                strokeWidth={2}
+                fill="url(#volumeFill)"
+                dot={false}
+                activeDot={{ r: 3, fill: "#FF5A2B", strokeWidth: 0 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </motion.div>
+      )}
 
       {/* Asymmetric two-column: large chart block + smaller stat cards
           (collapses to one column under 900px — .grid-main-side) */}

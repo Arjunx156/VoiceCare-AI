@@ -7,6 +7,9 @@ const kn: Messages = {
   "voice.eyebrow.done": "ಮುಗಿದಿದೆ",
   "voice.eyebrow.idle": "ವಾಯ್ಸ್ ಸಹಾಯ",
   "voice.restored": "ಈ ಸಂಭಾಷಣೆಯಲ್ಲಿ ಹಿಂದೆ",
+  "voice.chip.order": "ನನ್ನ ಆರ್ಡರ್ ಎಲ್ಲಿದೆ?",
+  "voice.chip.refund": "ನನ್ನ ರೀಫಂಡ್ ಸ್ಥಿತಿ ಏನು?",
+  "voice.chip.damaged": "ನನಗೆ ಹಾಳಾದ ಉತ್ಪನ್ನ ಬಂದಿದೆ",
 
   "voice.headline.listening": "ನಾನು ಆಲಿಸುತ್ತಿದ್ದೇನೆ…",
   "voice.headline.thinking": "ಕೆಲಸ ಮಾಡುತ್ತಿದ್ದೇನೆ…",
