@@ -52,6 +52,20 @@ test("voice landing page renders the hero and language pills", async ({ page }) 
   await expect(page.getByRole("button", { name: "मेरा ऑर्डर कहाँ है?" })).toBeVisible();
 });
 
+test("record button sits with the orb, in view without scrolling on a phone", async ({ page }) => {
+  await page.route("**/health", (route) => route.fulfill({ json: { status: "ok" } }));
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto("/");
+
+  // The accent pill with aria-pressed is the record control; it must be fully
+  // inside the initial viewport (the old layout pushed it below the fold).
+  const mic = page.locator("button.btn-pill-accent[aria-pressed]");
+  await expect(mic).toBeVisible();
+  const box = await mic.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.y + box!.height).toBeLessThanOrEqual(667);
+});
+
 test("unauthenticated /dashboard is redirected to /login by middleware", async ({ page }) => {
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login/);

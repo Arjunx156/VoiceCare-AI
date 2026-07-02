@@ -168,7 +168,9 @@ export default function VoiceView(props: VoiceState) {
   return (
     <main
       style={{
-        minHeight: "100vh",
+        // dvh, not vh: on mobile the browser chrome overlaps 100vh and the
+        // bottom controls get clipped/cramped.
+        minHeight: "100dvh",
         background: "var(--bg-base)",
         display: "flex",
         flexDirection: "column",
@@ -227,14 +229,14 @@ export default function VoiceView(props: VoiceState) {
           initial="hidden"
           animate="show"
           style={{
-            fontSize: "clamp(30px, 5.5vw, 50px)",
+            fontSize: "clamp(28px, 5vw, 44px)",
             fontWeight: 800,
             color: "var(--text-primary)",
             textAlign: "center",
             lineHeight: 1.08,
             letterSpacing: "-0.025em",
             maxWidth: "18ch",
-            marginBottom: showLanguageLine ? 14 : 32,
+            marginBottom: showLanguageLine ? 10 : 24,
           }}
         >
           {headline}
@@ -246,7 +248,7 @@ export default function VoiceView(props: VoiceState) {
             variants={fadeUp}
             initial="hidden"
             animate="show"
-            style={{ marginBottom: 24, textAlign: "center" }}
+            style={{ marginBottom: 12, textAlign: "center" }}
           >
             <RotatingLanguageLine />
             <span className="sr-only">
@@ -255,12 +257,14 @@ export default function VoiceView(props: VoiceState) {
           </motion.div>
         )}
 
+        {/* The orb + record button are ONE focal unit: the primary action
+            lives where the eye already is, not in a distant footer. */}
         <motion.div
           custom={2}
           variants={fadeUp}
           initial="hidden"
           animate="show"
-          style={{ width: "100%", height: 320 }}
+          style={{ width: "100%", height: 256 }}
         >
           <Suspense fallback={<div style={{ width: "100%", height: "100%" }} />}>
             <VoiceOrb
@@ -270,6 +274,77 @@ export default function VoiceView(props: VoiceState) {
             />
           </Suspense>
         </motion.div>
+
+        {!showTextMode && (
+          <motion.div
+            custom={2.2}
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            style={{
+              position: "relative",
+              zIndex: 2,
+              marginTop: -24,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {isListening && <span className="record-ring" />}
+            <motion.button
+              whileHover={!isProcessing ? { scale: 1.02 } : {}}
+              whileTap={!isProcessing ? { scale: 0.98 } : {}}
+              onClick={isListening ? stopRecording : startRecording}
+              disabled={isProcessing}
+              className="btn-pill btn-pill-accent"
+              style={{
+                width: 72,
+                height: 72,
+                padding: 0,
+                fontSize: 20,
+                background: isListening ? "var(--error)" : "var(--accent)",
+                // Busy reads as "working" (spinner, slight dim) — not disabled-broken.
+                opacity: isProcessing ? 0.75 : 1,
+                cursor: isProcessing ? "not-allowed" : "pointer",
+              }}
+              aria-label={
+                isProcessing
+                  ? t("status.processing")
+                  : isListening
+                  ? t("footer.stopRecording")
+                  : t("footer.startRecording")
+              }
+              aria-pressed={isListening}
+            >
+              {isProcessing ? (
+                // Busy ring (white on accent) — reuses the global `spin`
+                // keyframe; freezes under prefers-reduced-motion.
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    border: "2.5px solid rgba(255,255,255,0.35)",
+                    borderTopColor: "#fff",
+                    animation: "spin 1s linear infinite",
+                    display: "inline-block",
+                  }}
+                />
+              ) : isListening ? (
+                <svg width="18" height="18" fill="white" viewBox="0 0 24 24">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" fill="white" viewBox="0 0 24 24">
+                  <path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" />
+                  <line x1="12" y1="19" x2="12" y2="23" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              )}
+            </motion.button>
+          </motion.div>
+        )}
 
         {/* One-tap starter queries — first-visit only, in the selected language */}
         {showLanguageLine && (
@@ -283,7 +358,7 @@ export default function VoiceView(props: VoiceState) {
               flexWrap: "wrap",
               justifyContent: "center",
               gap: 8,
-              marginTop: 20,
+              marginTop: 18,
             }}
           >
             {(["voice.chip.order", "voice.chip.refund", "voice.chip.damaged"] as const).map(
@@ -375,8 +450,6 @@ export default function VoiceView(props: VoiceState) {
         setShowTextMode={setShowTextMode}
         isListening={isListening}
         isProcessing={isProcessing}
-        startRecording={startRecording}
-        stopRecording={stopRecording}
         textInput={textInput}
         setTextInput={setTextInput}
         handleTextSubmit={handleTextSubmit}
