@@ -240,17 +240,102 @@ class TestTokenExpiry:
         assert claims["exp"] - claims["iat"] == 8 * 3600
 
 
+class TestLogoutRevocation:
+
+    @pytest.mark.asyncio
+    async def test_logout_revokes_token(self, test_client):
+        """A token stops working the moment it is logged out."""
+        from app.api.auth import _create_token
+
+        with patch("app.api.auth.settings") as mock_settings:
+            mock_settings.nextauth_secret = "revoke-secret"
+            token = _create_token("admin@voicecare.ai")
+            headers = {"Authorization": f"Bearer {token}"}
+
+            before = await test_client.get("/api/auth/me", headers=headers)
+            assert before.status_code == 200
+
+            logout = await test_client.post("/api/auth/logout", headers=headers)
+            assert logout.status_code == 200
+
+            after = await test_client.get("/api/auth/me", headers=headers)
+            assert after.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_logout_is_idempotent(self, test_client):
+        """Logging out twice with the same token succeeds both times."""
+        from app.api.auth import _create_token
+
+        with patch("app.api.auth.settings") as mock_settings:
+            mock_settings.nextauth_secret = "revoke-secret"
+            token = _create_token("admin@voicecare.ai")
+            headers = {"Authorization": f"Bearer {token}"}
+
+            first = await test_client.post("/api/auth/logout", headers=headers)
+            second = await test_client.post("/api/auth/logout", headers=headers)
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_logout_does_not_revoke_other_tokens(self, test_client):
+        """Revocation targets one jti — a fresh login still works."""
+        from app.api.auth import _create_token
+
+        with patch("app.api.auth.settings") as mock_settings:
+            mock_settings.nextauth_secret = "revoke-secret"
+            old_token = _create_token("admin@voicecare.ai")
+            new_token = _create_token("admin@voicecare.ai")
+
+            logout = await test_client.post(
+                "/api/auth/logout", headers={"Authorization": f"Bearer {old_token}"}
+            )
+            assert logout.status_code == 200
+
+            still_valid = await test_client.get(
+                "/api/auth/me", headers={"Authorization": f"Bearer {new_token}"}
+            )
+        assert still_valid.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_logout_without_token_401(self, test_client):
+        resp = await test_client.post("/api/auth/logout")
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_logout_with_garbage_token_401(self, test_client):
+        resp = await test_client.post(
+            "/api/auth/logout", headers={"Authorization": "Bearer not.a.token"}
+        )
+        assert resp.status_code == 401
+
+    def test_tokens_carry_unique_jti(self):
+        """Every issued token gets its own jti claim."""
+        from jose import jwt as jose_jwt
+
+        from app.api.auth import _create_token
+
+        with patch("app.api.auth.settings") as mock_settings:
+            mock_settings.nextauth_secret = "jti-secret"
+            a = jose_jwt.decode(_create_token("x"), "jti-secret", algorithms=["HS256"])
+            b = jose_jwt.decode(_create_token("x"), "jti-secret", algorithms=["HS256"])
+
+        assert a["jti"] and b["jti"]
+        assert a["jti"] != b["jti"]
+
+
 class TestWhoamiEndpoint:
 
     @pytest.mark.asyncio
     async def test_whoami_with_valid_token(self, test_client):
         """GET /api/auth/me returns admin email when authenticated."""
         from app.api.auth import _create_token
+
+        # Keep the settings patch active through the request so the app decodes
+        # with the same secret the token was signed with.
         with patch("app.api.auth.settings") as mock_settings:
             mock_settings.nextauth_secret = "test-secret"
             token = _create_token("admin@voicecare.ai")
-
-        with patch("app.api.auth._verify_token", return_value="admin@voicecare.ai"):
             response = await test_client.get(
                 "/api/auth/me",
                 headers={"Authorization": f"Bearer {token}"},

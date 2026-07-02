@@ -266,6 +266,22 @@ export async function adminLogin(email: string, password: string): Promise<void>
   }
 }
 
+export async function adminLogout(): Promise<void> {
+  const token = getAuthToken();
+  if (!token) return;
+  try {
+    // keepalive lets the revocation request survive the immediate navigation
+    // to /login. Best-effort: local sign-out proceeds even if this fails.
+    await fetch(`${BACKEND_URL}/api/auth/logout`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      keepalive: true,
+    });
+  } catch {
+    /* token still expires server-side at its 8h limit */
+  }
+}
+
 export async function claimTicket(ticketId: string): Promise<{ ticket_id: string; status: string; assigned_to: string }> {
   return apiFetch(`/api/tickets/${ticketId}/claim`, { method: "PATCH" });
 }

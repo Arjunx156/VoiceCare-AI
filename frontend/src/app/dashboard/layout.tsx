@@ -10,7 +10,7 @@ import React, { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { clearAuthToken, getAuthToken } from "@/lib/api";
+import { adminLogout, clearAuthToken, getAuthToken } from "@/lib/api";
 import { useMotionSafe } from "@/lib/motion";
 
 class DashboardErrorBoundary extends React.Component<
@@ -86,6 +86,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   function handleLogout() {
+    // Fire-and-forget server-side revocation (keepalive survives the redirect);
+    // never block local sign-out on the network.
+    void adminLogout();
     clearAuthToken();
     window.location.assign("/login");
   }

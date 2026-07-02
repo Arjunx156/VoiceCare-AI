@@ -4,6 +4,7 @@ Provides admin login and a reusable FastAPI dependency for protected routes.
 """
 
 import secrets as _secrets
+import uuid
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from typing import Optional
@@ -23,6 +24,7 @@ from app.core.config import (
 )
 from app.core.errors import ErrorMessages
 from app.core.rate_limit import enforce as enforce_rate_limit, get_client_ip
+from app.services.memory_service import get_memory_service
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -85,19 +87,47 @@ def _default_credentials_blocked() -> bool:
 def _create_token(subject: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(hours=_TOKEN_EXPIRE_HOURS)
     return jwt.encode(
-        {"sub": subject, "exp": expire, "iat": datetime.now(timezone.utc)},
+        {
+            "sub": subject,
+            "exp": expire,
+            "iat": datetime.now(timezone.utc),
+            # Unique token id — lets logout revoke this token server-side.
+            "jti": uuid.uuid4().hex,
+        },
         settings.nextauth_secret,
         algorithm=_ALGORITHM,
     )
 
 
-def _verify_token(token: str) -> Optional[str]:
-    """Return the subject claim, or None if token is invalid/expired."""
+def _decode_claims(token: str) -> Optional[dict]:
+    """Return all verified claims, or None if the token is invalid/expired."""
     try:
-        payload = jwt.decode(token, settings.nextauth_secret, algorithms=[_ALGORITHM])
-        return payload.get("sub")
+        return jwt.decode(token, settings.nextauth_secret, algorithms=[_ALGORITHM])
     except JWTError:
         return None
+
+
+def _verify_token(token: str) -> Optional[str]:
+    """Return the subject claim, or None if token is invalid/expired."""
+    claims = _decode_claims(token)
+    return claims.get("sub") if claims else None
+
+
+def _revocation_key(jti: str) -> str:
+    return f"revoked_jti:{jti}"
+
+
+async def _is_revoked(claims: dict) -> bool:
+    """True when the token's jti is on the logout denylist.
+
+    Tokens minted before jti existed carry no jti and cannot be individually
+    revoked — they simply age out at their 8h expiry.
+    """
+    jti = claims.get("jti")
+    if not jti:
+        return False
+    memory = await get_memory_service()
+    return await memory.get_cache(_revocation_key(jti)) is not None
 
 
 # ----------------------------------------------------------------
@@ -107,11 +137,16 @@ def _verify_token(token: str) -> Optional[str]:
 async def require_admin(
     credentials: Optional[HTTPAuthorizationCredentials] = Security(_bearer),
 ) -> str:
-    """FastAPI dependency — raises 401 if the bearer token is missing or invalid."""
+    """FastAPI dependency — raises 401 if the bearer token is missing, invalid,
+    or has been revoked by logout."""
     if not credentials:
         raise HTTPException(status_code=401, detail=ErrorMessages.INVALID_CREDENTIALS)
-    subject = _verify_token(credentials.credentials)
-    if not subject:
+    claims = _decode_claims(credentials.credentials)
+    subject = claims.get("sub") if claims else None
+    if not claims or not subject:
+        raise HTTPException(status_code=401, detail="Token invalid or expired.")
+    if await _is_revoked(claims):
+        # Same message as an expired token — no oracle for revocation state.
         raise HTTPException(status_code=401, detail="Token invalid or expired.")
     return subject
 
@@ -161,6 +196,35 @@ async def admin_login(body: LoginRequest, request: Request):
     token = _create_token(subject=body.email)
     logger.info("admin_login_success")
     return TokenResponse(access_token=token)
+
+
+@router.post("/logout")
+async def admin_logout(
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(_bearer),
+):
+    """Revoke the presented token server-side (jti denylist until its expiry).
+
+    Idempotent: revoking an already-revoked token succeeds. Legacy tokens
+    without a jti can't be individually revoked; they age out at expiry.
+    """
+    if not credentials:
+        raise HTTPException(status_code=401, detail=ErrorMessages.INVALID_CREDENTIALS)
+    claims = _decode_claims(credentials.credentials)
+    if not claims or not claims.get("sub"):
+        raise HTTPException(status_code=401, detail="Token invalid or expired.")
+
+    jti = claims.get("jti")
+    if jti:
+        # Denylist only needs to outlive the token itself.
+        now = datetime.now(timezone.utc).timestamp()
+        ttl = max(int(claims.get("exp", now) - now), 60)
+        memory = await get_memory_service()
+        await memory.set_cache(_revocation_key(jti), {"revoked": True}, ttl_seconds=ttl)
+        logger.info("admin_logout", jti=jti[:8])
+    else:
+        logger.warning("admin_logout_legacy_token_no_jti")
+
+    return {"detail": "Logged out."}
 
 
 @router.get("/me")
