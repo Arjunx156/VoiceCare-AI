@@ -103,7 +103,7 @@ export default function TicketsPage() {
       />
 
       {/* Ticket list — editorial list-row pattern */}
-      <motion.div {...entry(0.1)} className="panel-elevated" style={{ overflow: "hidden" }}>
+      <motion.div {...entry(0.1)} className="panel" style={{ overflow: "hidden" }}>
         {loading ? (
           <LoadingBlock label="Loading tickets" />
         ) : tickets.length === 0 ? (

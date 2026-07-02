@@ -21,7 +21,7 @@ export default function ResponsePanel({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="panel-elevated"
+      className="panel"
       style={{ width: "100%", marginTop: 16, padding: "20px 24px" }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>

@@ -40,16 +40,5 @@ export function useMotionSafe() {
           transition: fadeUpTransition(delay),
         };
 
-  /** Scroll-reveal props: animate once when scrolled into view. */
-  const reveal = (delay = 0) =>
-    reduced
-      ? { initial: { opacity: 1 }, whileInView: { opacity: 1 }, viewport: { once: true } }
-      : {
-          initial: { opacity: 0, y: 18 },
-          whileInView: { opacity: 1, y: 0 },
-          viewport: { once: true, margin: "0px 0px -80px 0px" },
-          transition: { ...fadeUpTransition(delay), duration: 0.6 },
-        };
-
-  return { reduced, entry, reveal };
+  return { reduced, entry };
 }

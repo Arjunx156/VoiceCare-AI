@@ -23,7 +23,7 @@ export function TicketHeader({ ticket, ticketId }: { ticket: TicketDetail; ticke
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
         <div>
           <span className="eyebrow">{ticket.ticket_type || "SUPPORT"}</span>
-          <h1 className="display-h1" style={{ color: "var(--text-primary)" }}>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
             {ticket.user_name}
           </h1>
           <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>

@@ -1,13 +1,8 @@
-export { AuroraBackdrop } from "./AuroraBackdrop";
 export { Badge, PriorityBadge, SentimentBadge, StatusBadge } from "./Badge";
 export { Button } from "./Button";
-export { CountUp } from "./CountUp";
 export { EmptyState } from "./EmptyState";
-export { GlowBackdrop } from "./GlowBackdrop";
-export { GrainOverlay } from "./GrainOverlay";
 export { PageHeader } from "./PageHeader";
 export { Panel } from "./Panel";
-export { Reveal } from "./Reveal";
 export { LoadingBlock, Spinner } from "./Spinner";
 export { StatCard } from "./StatCard";
 export { Tabs, type TabItem } from "./Tabs";

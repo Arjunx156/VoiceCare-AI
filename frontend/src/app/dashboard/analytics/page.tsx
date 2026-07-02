@@ -55,9 +55,9 @@ export default function AnalyticsPage() {
       <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
         <div>
           <span className="eyebrow">ANALYTICS</span>
-          <h1 className="display-h1" style={{ color: "var(--text-primary)" }}>Insights</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)" }}>Insights</h1>
         </div>
-        <Panel elevated>
+        <Panel>
           <EmptyState
             icon={BarChart3}
             title={"error" in result ? "Unable to load analytics" : "No data yet"}
@@ -74,8 +74,8 @@ export default function AnalyticsPage() {
   const sentData = Object.entries(analytics.tickets_by_sentiment).map(([name, value]) => ({ name, value }));
 
   const kpis = [
-    { label: "RESOLUTION RATE", value: analytics.resolution_rate, suffix: "%", accent: true },
-    { label: "ESCALATION RATE", value: analytics.escalation_rate, suffix: "%" },
+    { label: "RESOLUTION RATE", value: `${analytics.resolution_rate}%` },
+    { label: "ESCALATION RATE", value: `${analytics.escalation_rate}%` },
     { label: "TOTAL TICKETS",   value: analytics.total_tickets },
     { label: "OPEN NOW",        value: analytics.open_tickets },
   ];
@@ -85,7 +85,7 @@ export default function AnalyticsPage() {
       {/* Header */}
       <motion.div {...entry()}>
         <span className="eyebrow">ANALYTICS</span>
-        <h1 className="display-h1" style={{ color: "var(--text-primary)" }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
           Ticket Insights
         </h1>
         <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 6 }}>
@@ -97,7 +97,7 @@ export default function AnalyticsPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
         {kpis.map((s, i) => (
           <motion.div key={s.label} {...entry(i * 0.06)}>
-            <StatCard label={s.label} value={s.value} suffix={s.suffix} accent={s.accent} />
+            <StatCard label={s.label} value={s.value} />
           </motion.div>
         ))}
       </div>
@@ -105,32 +105,26 @@ export default function AnalyticsPage() {
       {/* Asymmetric two-column: large language bar + smaller category donut */}
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
         {/* Ticket Volume by Language — larger block */}
-        <motion.div {...entry(0.28)} className="panel-elevated" style={{ padding: "24px 24px 16px" }}>
+        <motion.div {...entry(0.28)} className="panel" style={{ padding: "24px 24px 16px" }}>
           <span className="eyebrow">TICKET VOLUME</span>
-          <h2 className="display-h2" style={{ color: "var(--text-primary)", marginBottom: 20 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
             By Language
           </h2>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={langData} margin={{ left: -16, bottom: 4 }}>
-              <defs>
-                <linearGradient id="barCoral" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#FF8A3D" />
-                  <stop offset="100%" stopColor="#FF5A2B" />
-                </linearGradient>
-              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
               <XAxis dataKey="name" tick={AXIS_TICK} axisLine={false} tickLine={false} />
               <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} />
-              <Tooltip {...chartTooltipStyle} cursor={{ fill: "rgba(255,90,43,0.06)" }} />
-              <Bar dataKey="value" fill="url(#barCoral)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+              <Tooltip {...chartTooltipStyle} />
+              <Bar dataKey="value" fill="#FF5A2B" radius={[4, 4, 0, 0]} maxBarSize={40} />
             </BarChart>
           </ResponsiveContainer>
         </motion.div>
 
         {/* By Category — smaller, donut */}
-        <motion.div {...entry(0.34)} className="panel-elevated" style={{ padding: "24px 20px 16px" }}>
+        <motion.div {...entry(0.34)} className="panel" style={{ padding: "24px 20px 16px" }}>
           <span className="eyebrow">CATEGORY</span>
-          <h2 className="display-h2" style={{ color: "var(--text-primary)", marginBottom: 12 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>
             Breakdown
           </h2>
           <ResponsiveContainer width="100%" height={240}>
@@ -156,9 +150,9 @@ export default function AnalyticsPage() {
       {/* Priority + Sentiment side by side */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         {/* By Priority */}
-        <motion.div {...entry(0.42)} className="panel-elevated" style={{ padding: "24px 24px 16px" }}>
+        <motion.div {...entry(0.42)} className="panel" style={{ padding: "24px 24px 16px" }}>
           <span className="eyebrow">PRIORITY</span>
-          <h2 className="display-h2" style={{ color: "var(--text-primary)", marginBottom: 20 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
             Distribution
           </h2>
           <ResponsiveContainer width="100%" height={200}>
@@ -177,9 +171,9 @@ export default function AnalyticsPage() {
         </motion.div>
 
         {/* By Sentiment */}
-        <motion.div {...entry(0.48)} className="panel-elevated" style={{ padding: "24px 24px 16px" }}>
+        <motion.div {...entry(0.48)} className="panel" style={{ padding: "24px 24px 16px" }}>
           <span className="eyebrow">SENTIMENT</span>
-          <h2 className="display-h2" style={{ color: "var(--text-primary)", marginBottom: 12 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>
             Customer Mood
           </h2>
           <ResponsiveContainer width="100%" height={200}>

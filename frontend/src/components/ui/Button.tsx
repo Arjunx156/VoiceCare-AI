@@ -34,7 +34,7 @@ const SIZE_STYLE: Record<ButtonSize, React.CSSProperties> = {
   sm: { padding: "6px 16px", fontSize: 12 },
 };
 
-/** House pill button. Hover/active/disabled + shine states come from .btn-pill. */
+/** House pill button. Hover/active/disabled states come from .btn-pill. */
 export function Button({
   variant = "primary",
   size = "md",
@@ -49,7 +49,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={clsx("btn-pill", variant === "primary" && "btn-pill-shine", className)}
+      className={clsx("btn-pill", className)}
       disabled={disabled || isLoading}
       style={{ ...VARIANT_STYLE[variant], ...SIZE_STYLE[size], ...style }}
       {...rest}
