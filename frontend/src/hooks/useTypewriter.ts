@@ -13,6 +13,7 @@ export function useTypewriter(text: string, enabled: boolean, wordsPerTick = 2, 
 
   useEffect(() => {
     if (!enabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync full text when animation is disabled mid-flight (past turns)
       setShown(text);
       return;
     }

@@ -75,6 +75,7 @@ export default function Footer({
             key={lang}
             onClick={() => setSelectedLanguage(lang)}
             className={`lang-pill${selectedLanguage === lang ? " active" : ""}`}
+            aria-pressed={selectedLanguage === lang}
           >
             {lang}
           </button>
@@ -94,13 +95,13 @@ export default function Footer({
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="Phone number (optional)"
+            aria-label="Phone number (optional)"
             disabled={isListening || isProcessing}
             style={{
               width: "100%",
               padding: "8px 16px",
               borderRadius: 999,
               fontSize: 13,
-              outline: "none",
               background: "var(--bg-panel)",
               border: "1px solid var(--border-subtle)",
               color: "var(--text-secondary)",
@@ -132,6 +133,7 @@ export default function Footer({
                 cursor: isProcessing ? "not-allowed" : "pointer",
               }}
               aria-label={isListening ? t("footer.stopRecording") : t("footer.startRecording")}
+              aria-pressed={isListening}
             >
               {isListening ? (
                 <svg width="18" height="18" fill="white" viewBox="0 0 24 24">
@@ -153,6 +155,7 @@ export default function Footer({
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               placeholder={t("footer.placeholder")}
+              aria-label={t("footer.placeholder")}
               disabled={isProcessing}
               autoFocus
               style={{
@@ -160,7 +163,6 @@ export default function Footer({
                 padding: "12px 16px",
                 borderRadius: 999,
                 fontSize: 14,
-                outline: "none",
                 background: "var(--bg-panel)",
                 border: "1px solid var(--border-subtle)",
                 color: "var(--text-primary)",

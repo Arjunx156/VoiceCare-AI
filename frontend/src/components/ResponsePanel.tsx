@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { FileText } from "lucide-react";
 import { type VoiceQueryResponse } from "@/lib/api";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import { useTypewriter } from "@/hooks/useTypewriter";
@@ -46,8 +47,19 @@ export default function ResponsePanel({
         {shownText}
       </p>
       {response.policy_reference && (
-        <p style={{ fontSize: 12, marginTop: 12, color: "var(--text-secondary)", fontStyle: "italic" }}>
-          📋 {response.policy_reference.substring(0, 120)}…
+        <p
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 6,
+            fontSize: 12,
+            marginTop: 12,
+            color: "var(--text-secondary)",
+            fontStyle: "italic",
+          }}
+        >
+          <FileText size={13} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+          <span>{response.policy_reference.substring(0, 120)}…</span>
         </p>
       )}
       <div
@@ -59,7 +71,11 @@ export default function ResponsePanel({
           color: "var(--text-muted)",
         }}
       >
-        <span>{t("response.ticket")} {response.ticket_number ?? response.ticket_id?.substring(0, 8) + "…"}</span>
+        {/* Only claim a ticket exists when this turn actually persisted one
+            (ticket_created is absent on older responses — treat as created). */}
+        {response.ticket_created !== false && (response.ticket_number || response.ticket_id) && (
+          <span>{t("response.ticket")} {response.ticket_number ?? response.ticket_id.substring(0, 8) + "…"}</span>
+        )}
         {response.confidence_score != null && (
           <span>{t("response.confidence")} {(response.confidence_score * 100).toFixed(0)}%</span>
         )}

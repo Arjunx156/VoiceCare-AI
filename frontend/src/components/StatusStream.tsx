@@ -20,7 +20,6 @@ interface StatusStreamProps {
   currentStage: number;
   isComplete: boolean;
   isProcessing: boolean;
-  message?: string;
 }
 
 function Checkmark() {
@@ -38,7 +37,7 @@ function Checkmark() {
   );
 }
 
-export default function StatusStream({ currentStage, isComplete, isProcessing, message }: StatusStreamProps) {
+export default function StatusStream({ currentStage, isComplete, isProcessing }: StatusStreamProps) {
   const { t } = useI18n();
 
   // The status stream is purely a live, in-flight indicator. Once the turn
@@ -46,10 +45,17 @@ export default function StatusStream({ currentStage, isComplete, isProcessing, m
   // transcript instead, so the stream disappears rather than lingering.
   if (!isProcessing) return null;
 
+  const activeKey = STAGE_KEYS[Math.min(Math.max(currentStage, 1), 9) - 1];
+
   return (
     <div className="w-full panel" style={{ padding: "20px 24px" }}>
       <span className="eyebrow">
         {isComplete ? t("status.complete") : t("status.processing")}
+      </span>
+
+      {/* Screen readers hear only the current stage, not every list repaint */}
+      <span className="sr-only" aria-live="polite">
+        {t(activeKey)}
       </span>
 
       <ol style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -93,7 +99,7 @@ export default function StatusStream({ currentStage, isComplete, isProcessing, m
                 transition={{ duration: 0.08, ease: "easeOut", delay: isActive ? 0.08 : 0 }}
                 style={{ fontSize: "13px", fontWeight: isActive ? 500 : 400 }}
               >
-                {isActive && message ? message : t(key)}
+                {t(key)}
               </motion.span>
 
               {isActive && (

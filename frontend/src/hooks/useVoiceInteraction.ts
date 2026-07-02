@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createWebSocket, clearConversation, type VoiceQueryResponse } from "@/lib/api";
 import { LANG_TO_BCP47 } from "@/lib/constants";
+import { parseWsMessage } from "@/lib/ws-messages";
 
 // Stable error codes — translated in the view layer via t("error.<code>")
 export type VoiceErrorCode = "micDenied" | "connection" | "connectionLost" | "generic";
@@ -39,7 +40,6 @@ function readStoredLang(): string {
 export function useVoiceInteraction() {
   const [isListening, setIsListening]     = useState(false);
   const [isProcessing, setIsProcessing]   = useState(false);
-  const [audioLevel, setAudioLevel]       = useState(0);
   const [currentStage, setCurrentStage]   = useState(0);
   const [isComplete, setIsComplete]       = useState(false);
   const [response, setResponse]           = useState<VoiceQueryResponse | null>(null);
@@ -61,9 +61,13 @@ export function useVoiceInteraction() {
   const [liveTranscript, setLiveTranscript] = useState("");
   const [bhashiniWarning, setBhashiniWarning] = useState(false);
 
-  // Load persisted language on first client render
+  // Load persisted language on first client render. This must happen after
+  // hydration (server HTML renders the default), so the sync setState here
+  // is the intended SSR-safe localStorage pattern.
   useEffect(() => {
-    setSelectedLanguageState(readStoredLang());
+    const stored = readStoredLang();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- post-hydration localStorage read; server cannot know the stored language
+    if (stored !== DEFAULT_LANG) setSelectedLanguageState(stored);
   }, []);
 
   // Persist language whenever it changes
@@ -74,6 +78,10 @@ export function useVoiceInteraction() {
     }
   }, []);
 
+  // Live mic amplitude (0-1), written every animation frame. A ref — NOT
+  // state — so metering never re-renders the React tree at 60fps; the orb
+  // reads it inside its own useFrame loop.
+  const audioLevelRef     = useRef(0);
   const mediaRecorderRef  = useRef<MediaRecorder | null>(null);
   const audioChunksRef    = useRef<Blob[]>([]);
   const analyserRef       = useRef<AnalyserNode | null>(null);
@@ -188,14 +196,17 @@ export function useVoiceInteraction() {
   }, [playBrowserTTS, stopCurrentTTS, resolveAudio]);
 
   const processQuery = useCallback(
-    (overrides: { text?: string; audio_base64?: string } = {}, retryCount = 0) => {
-      setIsProcessing(true);
-      setCurrentStage(1);
-
+    (overrides: { text?: string; audio_base64?: string } = {}, initialRetryCount = 0) => {
       const currentSessionId = sessionId || crypto.randomUUID();
       if (!sessionId) {
         setSessionId(currentSessionId);
       }
+
+      // Hoisted so the reconnect path can self-reference without touching the
+      // outer useCallback binding before its declaration completes.
+      function attempt(retryCount: number) {
+      setIsProcessing(true);
+      setCurrentStage(1);
 
       let completed = false;
 
@@ -212,29 +223,36 @@ export function useVoiceInteraction() {
         };
 
         ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
+          const message = parseWsMessage(event.data);
 
-          // Server keep-alive ping — ignore silently
-          if (data.type === "ping") return;
+          switch (message.kind) {
+            case "ping":
+            case "unknown":
+              return; // keep-alive / unrecognized frames are ignored
 
-          if (data.type === "response") {
-            completed = true;
-            setCurrentStage(9);
-            setResponse(data as VoiceQueryResponse);
-            setTurns((prev) => [...prev, { customer: overrides.text ?? "", ai: data as VoiceQueryResponse }]);
-            setIsComplete(true);
-            playAudioResponse(data.response_audio_base64, data.response_text, selectedLanguage);
-            setIsProcessing(false);
-            ws.close();
-          } else if (data.stage_number) {
-            setCurrentStage(data.stage_number);
-          } else if (data.error) {
-            completed = true;
-            // Map known error codes to specific VoiceErrorCode values
-            const code = data.error === "VALIDATION_ERROR" ? "generic" : "generic";
-            setErrorCode(code);
-            setIsProcessing(false);
-            ws.close();
+            case "stage":
+              setCurrentStage(message.stageNumber);
+              return;
+
+            case "response": {
+              completed = true;
+              const ai = message.response;
+              setCurrentStage(9);
+              setResponse(ai);
+              setTurns((prev) => [...prev, { customer: overrides.text ?? "", ai }]);
+              setIsComplete(true);
+              playAudioResponse(ai.response_audio_base64, ai.response_text, selectedLanguage);
+              setIsProcessing(false);
+              ws.close();
+              return;
+            }
+
+            case "error":
+              completed = true;
+              setErrorCode("generic");
+              setIsProcessing(false);
+              ws.close();
+              return;
           }
         };
 
@@ -251,7 +269,7 @@ export function useVoiceInteraction() {
             if (retryCount < MAX_WS_RETRIES) {
               const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
               console.warn(`WebSocket closed unexpectedly, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_WS_RETRIES})`);
-              setTimeout(() => processQuery(overrides, retryCount + 1), delay);
+              setTimeout(() => attempt(retryCount + 1), delay);
             } else {
               setErrorCode("connectionLost");
               setIsProcessing(false);
@@ -263,6 +281,9 @@ export function useVoiceInteraction() {
         setErrorCode("generic");
         setIsProcessing(false);
       }
+      }
+
+      attempt(initialRetryCount);
     },
     [selectedLanguage, sessionId, phone, playAudioResponse]
   );
@@ -278,7 +299,7 @@ export function useVoiceInteraction() {
     const update = () => {
       analyser.getByteFrequencyData(data);
       const avg = data.reduce((a, b) => a + b, 0) / data.length;
-      setAudioLevel(avg / 255);
+      audioLevelRef.current = avg / 255;
       animFrameRef.current = requestAnimationFrame(update);
     };
     update();
@@ -339,7 +360,7 @@ export function useVoiceInteraction() {
         }
         if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
         stream.getTracks().forEach((t) => t.stop());
-        setAudioLevel(0);
+        audioLevelRef.current = 0;
         setIsListening(false);
         const capturedTranscript = transcriptAccRef.current.trim();
         setLiveTranscript("");
@@ -357,7 +378,7 @@ export function useVoiceInteraction() {
     } catch {
       setErrorCode("micDenied");
     }
-  }, [monitorAudio, startSpeechRecognition, selectedLanguage, processQuery]);
+  }, [monitorAudio, startSpeechRecognition, selectedLanguage, processQuery, stopCurrentTTS]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current?.state === "recording") {
@@ -395,7 +416,7 @@ export function useVoiceInteraction() {
     isListening,
     isProcessing,
     isComplete,
-    audioLevel,
+    audioLevelRef,
     currentStage,
     response,
     turns,

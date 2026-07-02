@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { Mic } from "lucide-react";
 import ResponsePanel from "@/components/ResponsePanel";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { ConversationTurn } from "@/hooks/useVoiceInteraction";
@@ -45,7 +46,12 @@ export default function ConversationThread({ turns }: { turns: ConversationTurn[
                 color: "var(--text-primary)",
               }}
             >
-              {turn.customer?.trim() || `🎤 ${t("voice.eyebrow.listening")}`}
+              {turn.customer?.trim() || (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Mic size={13} strokeWidth={1.75} aria-hidden="true" />
+                  {t("voice.eyebrow.listening")}
+                </span>
+              )}
             </div>
           </motion.div>
           <ResponsePanel response={turn.ai} animateText={i === turns.length - 1} />

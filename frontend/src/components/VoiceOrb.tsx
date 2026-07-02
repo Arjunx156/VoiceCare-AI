@@ -8,15 +8,17 @@
 
 import { useRef, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { useReducedMotion } from "framer-motion";
 import * as THREE from "three";
 
 interface OrbMeshProps {
   isListening: boolean;
   isProcessing: boolean;
-  audioLevel: number;
+  /** Live mic amplitude, read per-frame — a ref so React never re-renders at 60fps. */
+  audioLevelRef: React.RefObject<number>;
 }
 
-function OrbMesh({ isListening, isProcessing, audioLevel }: OrbMeshProps) {
+function OrbMesh({ isListening, isProcessing, audioLevelRef }: OrbMeshProps) {
   const meshRef = useRef<THREE.Mesh>(null!);
   const materialRef = useRef<THREE.ShaderMaterial>(null!);
 
@@ -143,6 +145,7 @@ function OrbMesh({ isListening, isProcessing, audioLevel }: OrbMeshProps) {
 
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
+    const audioLevel = audioLevelRef.current ?? 0;
     materialRef.current.uniforms.uTime.value        = t;
     materialRef.current.uniforms.uAudioLevel.value  = audioLevel;
     materialRef.current.uniforms.uIsListening.value = isListening ? 1.0 : 0.0;
@@ -168,7 +171,9 @@ function OrbMesh({ isListening, isProcessing, audioLevel }: OrbMeshProps) {
 
   return (
     <mesh ref={meshRef}>
-      <icosahedronGeometry args={[1.2, 64]} />
+      {/* 24 subdivisions (~5.8k tris) — visually identical at this render
+          size to the previous 64 (~41k tris), far cheaper per frame. */}
+      <icosahedronGeometry args={[1.2, 24]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={vertexShader}
@@ -200,15 +205,20 @@ function ThinkingRing({ isProcessing }: { isProcessing: boolean }) {
 interface VoiceOrbProps {
   isListening: boolean;
   isProcessing: boolean;
-  audioLevel: number;
+  audioLevelRef: React.RefObject<number>;
 }
 
-export default function VoiceOrb({ isListening, isProcessing, audioLevel }: VoiceOrbProps) {
+export default function VoiceOrb({ isListening, isProcessing, audioLevelRef }: VoiceOrbProps) {
+  // Under prefers-reduced-motion the frame loop only renders on demand,
+  // leaving a static (non-breathing, non-rotating) orb.
+  const reducedMotion = useReducedMotion();
+
   return (
-    <div className="w-full h-full" style={{ minHeight: "300px" }}>
+    <div className="w-full h-full" style={{ minHeight: "300px" }} aria-hidden="true">
       <Canvas
         camera={{ position: [0, 0, 4], fov: 45 }}
         gl={{ antialias: true, alpha: true }}
+        frameloop={reducedMotion ? "demand" : "always"}
         style={{ background: "transparent" }}
       >
         <ambientLight intensity={0.2} />
@@ -219,7 +229,7 @@ export default function VoiceOrb({ isListening, isProcessing, audioLevel }: Voic
         <OrbMesh
           isListening={isListening}
           isProcessing={isProcessing}
-          audioLevel={audioLevel}
+          audioLevelRef={audioLevelRef}
         />
         <ThinkingRing isProcessing={isProcessing && !isListening} />
       </Canvas>

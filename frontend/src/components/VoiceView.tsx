@@ -42,7 +42,7 @@ export default function VoiceView(props: VoiceState) {
     isListening,
     isProcessing,
     isComplete,
-    audioLevel,
+    audioLevelRef,
     currentStage,
     response,
     turns,
@@ -155,7 +155,7 @@ export default function VoiceView(props: VoiceState) {
             <VoiceOrb
               isListening={isListening}
               isProcessing={isProcessing}
-              audioLevel={audioLevel}
+              audioLevelRef={audioLevelRef}
             />
           </Suspense>
         </motion.div>
@@ -184,7 +184,10 @@ export default function VoiceView(props: VoiceState) {
           )}
         </AnimatePresence>
 
-        <ConversationThread turns={turns} />
+        {/* Stable live region: newly completed turns are announced politely */}
+        <div aria-live="polite" style={{ width: "100%" }}>
+          <ConversationThread turns={turns} />
+        </div>
 
         <AnimatePresence>
           {isProcessing && (
@@ -208,6 +211,7 @@ export default function VoiceView(props: VoiceState) {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
+            role="alert"
             className="panel"
             style={{
               width: "100%",
