@@ -10,6 +10,10 @@ const BACKEND_URL = typeof window !== "undefined" ? (process.env.NEXT_PUBLIC_BAC
 // ---- Auth token helpers (stored in localStorage + cookie for middleware) ----
 
 const TOKEN_KEY = "vc_admin_token";
+// Must match backend/app/api/auth.py's _TOKEN_EXPIRE_HOURS — the cookie is
+// only a UX signal for middleware, but if it outlives the real JWT it can
+// claim "logged in" for hours after the token has actually expired.
+const TOKEN_MAX_AGE_SECONDS = 60 * 60 * 8; // 8h
 
 export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -19,7 +23,7 @@ export function getAuthToken(): string | null {
 export function setAuthToken(token: string): void {
   localStorage.setItem(TOKEN_KEY, token);
   // Also set a cookie so Next.js middleware can guard /dashboard routes
-  document.cookie = `vc_logged_in=1; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`;
+  document.cookie = `vc_logged_in=1; path=/; max-age=${TOKEN_MAX_AGE_SECONDS}; SameSite=Lax`;
 }
 
 export function clearAuthToken(): void {
