@@ -281,6 +281,16 @@ body {
   width: 100%;
 }
 
+/* ---- List row (directory/table rows with accent-aware hover) ---- */
+.list-row {
+  transition: border-color var(--dur-fast) ease-out, background var(--dur-fast) ease-out, transform var(--dur-fast) var(--ease-out-expo);
+}
+.list-row:hover {
+  border-color: var(--accent-border) !important;
+  background: var(--bg-panel-raised) !important;
+  transform: translateX(2px);
+}
+
 /* ---- Login split: brand column collapses under 860px ---- */
 @media (max-width: 860px) {
   .login-shell {

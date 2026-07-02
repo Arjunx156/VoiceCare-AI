@@ -84,7 +84,7 @@ export default function CustomerProfilePage() {
           {profile.customer_segment.toUpperCase()} · {profile.preferred_language}
           {profile.customer_code ? ` · ${profile.customer_code}` : ""}
         </span>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
+        <h1 className="display-h1" style={{ color: "var(--text-primary)" }}>
           {profile.name}
         </h1>
         <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
@@ -94,7 +94,7 @@ export default function CustomerProfilePage() {
 
       {/* Sentiment timeline */}
       {profile.sentiment_timeline.length > 0 && (
-        <div className="panel" style={{ padding: "20px 24px" }}>
+        <div className="panel-elevated" style={{ padding: "20px 24px" }}>
           <span className="eyebrow">SENTIMENT TIMELINE</span>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
             {profile.sentiment_timeline.map((s, i) => (
@@ -116,7 +116,7 @@ export default function CustomerProfilePage() {
       )}
 
       {/* Orders */}
-      <div className="panel" style={{ padding: "20px 24px" }}>
+      <div className="panel-elevated" style={{ padding: "20px 24px" }}>
         <span className="eyebrow">ORDERS ({profile.orders.length})</span>
         {profile.orders.length === 0 ? (
           <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 8 }}>No orders on record.</p>
@@ -202,7 +202,7 @@ export default function CustomerProfilePage() {
       </div>
 
       {/* Tickets */}
-      <div className="panel" style={{ padding: "20px 24px" }}>
+      <div className="panel-elevated" style={{ padding: "20px 24px" }}>
         <span className="eyebrow">TICKET HISTORY ({profile.tickets.length})</span>
         {profile.tickets.length === 0 ? (
           <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 8 }}>No tickets yet.</p>

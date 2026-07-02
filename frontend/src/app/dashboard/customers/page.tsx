@@ -51,7 +51,7 @@ export default function CustomersPage() {
     >
       <div>
         <span className="eyebrow">DIRECTORY</span>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
+        <h1 className="display-h1" style={{ color: "var(--text-primary)" }}>
           Customers
         </h1>
       </div>
@@ -79,6 +79,7 @@ export default function CustomersPage() {
             <Link
               key={c.user_id}
               href={`/dashboard/customers/${c.customer_code || c.user_id}`}
+              className="list-row"
               style={{
                 display: "flex", alignItems: "center", gap: 16,
                 padding: "14px 16px", borderRadius: 12, textDecoration: "none",

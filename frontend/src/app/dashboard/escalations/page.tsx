@@ -100,7 +100,7 @@ export default function EscalationsPage() {
       {/* Header */}
       <motion.div {...entry()}>
         <span className="eyebrow">ESCALATION QUEUE</span>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
+        <h1 className="display-h1" style={{ color: "var(--text-primary)" }}>
           {escalations.length > 0
             ? `${escalations.length} ticket${escalations.length !== 1 ? "s" : ""} need${escalations.length === 1 ? "s" : ""} you`
             : "All clear"}
@@ -111,7 +111,7 @@ export default function EscalationsPage() {
       </motion.div>
 
       {escalations.length === 0 ? (
-        <Panel>
+        <Panel elevated>
           <EmptyState
             icon={CheckCircle2}
             title="No pending escalations"
