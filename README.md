@@ -107,6 +107,14 @@ Only **3 of the 9 agents** make LLM calls. The rest are deterministic — fast, 
 - `X-Response-Time` header on every response
 - Sentry integration for both backend (FastAPI + SQLAlchemy) and frontend (browser + server) — no-ops gracefully without a DSN
 
+### Design System
+- **Dark editorial** — near-black `#0B0B0C` canvas, a single warm coral accent (`#FF5A2B`), no glassmorphism, no purple AI clichés
+- **Type** — Space Grotesk display face over Inter body, on a fluid `clamp()` scale (`--font-display`, `--text-hero/h1/h2`)
+- **Atmosphere without shadows** — a dependency-free animated aurora backdrop (drifting coral blobs), film-grain overlay, radial glows, and elevated panels with a 1px inset top highlight
+- **Motion in service of function** — Framer Motion entrance/scroll reveals, animated KPI count-ups, coral-gradient charts; every animation is GPU-friendly and freezes under `prefers-reduced-motion`
+- **Accessible** — WCAG-AA text contrast, visible `:focus-visible` rings, semantic status colors kept distinct from the brand accent
+- Shared primitives live in `frontend/src/components/ui` (`Reveal`, `CountUp`, `AuroraBackdrop`, `GrainOverlay`, `Panel`, `StatCard`, …); design tokens in `frontend/src/app/globals.css`
+
 ---
 
 ## Tech Stack
