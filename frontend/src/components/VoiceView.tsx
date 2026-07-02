@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { LANGUAGES, NATIVE_LANGUAGE_NAMES } from "@/lib/constants";
 import StatusStream from "@/components/StatusStream";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -36,6 +37,70 @@ const fadeUp = {
 };
 
 type VoiceState = ReturnType<typeof useVoiceInteraction>;
+
+const NATIVE_NAMES = LANGUAGES.map((l) => NATIVE_LANGUAGE_NAMES[l]);
+const ROTATE_MS = 2200;
+
+/**
+ * The product's identity in one detail: each supported language, shown in its
+ * own script, rotating quietly under the idle headline. A customer recognizes
+ * their language before reading a word of English. Decorative (aria-hidden) —
+ * the language pills below are the real, accessible selector. Under reduced
+ * motion the full list renders as a static line instead.
+ */
+function RotatingLanguageLine() {
+  const reduced = useReducedMotion();
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (reduced) return;
+    const id = setInterval(() => setIdx((i) => (i + 1) % NATIVE_NAMES.length), ROTATE_MS);
+    return () => clearInterval(id);
+  }, [reduced]);
+
+  if (reduced) {
+    return (
+      <p
+        aria-hidden="true"
+        style={{
+          fontSize: 14,
+          fontWeight: 600,
+          color: "var(--text-secondary)",
+          textAlign: "center",
+          lineHeight: 1.8,
+        }}
+      >
+        {NATIVE_NAMES.join("  ·  ")}
+      </p>
+    );
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        display: "inline-flex",
+        justifyContent: "center",
+        minWidth: 120,
+        height: 26,
+        overflow: "hidden",
+      }}
+    >
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={idx}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+          style={{ fontSize: 17, fontWeight: 600, color: "var(--text-secondary)", lineHeight: "26px" }}
+        >
+          {NATIVE_NAMES[idx]}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+}
 
 export default function VoiceView(props: VoiceState) {
   const {
@@ -93,6 +158,11 @@ export default function VoiceView(props: VoiceState) {
     : isComplete
     ? t("voice.headline.done")
     : t("voice.headline.idle");
+
+  // The rotating language line is a first-visit hero moment only: it steps
+  // aside as soon as a conversation exists in any form.
+  const showLanguageLine =
+    !isListening && !isProcessing && !isComplete && turns.length === 0 && restoredTurns.length === 0;
 
   return (
     <main
@@ -156,25 +226,40 @@ export default function VoiceView(props: VoiceState) {
           initial="hidden"
           animate="show"
           style={{
-            fontSize: "clamp(28px, 5vw, 44px)",
+            fontSize: "clamp(30px, 5.5vw, 50px)",
             fontWeight: 800,
             color: "var(--text-primary)",
             textAlign: "center",
-            lineHeight: 1.12,
-            letterSpacing: "-0.02em",
+            lineHeight: 1.08,
+            letterSpacing: "-0.025em",
             maxWidth: "18ch",
-            marginBottom: 32,
+            marginBottom: showLanguageLine ? 14 : 32,
           }}
         >
           {headline}
         </motion.h2>
+
+        {showLanguageLine && (
+          <motion.div
+            custom={1.5}
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            style={{ marginBottom: 24, textAlign: "center" }}
+          >
+            <RotatingLanguageLine />
+            <span className="sr-only">
+              Hindi, English, Malayalam, Tamil, Telugu, Kannada, Bengali, Marathi, Hinglish
+            </span>
+          </motion.div>
+        )}
 
         <motion.div
           custom={2}
           variants={fadeUp}
           initial="hidden"
           animate="show"
-          style={{ width: "100%", height: 280 }}
+          style={{ width: "100%", height: 320 }}
         >
           <Suspense fallback={<div style={{ width: "100%", height: "100%" }} />}>
             <VoiceOrb

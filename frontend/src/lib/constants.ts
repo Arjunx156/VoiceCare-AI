@@ -9,6 +9,20 @@ export const LANGUAGES = [
 
 export type Language = (typeof LANGUAGES)[number];
 
+// Each supported language in its own script — shown on the voice hero so a
+// customer recognizes their language instantly, before reading any English.
+export const NATIVE_LANGUAGE_NAMES: Record<Language, string> = {
+  Hindi: "हिन्दी",
+  English: "English",
+  Malayalam: "മലയാളം",
+  Tamil: "தமிழ்",
+  Telugu: "తెలుగు",
+  Kannada: "ಕನ್ನಡ",
+  Bengali: "বাংলা",
+  Marathi: "मराठी",
+  Hinglish: "Hinglish",
+};
+
 // Maps display language names to BCP-47 locale codes for Web Speech API
 export const LANG_TO_BCP47: Record<string, string> = {
   Hindi: "hi-IN",
