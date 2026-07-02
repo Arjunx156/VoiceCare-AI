@@ -11,6 +11,9 @@ const en = {
   "voice.eyebrow.done": "DONE",
   "voice.eyebrow.idle": "VOICE SUPPORT",
 
+  // Conversation restored after a reload
+  "voice.restored": "Earlier in this conversation",
+
   // Voice page — headline
   "voice.headline.listening": "I'm listening…",
   "voice.headline.thinking": "Working on it…",

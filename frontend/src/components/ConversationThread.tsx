@@ -61,6 +61,27 @@ export default function ConversationThread({
 
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 16, marginTop: 16 }}>
+      {restoredTurns.length > 0 && (
+        <div
+          role="separator"
+          style={{ display: "flex", alignItems: "center", gap: 12 }}
+        >
+          <div className="divider" style={{ flex: 1 }} />
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "var(--text-muted)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {t("voice.restored")}
+          </span>
+          <div className="divider" style={{ flex: 1 }} />
+        </div>
+      )}
       {restoredTurns.map((turn, i) => (
         <div key={`restored-${i}`} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <CustomerBubble text={turn.customer} listeningLabel={t("voice.eyebrow.listening")} />

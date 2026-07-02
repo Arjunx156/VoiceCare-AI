@@ -135,7 +135,10 @@ async def process_voice_query(
         state.session_id, "customer", state.transcript_original or body.text or ""
     )
     await memory.store_conversation_turn(
-        state.session_id, "ai", state.response_english or state.response_text or ""
+        state.session_id,
+        "ai",
+        state.response_english or state.response_text or "",
+        display_content=state.response_text or "",
     )
 
     return VoiceQueryResponse(**_build_voice_response(state))
@@ -290,7 +293,10 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
                     session_id, "customer", state.transcript_original or ""
                 )
                 await memory.store_conversation_turn(
-                    session_id, "ai", state.response_english or ""
+                    session_id,
+                    "ai",
+                    state.response_english or "",
+                    display_content=state.response_text or "",
                 )
 
                 try:
@@ -356,11 +362,16 @@ async def get_session_history(session_id: str, request: Request):
     memory = await get_memory_service()
     history = await memory.get_conversation_history(session_id, max_turns=50)
     # Expose only the documented fields — never whatever else lands in memory.
-    # Roles as stored by the pipeline: "customer" and "ai".
+    # Roles as stored by the pipeline: "customer" and "ai". Prefer the
+    # customer-language display text over the English LLM-context copy.
     turns = [
-        {"role": t.get("role"), "content": t.get("content"), "timestamp": t.get("timestamp")}
+        {
+            "role": t.get("role"),
+            "content": t.get("display_content") or t.get("content"),
+            "timestamp": t.get("timestamp"),
+        }
         for t in history
-        if t.get("role") in ("customer", "ai") and t.get("content")
+        if t.get("role") in ("customer", "ai") and (t.get("display_content") or t.get("content"))
     ]
     return {"session_id": session_id, "turns": turns}
 

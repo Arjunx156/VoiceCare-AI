@@ -42,12 +42,21 @@ class MemoryService:
 
     # ---- Conversation Memory ----
 
-    async def store_conversation_turn(self, session_id: str, role: str, content: str):
-        """Store a single turn in the conversation history list."""
+    async def store_conversation_turn(
+        self, session_id: str, role: str, content: str, display_content: Optional[str] = None
+    ):
+        """Store a single turn in the conversation history list.
+
+        `content` is what LLM context readers consume (English for ai turns);
+        `display_content` optionally carries the customer-language text so a
+        restored UI thread can show what the customer actually saw.
+        """
         key = f"session:{session_id}:history"
         self._clean_all_expired()
 
         turn = {"role": role, "content": content, "timestamp": datetime.now().isoformat()}
+        if display_content and display_content != content:
+            turn["display_content"] = display_content
 
         if key not in _list_store:
             _list_store[key] = []

@@ -6,6 +6,7 @@ const bn: Messages = {
   "voice.eyebrow.thinking": "ভাবছি",
   "voice.eyebrow.done": "সম্পন্ন",
   "voice.eyebrow.idle": "ভয়েস সহায়তা",
+  "voice.restored": "এই কথোপকথনের আগের অংশ",
 
   "voice.headline.listening": "আমি শুনছি…",
   "voice.headline.thinking": "কাজ চলছে…",

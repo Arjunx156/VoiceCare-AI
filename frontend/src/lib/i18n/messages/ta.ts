@@ -6,6 +6,7 @@ const ta: Messages = {
   "voice.eyebrow.thinking": "யோசிக்கிறேன்",
   "voice.eyebrow.done": "முடிந்தது",
   "voice.eyebrow.idle": "குரல் ஆதரவு",
+  "voice.restored": "இந்த உரையாடலில் முன்பு",
 
   "voice.headline.listening": "நான் கேட்கிறேன்…",
   "voice.headline.thinking": "வேலை செய்கிறது…",

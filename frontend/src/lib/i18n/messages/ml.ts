@@ -6,6 +6,7 @@ const ml: Messages = {
   "voice.eyebrow.thinking": "ചിന്തിക്കുന്നു",
   "voice.eyebrow.done": "പൂർത്തിയായി",
   "voice.eyebrow.idle": "വോയിസ് സഹായം",
+  "voice.restored": "ഈ സംഭാഷണത്തിൽ നേരത്തെ",
 
   "voice.headline.listening": "ഞാൻ കേൾക്കുന്നു…",
   "voice.headline.thinking": "പ്രവർത്തിക്കുന്നു…",

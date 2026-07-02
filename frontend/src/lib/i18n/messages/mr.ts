@@ -6,6 +6,7 @@ const mr: Messages = {
   "voice.eyebrow.thinking": "विचार करत आहे",
   "voice.eyebrow.done": "पूर्ण",
   "voice.eyebrow.idle": "व्हॉइस सहाय्य",
+  "voice.restored": "या संभाषणात आधी",
 
   "voice.headline.listening": "मी ऐकत आहे…",
   "voice.headline.thinking": "काम सुरू आहे…",

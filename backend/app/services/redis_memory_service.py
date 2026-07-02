@@ -30,13 +30,18 @@ class RedisMemoryService:
 
     # ---- Conversation History ----
 
-    async def store_conversation_turn(self, session_id: str, role: str, content: str):
+    async def store_conversation_turn(
+        self, session_id: str, role: str, content: str, display_content: Optional[str] = None
+    ):
         key = f"session:{session_id}:history"
-        turn = json.dumps({
+        payload = {
             "role": role,
             "content": content,
             "timestamp": datetime.utcnow().isoformat(),
-        })
+        }
+        if display_content and display_content != content:
+            payload["display_content"] = display_content
+        turn = json.dumps(payload)
         await self._redis.rpush(key, turn)
         await self._redis.ltrim(key, -_MAX_HISTORY_TURNS, -1)
         await self._redis.expire(key, 7200)  # 2h TTL

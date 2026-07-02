@@ -155,6 +155,24 @@ class TestSessionHistoryEndpoint:
         assert turns[1]["content"] == "Your order ships tomorrow."
 
     @pytest.mark.asyncio
+    async def test_history_prefers_customer_language_display_text(self, test_client):
+        """AI turns restore in the customer's language, not the English LLM copy."""
+        from app.services.memory_service import get_memory_service
+
+        session_id = str(uuid.uuid4())
+        memory = await get_memory_service()
+        await memory.store_conversation_turn(
+            session_id, "ai", "Your refund is approved.",
+            display_content="आपका रिफंड स्वीकृत हो गया है।",
+        )
+
+        response = await test_client.get(f"/api/voice/session/{session_id}/history")
+
+        assert response.status_code == 200
+        turns = response.json()["turns"]
+        assert turns[0]["content"] == "आपका रिफंड स्वीकृत हो गया है।"
+
+    @pytest.mark.asyncio
     async def test_cleared_session_has_no_history(self, test_client):
         from app.services.memory_service import get_memory_service
 

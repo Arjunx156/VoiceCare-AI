@@ -6,6 +6,7 @@ const kn: Messages = {
   "voice.eyebrow.thinking": "ಯೋಚಿಸುತ್ತಿದ್ದೇನೆ",
   "voice.eyebrow.done": "ಮುಗಿದಿದೆ",
   "voice.eyebrow.idle": "ವಾಯ್ಸ್ ಸಹಾಯ",
+  "voice.restored": "ಈ ಸಂಭಾಷಣೆಯಲ್ಲಿ ಹಿಂದೆ",
 
   "voice.headline.listening": "ನಾನು ಆಲಿಸುತ್ತಿದ್ದೇನೆ…",
   "voice.headline.thinking": "ಕೆಲಸ ಮಾಡುತ್ತಿದ್ದೇನೆ…",

@@ -6,6 +6,7 @@ const te: Messages = {
   "voice.eyebrow.thinking": "ఆలోచిస్తున్నాను",
   "voice.eyebrow.done": "పూర్తయింది",
   "voice.eyebrow.idle": "వాయిస్ సహాయం",
+  "voice.restored": "ఈ సంభాషణలో ఇంతకుముందు",
 
   "voice.headline.listening": "నేను వింటున్నాను…",
   "voice.headline.thinking": "పని చేస్తోంది…",

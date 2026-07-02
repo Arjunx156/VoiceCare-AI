@@ -6,6 +6,7 @@ const hi: Messages = {
   "voice.eyebrow.thinking": "सोच रहा हूँ",
   "voice.eyebrow.done": "पूर्ण",
   "voice.eyebrow.idle": "वॉइस सहायता",
+  "voice.restored": "इस बातचीत में पहले",
 
   "voice.headline.listening": "मैं सुन रहा हूँ…",
   "voice.headline.thinking": "काम चल रहा है…",
