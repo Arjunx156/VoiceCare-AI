@@ -57,9 +57,9 @@ test("record button sits with the orb, in view without scrolling on a phone", as
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto("/");
 
-  // The accent pill with aria-pressed is the record control; it must be fully
-  // inside the initial viewport (the old layout pushed it below the fold).
-  const mic = page.locator("button.btn-pill-accent[aria-pressed]");
+  // The orb IS the record control (circular overlay button); it must be fully
+  // inside the initial viewport (the old layout pushed the mic below the fold).
+  const mic = page.locator("button.orb-button");
   await expect(mic).toBeVisible();
   const box = await mic.boundingBox();
   expect(box).not.toBeNull();

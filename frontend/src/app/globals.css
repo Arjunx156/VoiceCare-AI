@@ -372,6 +372,25 @@ body {
   cursor: not-allowed;
 }
 
+/* ---- Orb-as-mic: large circular hit target overlaying the orb ---- */
+.orb-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 2;
+  -webkit-tap-highlight-color: transparent;
+}
+.orb-button:disabled {
+  cursor: wait;
+}
+
 /* ---- Record Button Active Ring ---- */
 @keyframes record-ring {
   0%   { transform: scale(1);   opacity: 0.4; }
