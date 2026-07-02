@@ -92,9 +92,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg-base)", position: "relative", zIndex: 1 }}>
+      {/* Faint ambient glow, fixed behind the shell (decorative) */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: "-180px",
+          right: "-140px",
+          width: 480,
+          height: 480,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, var(--accent-glow) 0%, transparent 68%)",
+          filter: "blur(60px)",
+          opacity: 0.28,
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
       {/* Sidebar */}
       <aside
         style={{
+          position: "relative",
+          zIndex: 1,
           width: 220,
           flexShrink: 0,
           display: "flex",
@@ -126,7 +145,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </svg>
           </div>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"}</p>
+            <p className="display" style={{ fontSize: 14, color: "var(--text-primary)" }}>{process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"}</p>
             <p style={{ fontSize: 10, color: "var(--text-muted)", letterSpacing: "0.04em" }}>Admin Dashboard</p>
           </div>
         </Link>
@@ -237,7 +256,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, overflow: "auto", padding: "32px 36px" }}>
+      <main style={{ position: "relative", zIndex: 1, flex: 1, overflow: "auto", padding: "32px 36px" }}>
         <DashboardErrorBoundary>{children}</DashboardErrorBoundary>
       </main>
     </div>

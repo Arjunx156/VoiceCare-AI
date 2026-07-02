@@ -68,12 +68,12 @@ export default function DashboardPage() {
   const total = analytics.total_tickets || 0;
 
   const stats = [
-    { label: "TOTAL",      value: total,                              hint: "all time" },
-    { label: "OPEN",       value: analytics.open_tickets || 0,        hint: "awaiting resolution" },
-    { label: "ESCALATED",  value: analytics.escalated_tickets || 0,   hint: "needs human" },
-    { label: "RESOLVED",   value: analytics.resolved_tickets || 0,    hint: "closed" },
-    { label: "RESOLUTION", value: `${analytics.resolution_rate || 0}%`, hint: "resolution rate" },
-    { label: "ESCALATION", value: `${analytics.escalation_rate || 0}%`, hint: "escalation rate" },
+    { label: "TOTAL",      value: total,                            hint: "all time" },
+    { label: "OPEN",       value: analytics.open_tickets || 0,      hint: "awaiting resolution" },
+    { label: "ESCALATED",  value: analytics.escalated_tickets || 0, hint: "needs human" },
+    { label: "RESOLVED",   value: analytics.resolved_tickets || 0,  hint: "closed" },
+    { label: "RESOLUTION", value: analytics.resolution_rate || 0, suffix: "%", hint: "resolution rate", accent: true },
+    { label: "ESCALATION", value: analytics.escalation_rate || 0, suffix: "%", hint: "escalation rate" },
   ];
 
   return (
@@ -81,7 +81,7 @@ export default function DashboardPage() {
       {/* Page header */}
       <motion.div {...entry()}>
         <span className="eyebrow">OVERVIEW</span>
-        <h1 style={{ fontSize: 32, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
+        <h1 className="display-h1" style={{ color: "var(--text-primary)" }}>
           Support Operations
         </h1>
         <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 6 }}>
@@ -101,9 +101,9 @@ export default function DashboardPage() {
       {/* Asymmetric two-column: large chart block + smaller stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
         {/* Ticket volume by language — the larger block */}
-        <motion.div {...entry(0.36)} className="panel" style={{ padding: "24px 28px" }}>
+        <motion.div {...entry(0.36)} className="panel-elevated" style={{ padding: "24px 28px" }}>
           <span className="eyebrow">TICKET VOLUME</span>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
+          <h2 className="display-h2" style={{ color: "var(--text-primary)", marginBottom: 20 }}>
             By Language
           </h2>
           {Object.entries(analytics.tickets_by_language).length > 0 ? (
@@ -153,9 +153,9 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Right column: category breakdown */}
-        <motion.div {...entry(0.42)} className="panel" style={{ padding: "24px 22px" }}>
+        <motion.div {...entry(0.42)} className="panel-elevated" style={{ padding: "24px 22px" }}>
           <span className="eyebrow">BY CATEGORY</span>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
+          <h2 className="display-h2" style={{ color: "var(--text-primary)", marginBottom: 20 }}>
             Ticket Types
           </h2>
           {Object.entries(analytics.tickets_by_category).length > 0 ? (
@@ -187,11 +187,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Escalation Queue — editorial list rows */}
-      <motion.div {...entry(0.5)} className="panel" style={{ padding: "24px 28px" }}>
+      <motion.div {...entry(0.5)} className="panel-elevated" style={{ padding: "24px 28px" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 20 }}>
           <span className="eyebrow" style={{ marginBottom: 0 }}>ESCALATION QUEUE</span>
           {escalations.length > 0 && (
-            <span style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
+            <span className="display" style={{ fontSize: 24, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
               {escalations.length} ticket{escalations.length !== 1 ? "s" : ""} need{escalations.length === 1 ? "s" : ""} you
             </span>
           )}
