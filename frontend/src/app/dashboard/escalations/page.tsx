@@ -100,7 +100,7 @@ export default function EscalationsPage() {
       {/* Header */}
       <motion.div {...entry()}>
         <span className="eyebrow">ESCALATION QUEUE</span>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
+        <h1 className="page-title">
           {escalations.length > 0
             ? `${escalations.length} ticket${escalations.length !== 1 ? "s" : ""} need${escalations.length === 1 ? "s" : ""} you`
             : "All clear"}

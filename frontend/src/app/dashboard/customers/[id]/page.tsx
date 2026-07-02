@@ -84,9 +84,7 @@ export default function CustomerProfilePage() {
           {profile.customer_segment.toUpperCase()} · {profile.preferred_language}
           {profile.customer_code ? ` · ${profile.customer_code}` : ""}
         </span>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
-          {profile.name}
-        </h1>
+        <h1 className="page-title">{profile.name}</h1>
         <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
           {profile.phone}{profile.email ? ` · ${profile.email}` : ""}{profile.city ? ` · ${profile.city}` : ""}
         </p>

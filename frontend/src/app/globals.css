@@ -193,6 +193,15 @@ body {
   text-transform: uppercase;
 }
 
+/* ---- Page title (single definition for every dashboard h1) ---- */
+.page-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
 /* ---- Eyebrow Label ---- */
 .eyebrow {
   font-size: 12px;

@@ -30,9 +30,7 @@ export function PageHeader({ eyebrow, title, subtitle, actions }: Props) {
     >
       <div>
         <span className="eyebrow">{eyebrow}</span>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
-          {title}
-        </h1>
+        <h1 className="page-title">{title}</h1>
         {subtitle && (
           <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{subtitle}</p>
         )}

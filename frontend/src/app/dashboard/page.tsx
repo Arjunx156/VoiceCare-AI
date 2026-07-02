@@ -81,9 +81,7 @@ export default function DashboardPage() {
       {/* Page header */}
       <motion.div {...entry()}>
         <span className="eyebrow">OVERVIEW</span>
-        <h1 style={{ fontSize: 32, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
-          Support Operations
-        </h1>
+        <h1 className="page-title">Support Operations</h1>
         <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 6 }}>
           Live view of {process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"} customer support activity
         </p>

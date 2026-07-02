@@ -51,9 +51,7 @@ export default function CustomersPage() {
     >
       <div>
         <span className="eyebrow">DIRECTORY</span>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
-          Customers
-        </h1>
+        <h1 className="page-title">Customers</h1>
       </div>
 
       <input

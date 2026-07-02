@@ -55,7 +55,7 @@ export default function AnalyticsPage() {
       <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
         <div>
           <span className="eyebrow">ANALYTICS</span>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)" }}>Insights</h1>
+          <h1 className="page-title">Insights</h1>
         </div>
         <Panel>
           <EmptyState
@@ -85,9 +85,7 @@ export default function AnalyticsPage() {
       {/* Header */}
       <motion.div {...entry()}>
         <span className="eyebrow">ANALYTICS</span>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
-          Ticket Insights
-        </h1>
+        <h1 className="page-title">Ticket Insights</h1>
         <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 6 }}>
           Language distribution, category breakdown, priority and sentiment analysis
         </p>
