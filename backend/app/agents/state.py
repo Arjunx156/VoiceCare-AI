@@ -53,6 +53,13 @@ class PipelineState(BaseModel):
     # Identity confirmation: set when a caller is matched only loosely (e.g. by
     # name) and must confirm their order number / phone before we share details.
     identity_needs_confirmation: bool = False
+    # True once the caller has corroborated their identity this session (an
+    # order ID belonging to the account, a matching name, or a prior verified
+    # turn). A phone number alone is a claim, not proof.
+    identity_verified: bool = False
+    # Order found for an unverified caller — held back until identity is
+    # confirmed, never exposed in responses.
+    candidate_order_data: Optional[dict] = None
 
     # Stage 3: Order Lookup
     user_data: Optional[dict] = None

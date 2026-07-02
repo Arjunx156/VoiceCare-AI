@@ -278,7 +278,23 @@ class VoiceCarePipeline:
                         )
                         order = order_result.scalar_one_or_none()
 
-                    if order:
+                    # A phone number alone is a claim, not proof — anyone can
+                    # speak someone else's number. Require one corroborating
+                    # factor before sharing account data: an order ID that
+                    # belongs to this account, a name matching the account, or
+                    # a prior verified turn in this session.
+                    order_corroborates = order is not None and order_id is not None
+                    name_corroborates = self._name_matches(state.extracted_name, user.name)
+
+                    if not (state.identity_verified or order_corroborates or name_corroborates):
+                        state.identity_needs_confirmation = True
+                        if order:
+                            state.candidate_order_data = {
+                                "order_id": str(order.order_id),
+                                "order_number": order.order_number,
+                            }
+                    elif order:
+                        state.identity_verified = True
                         state.order_data = {
                             "order_id": str(order.order_id),
                             "order_number": order.order_number,
@@ -347,6 +363,9 @@ class VoiceCarePipeline:
                             }
 
                         state.lookup_successful = True
+                    else:
+                        # Identity holds but the account has no orders yet.
+                        state.identity_verified = True
 
             # ---- Name-only fallback ----
             # If the caller didn't provide a phone/order ID but we extracted a
@@ -370,8 +389,9 @@ class VoiceCarePipeline:
                         "preferred_language": candidate.preferred_language,
                         "customer_segment": candidate.customer_segment,
                     }
-                    # Load their most recent order as a *candidate* — we won't
-                    # reveal details until the customer confirms their identity.
+                    # Load their most recent order as a *candidate* — held in
+                    # candidate_order_data (never order_data) so no detail can
+                    # reach the response before the customer confirms identity.
                     order_result = await self.db.execute(
                         select(Order)
                         .where(Order.user_id == candidate.user_id)
@@ -380,12 +400,9 @@ class VoiceCarePipeline:
                     )
                     candidate_order = order_result.scalar_one_or_none()
                     if candidate_order:
-                        state.order_data = {
+                        state.candidate_order_data = {
                             "order_id": str(candidate_order.order_id),
                             "order_number": candidate_order.order_number,
-                            "order_date": str(candidate_order.order_date),
-                            "status": candidate_order.status,
-                            "total_amount": float(candidate_order.total_amount),
                         }
                 # If 0 or multiple matches: user_data stays None, confirmation
                 # flag still set so the agent asks for more identification.
@@ -465,25 +482,29 @@ class VoiceCarePipeline:
         await self._notify_stage(5, "Determining the best resolution...")
 
         try:
-            # Short-circuit: if the caller was matched only by name, we need
-            # them to confirm their identity before revealing order details.
+            # Short-circuit: the caller has not yet corroborated their identity
+            # (phone-only or name-only match). Ask them to confirm before any
+            # account detail is shared. Never state the order number or the
+            # account name here — the customer must supply those, not hear them.
             if state.identity_needs_confirmation:
-                if state.order_data:
-                    hint = f"found an order ({state.order_data.get('order_number') or 'an order'}) under the name '{state.user_data.get('name') if state.user_data else state.extracted_name}'"
+                if state.candidate_order_data:
+                    hint = "found a matching account with a recent order"
                 else:
-                    hint = "could not find a unique account for that name"
+                    hint = "could not find a unique account for those details"
                 state.recommended_action = "RequestIdentity"
                 state.resolution_summary = (
-                    f"Name-only lookup: {hint}. "
-                    "Ask the customer to confirm their order number or registered phone number before sharing any order details."
+                    f"Identity not verified yet: {hint}. "
+                    "Ask the customer to confirm the full name on the account or a recent "
+                    "order number before sharing any order, payment, or refund details. "
+                    "Do not reveal any account information in this reply."
                 )
                 state.confidence_score = 0.9
                 state.add_trace(
                     agent_name="Resolution",
                     stage_number=5,
-                    input_summary=f"Name lookup — identity_needs_confirmation=True",
-                    output_summary="RequestIdentity — waiting for customer to confirm order/phone",
-                    decision="Short-circuit: name-only match requires confirmation",
+                    input_summary="identity_needs_confirmation=True",
+                    output_summary="RequestIdentity — waiting for customer to confirm name/order",
+                    decision="Short-circuit: unverified identity requires confirmation",
                     reasoning=state.resolution_summary,
                     duration_ms=(time.time() - start) * 1000,
                 )
@@ -593,7 +614,12 @@ class VoiceCarePipeline:
 
         try:
             query = state.transcript_original or state.transcript_english
-            customer_name = state.user_data.get("name") if state.user_data else (state.extracted_name or "Customer")
+            # Never greet an unverified caller with the DB-sourced account name —
+            # that would hand them the answer to the identity challenge.
+            if state.identity_needs_confirmation:
+                customer_name = state.extracted_name or "Customer"
+            else:
+                customer_name = state.user_data.get("name") if state.user_data else (state.extracted_name or "Customer")
 
             resolution_data = {
                 "recommended_action": state.recommended_action,
@@ -908,6 +934,9 @@ class VoiceCarePipeline:
                         state.phone = ctx["phone"]
                     if not state.input_order_id and ctx.get("order_id"):
                         state.input_order_id = ctx["order_id"]
+                    # Once a session has corroborated identity, don't challenge again.
+                    if ctx.get("identity_verified"):
+                        state.identity_verified = True
             except Exception as ctx_err:
                 logger.warning("session_context_load_failed", error=str(ctx_err))
 
@@ -959,11 +988,30 @@ class VoiceCarePipeline:
                         "order_id": order_id,
                         "intent": state.intent,
                         "last_summary": state.summary_english,
+                        "identity_verified": state.identity_verified,
                     })
             except Exception as ctx_save_err:
                 logger.warning("session_context_save_failed", error=str(ctx_save_err))
 
         return state
+
+    @staticmethod
+    def _name_matches(claimed: Optional[str], actual: Optional[str]) -> bool:
+        """Case-insensitive name corroboration — exact match or first-name match.
+
+        Deliberately permissive (one factor is enough to verify) so the
+        identity challenge costs legitimate customers at most one extra turn.
+        """
+        if not claimed or not actual:
+            return False
+        claimed_norm = claimed.strip().lower()
+        actual_norm = actual.strip().lower()
+        if not claimed_norm or not actual_norm:
+            return False
+        return (
+            claimed_norm == actual_norm
+            or claimed_norm.split()[0] == actual_norm.split()[0]
+        )
 
     @staticmethod
     def _intent_to_ticket_type(intent: str) -> str:
