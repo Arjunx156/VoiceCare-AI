@@ -372,14 +372,17 @@ body {
   cursor: not-allowed;
 }
 
-/* ---- Orb-as-mic: large circular hit target overlaying the orb ---- */
+/* ---- Orb-as-mic: the orb sits inside a precision-instrument ring ----
+   One circle, four states: hairline idle → coral on hover → solid coral +
+   pulse while listening → orbiting arc while processing. The ring makes the
+   hit-target visible so the orb reads as a control, not decoration. */
 .orb-button {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 200px;
-  height: 200px;
+  width: 208px;
+  height: 208px;
   border-radius: 50%;
   background: transparent;
   border: none;
@@ -389,6 +392,41 @@ body {
 }
 .orb-button:disabled {
   cursor: wait;
+}
+
+/* The visible instrument ring */
+.orb-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-raised);
+  transition: border-color 200ms ease-out, transform 250ms var(--ease-out-expo), background 200ms ease-out;
+  pointer-events: none;
+}
+.orb-button:hover:not(:disabled) .orb-ring {
+  border-color: var(--accent-border);
+  background: radial-gradient(circle, transparent 62%, rgba(255, 90, 43, 0.06) 100%);
+  transform: scale(1.03);
+}
+.orb-button:active:not(:disabled) .orb-ring {
+  transform: scale(0.98);
+}
+.orb-button[aria-pressed="true"] .orb-ring {
+  border-color: var(--accent);
+}
+.orb-button:disabled .orb-ring {
+  border-color: var(--border-subtle);
+}
+
+/* Processing: a single coral arc orbits the ring (motivated motion = "working") */
+.orb-ring-busy {
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--accent);
+  animation: spin 1.2s linear infinite;
+  pointer-events: none;
 }
 
 /* ---- Record Button Active Ring ---- */

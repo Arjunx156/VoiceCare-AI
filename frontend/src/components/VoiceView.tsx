@@ -288,7 +288,9 @@ export default function VoiceView(props: VoiceState) {
                 : t("footer.startRecording")
             }
           >
-            {isListening && <span className="record-ring" />}
+            <span className="orb-ring" aria-hidden="true" />
+            {isProcessing && <span className="orb-ring-busy" aria-hidden="true" />}
+            {isListening && <span className="record-ring" aria-hidden="true" />}
           </button>
         </motion.div>
 
@@ -305,10 +307,9 @@ export default function VoiceView(props: VoiceState) {
               display: "flex",
               alignItems: "center",
               gap: 6,
-              marginTop: 4,
+              marginTop: 10,
               fontSize: 12,
-              fontWeight: 600,
-              letterSpacing: "0.02em",
+              fontWeight: 500,
               color: isListening ? "var(--accent)" : "var(--text-muted)",
               transition: "color 300ms ease-out",
             }}
