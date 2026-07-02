@@ -359,6 +359,19 @@ export async function clearConversation(sessionId: string): Promise<void> {
   await apiFetch(`/api/voice/session/${sessionId}`, { method: "DELETE" });
 }
 
+export interface SessionHistoryTurn {
+  role: "customer" | "ai";
+  content: string;
+  timestamp?: string;
+}
+
+export async function getSessionHistory(sessionId: string): Promise<SessionHistoryTurn[]> {
+  const data = await apiFetch<{ session_id: string; turns: SessionHistoryTurn[] }>(
+    `/api/voice/session/${sessionId}/history`,
+  );
+  return data.turns;
+}
+
 export function createWebSocket(sessionId: string): WebSocket {
   // WebSocket connections MUST go directly to the backend URL — Vercel's
   // serverless edge cannot proxy the HTTP→WS upgrade that rewrites() handles

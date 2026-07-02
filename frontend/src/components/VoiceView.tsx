@@ -46,6 +46,7 @@ export default function VoiceView(props: VoiceState) {
     currentStage,
     response,
     turns,
+    restoredTurns,
     errorCode,
     selectedLanguage,
     setSelectedLanguage,
@@ -188,7 +189,7 @@ export default function VoiceView(props: VoiceState) {
 
         {/* Stable live region: newly completed turns are announced politely */}
         <div aria-live="polite" style={{ width: "100%" }}>
-          <ConversationThread turns={turns} />
+          <ConversationThread turns={turns} restoredTurns={restoredTurns} />
         </div>
 
         <AnimatePresence>
@@ -242,7 +243,7 @@ export default function VoiceView(props: VoiceState) {
         handleTextSubmit={handleTextSubmit}
         setBhashiniWarning={setBhashiniWarning}
         startNewConversation={startNewConversation}
-        hasResponse={!!response}
+        hasResponse={!!response || restoredTurns.length > 0}
         phone={phone}
         setPhone={setPhone}
       />

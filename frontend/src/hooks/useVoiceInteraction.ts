@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { createWebSocket, clearConversation, type VoiceQueryResponse } from "@/lib/api";
+import { createWebSocket, clearConversation, getSessionHistory, type VoiceQueryResponse } from "@/lib/api";
 import { LANG_TO_BCP47 } from "@/lib/constants";
 import { parseWsMessage } from "@/lib/ws-messages";
 
@@ -10,6 +10,13 @@ export type VoiceErrorCode = "micDenied" | "connection" | "connectionLost" | "ge
 export interface ConversationTurn {
   customer: string;          // what the customer said/typed ("" for voice with no transcript)
   ai: VoiceQueryResponse;    // the assistant's full response for this turn
+}
+
+// A turn restored from server memory after a reload — text only (the full
+// per-turn response object isn't persisted).
+export interface RestoredTurn {
+  customer: string;
+  aiText: string;
 }
 
 // Minimal type shim for the browser Web Speech API (not in TS lib by default)
@@ -30,7 +37,31 @@ interface SpeechRecognitionEvent {
 
 const MAX_WS_RETRIES = 3;
 const LS_LANG_KEY = "vc_lang";
+// sessionStorage (not localStorage): the conversation survives a reload in the
+// same tab, but a new tab or window still starts a fresh conversation — which
+// preserves the original "new visit = new complaint" design.
+const SS_SESSION_KEY = "vc_session";
 const DEFAULT_LANG = "Hindi";
+
+/** Pair flat role/content turns from server memory into customer→ai exchanges. */
+export function pairHistoryTurns(
+  history: { role: string; content: string }[],
+): RestoredTurn[] {
+  const paired: RestoredTurn[] = [];
+  let pendingCustomer: string | null = null;
+  for (const turn of history) {
+    if (turn.role === "customer") {
+      // Two customer messages in a row: keep the earlier one as its own turn.
+      if (pendingCustomer !== null) paired.push({ customer: pendingCustomer, aiText: "" });
+      pendingCustomer = turn.content;
+    } else if (turn.role === "ai") {
+      paired.push({ customer: pendingCustomer ?? "", aiText: turn.content });
+      pendingCustomer = null;
+    }
+  }
+  if (pendingCustomer !== null) paired.push({ customer: pendingCustomer, aiText: "" });
+  return paired;
+}
 
 function readStoredLang(): string {
   if (typeof window === "undefined") return DEFAULT_LANG;
@@ -46,14 +77,15 @@ export function useVoiceInteraction() {
   // Full visible history of completed turns this conversation (persists across
   // mic presses; cleared only on "New conversation").
   const [turns, setTurns]                 = useState<ConversationTurn[]>([]);
+  // Earlier turns restored from server memory after a same-tab reload.
+  const [restoredTurns, setRestoredTurns] = useState<RestoredTurn[]>([]);
   // error holds a translated string (set by the view) or a raw error code string
   // after the refactor it will hold a VoiceErrorCode; VoiceView maps it via t()
   const [errorCode, setErrorCode]         = useState<VoiceErrorCode | null>(null);
   const [selectedLanguage, setSelectedLanguageState] = useState<string>(DEFAULT_LANG);
-  // Session is in-memory only: each fresh page mount starts a new conversation,
-  // so a new complaint after navigating away never merges with an old one.
-  // Follow-ups within a single visit still continue (the hook isn't remounted
-  // between mic presses).
+  // Session id lives in state + sessionStorage: a reload in the same tab
+  // resumes the conversation (see the restore effect below); a new tab or
+  // window starts fresh, so unrelated complaints never merge.
   const [sessionId, setSessionId]         = useState<string | null>(null);
   const [phone, setPhone]                 = useState<string>("");
   const [textInput, setTextInput]         = useState("");
@@ -68,6 +100,33 @@ export function useVoiceInteraction() {
     const stored = readStoredLang();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- post-hydration localStorage read; server cannot know the stored language
     if (stored !== DEFAULT_LANG) setSelectedLanguageState(stored);
+  }, []);
+
+  // Restore a same-tab conversation after a reload: if sessionStorage still
+  // holds a session id and the server still has turns for it (2h TTL), show
+  // them and continue that session. All setState happens in async callbacks.
+  useEffect(() => {
+    const stored = sessionStorage.getItem(SS_SESSION_KEY);
+    if (!stored) return;
+    let cancelled = false;
+    getSessionHistory(stored)
+      .then((history) => {
+        if (cancelled) return;
+        const paired = pairHistoryTurns(history);
+        if (paired.length > 0) {
+          setSessionId(stored);
+          setRestoredTurns(paired);
+        } else {
+          // Expired or cleared server-side — drop the stale id.
+          sessionStorage.removeItem(SS_SESSION_KEY);
+        }
+      })
+      .catch(() => {
+        /* offline/cold backend: keep the id; a later query reuses it anyway */
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Persist language whenever it changes
@@ -201,6 +260,8 @@ export function useVoiceInteraction() {
       if (!sessionId) {
         setSessionId(currentSessionId);
       }
+      // Same-tab reloads resume this conversation (see restore effect).
+      sessionStorage.setItem(SS_SESSION_KEY, currentSessionId);
 
       // Hoisted so the reconnect path can self-reference without touching the
       // outer useCallback binding before its declaration completes.
@@ -402,8 +463,10 @@ export function useVoiceInteraction() {
     // Generate a fresh session and reset all UI state
     const newId = crypto.randomUUID();
     setSessionId(newId);
+    sessionStorage.setItem(SS_SESSION_KEY, newId);
     setResponse(null);
     setTurns([]);
+    setRestoredTurns([]);
     setIsComplete(false);
     setCurrentStage(0);
     setErrorCode(null);
@@ -420,6 +483,7 @@ export function useVoiceInteraction() {
     currentStage,
     response,
     turns,
+    restoredTurns,
     errorCode,
     selectedLanguage,
     setSelectedLanguage,

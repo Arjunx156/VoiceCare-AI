@@ -123,6 +123,52 @@ class TestSessionClearEndpoint:
         assert response.json()["cleared"] is True
 
 
+class TestSessionHistoryEndpoint:
+
+    @pytest.mark.asyncio
+    async def test_invalid_session_id_rejected(self, test_client):
+        response = await test_client.get("/api/voice/session/not-a-uuid/history")
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_unknown_session_returns_empty_turns(self, test_client):
+        session_id = str(uuid.uuid4())
+        response = await test_client.get(f"/api/voice/session/{session_id}/history")
+        assert response.status_code == 200
+        assert response.json()["turns"] == []
+
+    @pytest.mark.asyncio
+    async def test_returns_stored_turns_in_order(self, test_client):
+        from app.services.memory_service import get_memory_service
+
+        session_id = str(uuid.uuid4())
+        memory = await get_memory_service()
+        await memory.store_conversation_turn(session_id, "customer", "मेरा ऑर्डर कहाँ है?")
+        await memory.store_conversation_turn(session_id, "ai", "Your order ships tomorrow.")
+
+        response = await test_client.get(f"/api/voice/session/{session_id}/history")
+
+        assert response.status_code == 200
+        turns = response.json()["turns"]
+        assert [t["role"] for t in turns] == ["customer", "ai"]
+        assert turns[0]["content"] == "मेरा ऑर्डर कहाँ है?"
+        assert turns[1]["content"] == "Your order ships tomorrow."
+
+    @pytest.mark.asyncio
+    async def test_cleared_session_has_no_history(self, test_client):
+        from app.services.memory_service import get_memory_service
+
+        session_id = str(uuid.uuid4())
+        memory = await get_memory_service()
+        await memory.store_conversation_turn(session_id, "customer", "hello")
+
+        await test_client.delete(f"/api/voice/session/{session_id}")
+        response = await test_client.get(f"/api/voice/session/{session_id}/history")
+
+        assert response.status_code == 200
+        assert response.json()["turns"] == []
+
+
 class TestWebSocketValidationErrors:
 
     def test_validation_error_returns_field_messages_only(self):

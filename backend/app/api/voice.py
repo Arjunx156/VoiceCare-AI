@@ -335,6 +335,36 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
 # Session Reset (clears multi-turn memory for a session)
 # ================================================================
 
+@router.get("/session/{session_id}/history")
+async def get_session_history(session_id: str, request: Request):
+    """Return the stored turns for a session so a reloaded page can restore
+    its conversation thread. Same trust model as DELETE below: the session id
+    is an unguessable client-generated UUIDv4, and history expires after 2h.
+    """
+    try:
+        uuid.UUID(session_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid session ID format.")
+
+    await enforce_rate_limit(
+        key=f"rate_limit:session_history:{get_client_ip(request)}",
+        limit=settings.voice_rate_limit_ip_per_minute,
+        window_seconds=_RATE_WINDOW_SECONDS,
+        detail="Too many requests. Please slow down.",
+    )
+
+    memory = await get_memory_service()
+    history = await memory.get_conversation_history(session_id, max_turns=50)
+    # Expose only the documented fields — never whatever else lands in memory.
+    # Roles as stored by the pipeline: "customer" and "ai".
+    turns = [
+        {"role": t.get("role"), "content": t.get("content"), "timestamp": t.get("timestamp")}
+        for t in history
+        if t.get("role") in ("customer", "ai") and t.get("content")
+    ]
+    return {"session_id": session_id, "turns": turns}
+
+
 @router.delete("/session/{session_id}")
 async def clear_session(session_id: str, request: Request):
     """Clear conversation history and identity context for a session (new conversation)."""
