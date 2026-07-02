@@ -27,19 +27,11 @@ export function clearAuthToken(): void {
   document.cookie = "vc_logged_in=; path=/; max-age=0";
 }
 
-export interface VoiceQueryRequest {
-  text?: string;
-  audio_base64?: string;
-  language?: string;
-  phone?: string;
-  order_id?: string;
-  session_id?: string;
-}
-
 export interface VoiceQueryResponse {
   session_id: string;
   ticket_id: string;
   ticket_number?: string;   // short customer-facing code, e.g. TKT-9QXM2
+  ticket_created?: boolean; // false when this turn's ticket write failed
   order_number?: string;    // short order code, e.g. ORD-7K3F
   response_text: string;
   response_audio_base64?: string;
@@ -183,15 +175,6 @@ async function apiFetch<T>(path: string, options?: RequestInit & { timeoutMs?: n
   }
 }
 
-export async function sendVoiceQuery(
-  request: VoiceQueryRequest
-): Promise<VoiceQueryResponse> {
-  return apiFetch<VoiceQueryResponse>("/api/voice/query", {
-    method: "POST",
-    body: JSON.stringify(request),
-  });
-}
-
 export async function getTickets(params?: {
   status?: string;
   priority?: string;
@@ -279,10 +262,6 @@ export async function claimTicket(ticketId: string): Promise<{ ticket_id: string
   return apiFetch(`/api/tickets/${ticketId}/claim`, { method: "PATCH" });
 }
 
-export async function releaseTicket(ticketId: string): Promise<{ ticket_id: string; status: string; assigned_to: null }> {
-  return apiFetch(`/api/tickets/${ticketId}/release`, { method: "PATCH" });
-}
-
 export async function replyToTicket(
   ticketId: string,
   messageText: string,
@@ -295,16 +274,6 @@ export async function replyToTicket(
 
 export async function resolveTicket(ticketId: string): Promise<{ ticket_id: string; status: string }> {
   return apiFetch(`/api/tickets/${ticketId}/resolve`, { method: "PATCH" });
-}
-
-export async function reassignTicket(
-  ticketId: string,
-  assignedTo: string,
-): Promise<{ ticket_id: string; assigned_to: string }> {
-  return apiFetch(`/api/tickets/${ticketId}/reassign`, {
-    method: "PATCH",
-    body: JSON.stringify({ assigned_to: assignedTo }),
-  });
 }
 
 export interface CustomerSummary {
