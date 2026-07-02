@@ -19,6 +19,8 @@ interface FooterProps {
   setShowTextMode: (show: boolean) => void;
   isListening: boolean;
   isProcessing: boolean;
+  startRecording: () => void;
+  stopRecording: () => void;
   textInput: string;
   setTextInput: (text: string) => void;
   handleTextSubmit: (e: React.FormEvent) => void;
@@ -36,6 +38,8 @@ export default function Footer({
   setShowTextMode,
   isListening,
   isProcessing,
+  startRecording,
+  stopRecording,
   textInput,
   setTextInput,
   handleTextSubmit,
@@ -109,10 +113,64 @@ export default function Footer({
           />
         </motion.div>
       )}
-      {/* The record button lives with the orb in VoiceView — the footer only
-          hosts the text-mode form and utility controls. */}
-      {showTextMode && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, width: "100%" }}>
+        {!showTextMode ? (
+          <div style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+            {isListening && <span className="record-ring" />}
+            <motion.button
+              whileHover={!isProcessing ? { scale: 1.02 } : {}}
+              whileTap={!isProcessing ? { scale: 0.98 } : {}}
+              onClick={isListening ? stopRecording : startRecording}
+              disabled={isProcessing}
+              className="btn-pill btn-pill-accent"
+              style={{
+                width: 72,
+                height: 72,
+                padding: 0,
+                fontSize: 20,
+                background: isListening ? "var(--error)" : "var(--accent)",
+                // Busy reads as "working" (spinner, slight dim) — not disabled-broken.
+                opacity: isProcessing ? 0.75 : 1,
+                cursor: isProcessing ? "not-allowed" : "pointer",
+              }}
+              aria-label={
+                isProcessing
+                  ? t("status.processing")
+                  : isListening
+                  ? t("footer.stopRecording")
+                  : t("footer.startRecording")
+              }
+              aria-pressed={isListening}
+            >
+              {isProcessing ? (
+                // Busy ring (white on accent) — reuses the global `spin`
+                // keyframe; freezes under prefers-reduced-motion.
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    border: "2.5px solid rgba(255,255,255,0.35)",
+                    borderTopColor: "#fff",
+                    animation: "spin 1s linear infinite",
+                    display: "inline-block",
+                  }}
+                />
+              ) : isListening ? (
+                <svg width="18" height="18" fill="white" viewBox="0 0 24 24">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" fill="white" viewBox="0 0 24 24">
+                  <path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/>
+                  <line x1="12" y1="19" x2="12" y2="23" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              )}
+            </motion.button>
+          </div>
+        ) : (
           <form onSubmit={handleTextSubmit} style={{ flex: 1, display: "flex", gap: 8 }}>
             <input
               type="text"
@@ -142,39 +200,20 @@ export default function Footer({
               {t("footer.send")}
             </button>
           </form>
-        </div>
-      )}
-      <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+        )}
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <button
+          className="utility-btn"
           onClick={() => { setShowTextMode(!showTextMode); setBhashiniWarning(false); }}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontSize: 12,
-            color: "var(--text-muted)",
-            fontFamily: "var(--font-sans)",
-            transition: "color 150ms",
-          }}
         >
           {showTextMode ? t("footer.switchToVoice") : t("footer.switchToText")}
         </button>
         {hasResponse && (
           <button
+            className="utility-btn outlined"
             onClick={startNewConversation}
             disabled={isListening || isProcessing}
-            style={{
-              background: "none",
-              border: "1px solid var(--border-subtle)",
-              borderRadius: 999,
-              cursor: isListening || isProcessing ? "not-allowed" : "pointer",
-              fontSize: 12,
-              color: "var(--text-secondary)",
-              fontFamily: "var(--font-sans)",
-              padding: "4px 12px",
-              opacity: isListening || isProcessing ? 0.4 : 1,
-              transition: "color 150ms, border-color 150ms",
-            }}
           >
             {t("footer.newConversation")}
           </button>

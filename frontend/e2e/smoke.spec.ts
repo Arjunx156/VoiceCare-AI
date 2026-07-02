@@ -46,24 +46,18 @@ test("voice landing page renders the hero and language pills", async ({ page }) 
   await expect(page.getByRole("button", { name: "Tamil" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Hindi" })).toBeVisible();
 
-  // One-tap starter query chips (idle/first-visit only). Default UI language
-  // is Hindi, so the chip text is the Hindi catalog entry — this also guards
-  // the i18n wiring.
-  await expect(page.getByRole("button", { name: "मेरा ऑर्डर कहाँ है?" })).toBeVisible();
 });
 
-test("record button sits with the orb, in view without scrolling on a phone", async ({ page }) => {
+test("record button renders in the footer on a phone viewport", async ({ page }) => {
   await page.route("**/health", (route) => route.fulfill({ json: { status: "ok" } }));
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto("/");
 
-  // The orb IS the record control (circular overlay button); it must be fully
-  // inside the initial viewport (the old layout pushed the mic below the fold).
-  const mic = page.locator("button.orb-button");
+  // The classic round mic pill (user-preferred placement) with translated
+  // label + pressed state semantics.
+  const mic = page.locator("button.btn-pill-accent[aria-pressed]");
   await expect(mic).toBeVisible();
-  const box = await mic.boundingBox();
-  expect(box).not.toBeNull();
-  expect(box!.y + box!.height).toBeLessThanOrEqual(667);
+  await expect(mic).toHaveAttribute("aria-pressed", "false");
 });
 
 test("unauthenticated /dashboard is redirected to /login by middleware", async ({ page }) => {

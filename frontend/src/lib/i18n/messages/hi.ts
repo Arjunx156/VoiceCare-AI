@@ -7,9 +7,6 @@ const hi: Messages = {
   "voice.eyebrow.done": "पूर्ण",
   "voice.eyebrow.idle": "वॉइस सहायता",
   "voice.restored": "इस बातचीत में पहले",
-  "voice.chip.order": "मेरा ऑर्डर कहाँ है?",
-  "voice.chip.refund": "मेरे रिफंड का क्या हुआ?",
-  "voice.chip.damaged": "मुझे खराब प्रोडक्ट मिला है",
 
   "voice.headline.listening": "मैं सुन रहा हूँ…",
   "voice.headline.thinking": "काम चल रहा है…",

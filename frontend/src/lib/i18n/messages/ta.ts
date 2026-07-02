@@ -7,9 +7,6 @@ const ta: Messages = {
   "voice.eyebrow.done": "முடிந்தது",
   "voice.eyebrow.idle": "குரல் ஆதரவு",
   "voice.restored": "இந்த உரையாடலில் முன்பு",
-  "voice.chip.order": "என் ஆர்டர் எங்கே?",
-  "voice.chip.refund": "என் பணத்திரும்பல் நிலை என்ன?",
-  "voice.chip.damaged": "எனக்கு சேதமான பொருள் வந்தது",
 
   "voice.headline.listening": "நான் கேட்கிறேன்…",
   "voice.headline.thinking": "வேலை செய்கிறது…",

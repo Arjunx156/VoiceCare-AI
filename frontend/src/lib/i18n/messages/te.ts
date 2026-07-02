@@ -7,9 +7,6 @@ const te: Messages = {
   "voice.eyebrow.done": "పూర్తయింది",
   "voice.eyebrow.idle": "వాయిస్ సహాయం",
   "voice.restored": "ఈ సంభాషణలో ఇంతకుముందు",
-  "voice.chip.order": "నా ఆర్డర్ ఎక్కడ ఉంది?",
-  "voice.chip.refund": "నా రీఫండ్ పరిస్థితి ఏమిటి?",
-  "voice.chip.damaged": "నాకు పాడైన వస్తువు వచ్చింది",
 
   "voice.headline.listening": "నేను వింటున్నాను…",
   "voice.headline.thinking": "పని చేస్తోంది…",

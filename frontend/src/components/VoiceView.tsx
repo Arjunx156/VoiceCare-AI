@@ -125,7 +125,6 @@ export default function VoiceView(props: VoiceState) {
     startRecording,
     stopRecording,
     handleTextSubmit,
-    submitText,
     startNewConversation,
     phone,
     setPhone,
@@ -257,15 +256,12 @@ export default function VoiceView(props: VoiceState) {
           </motion.div>
         )}
 
-        {/* The orb IS the mic: one large circular hit-target overlays it, so
-            the thing you look at is the thing you press. The pulse ring wraps
-            the orb itself while listening. */}
         <motion.div
           custom={2}
           variants={fadeUp}
           initial="hidden"
           animate="show"
-          style={{ position: "relative", width: "100%", height: 256 }}
+          style={{ width: "100%", height: 256 }}
         >
           <Suspense fallback={<div style={{ width: "100%", height: "100%" }} />}>
             <VoiceOrb
@@ -274,91 +270,7 @@ export default function VoiceView(props: VoiceState) {
               audioLevelRef={audioLevelRef}
             />
           </Suspense>
-          <button
-            type="button"
-            className="orb-button"
-            onClick={isListening ? stopRecording : startRecording}
-            disabled={isProcessing}
-            aria-pressed={isListening}
-            aria-label={
-              isProcessing
-                ? t("status.processing")
-                : isListening
-                ? t("footer.stopRecording")
-                : t("footer.startRecording")
-            }
-          >
-            <span className="orb-ring" aria-hidden="true" />
-            {isProcessing && <span className="orb-ring-busy" aria-hidden="true" />}
-            {isListening && <span className="record-ring" aria-hidden="true" />}
-          </button>
         </motion.div>
-
-        {/* Hint under the orb — the affordance for the invisible hit-target.
-            Decorative (the button above carries the accessible label). */}
-        {!showTextMode && (
-          <motion.p
-            custom={2.2}
-            variants={fadeUp}
-            initial="hidden"
-            animate="show"
-            aria-hidden="true"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              marginTop: 10,
-              fontSize: 12,
-              fontWeight: 500,
-              color: isListening ? "var(--accent)" : "var(--text-muted)",
-              transition: "color 300ms ease-out",
-            }}
-          >
-            {!isListening && !isProcessing && (
-              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z" fill="currentColor" />
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            )}
-            {isProcessing
-              ? t("status.processing")
-              : isListening
-              ? t("footer.stopRecording")
-              : t("footer.startRecording")}
-          </motion.p>
-        )}
-
-        {/* One-tap starter queries — first-visit only, in the selected language */}
-        {showLanguageLine && (
-          <motion.div
-            custom={2.5}
-            variants={fadeUp}
-            initial="hidden"
-            animate="show"
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "center",
-              gap: 8,
-              marginTop: 18,
-            }}
-          >
-            {(["voice.chip.order", "voice.chip.refund", "voice.chip.damaged"] as const).map(
-              (key) => (
-                <button
-                  key={key}
-                  type="button"
-                  className="query-chip"
-                  disabled={isListening || isProcessing}
-                  onClick={() => submitText(t(key))}
-                >
-                  {t(key)}
-                </button>
-              ),
-            )}
-          </motion.div>
-        )}
 
         <AnimatePresence>
           {isListening && liveTranscript && (
@@ -433,6 +345,8 @@ export default function VoiceView(props: VoiceState) {
         setShowTextMode={setShowTextMode}
         isListening={isListening}
         isProcessing={isProcessing}
+        startRecording={startRecording}
+        stopRecording={stopRecording}
         textInput={textInput}
         setTextInput={setTextInput}
         handleTextSubmit={handleTextSubmit}

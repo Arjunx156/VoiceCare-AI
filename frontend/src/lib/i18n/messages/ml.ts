@@ -7,9 +7,6 @@ const ml: Messages = {
   "voice.eyebrow.done": "പൂർത്തിയായി",
   "voice.eyebrow.idle": "വോയിസ് സഹായം",
   "voice.restored": "ഈ സംഭാഷണത്തിൽ നേരത്തെ",
-  "voice.chip.order": "എന്റെ ഓർഡർ എവിടെ?",
-  "voice.chip.refund": "എന്റെ റീഫണ്ടിന്റെ അവസ്ഥ എന്താണ്?",
-  "voice.chip.damaged": "എനിക്ക് കേടായ ഉൽപ്പന്നം ലഭിച്ചു",
 
   "voice.headline.listening": "ഞാൻ കേൾക്കുന്നു…",
   "voice.headline.thinking": "പ്രവർത്തിക്കുന്നു…",

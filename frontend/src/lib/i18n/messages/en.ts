@@ -14,10 +14,6 @@ const en = {
   // Conversation restored after a reload
   "voice.restored": "Earlier in this conversation",
 
-  // Quick-query suggestion chips (one tap sends the query)
-  "voice.chip.order": "Where is my order?",
-  "voice.chip.refund": "What's my refund status?",
-  "voice.chip.damaged": "I received a damaged product",
 
   // Voice page — headline
   "voice.headline.listening": "I'm listening…",
