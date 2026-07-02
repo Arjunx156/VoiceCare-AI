@@ -4,10 +4,11 @@ Handles text/voice queries and WebSocket streaming.
 """
 
 import json
+import re
 import uuid
 import time
 import structlog
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError, OperationalError
 
@@ -15,6 +16,11 @@ from app.core.database import get_db
 from app.core.config import get_settings
 from app.core.errors import RateLimitError, ErrorMessages
 from app.core.constants import LANGUAGE_CODES, MAX_AUDIO_B64_LEN, MAX_TEXT_LEN
+from app.core.rate_limit import (
+    enforce as enforce_rate_limit,
+    get_client_ip,
+    is_within_limit,
+)
 from app.agents.state import PipelineState
 from app.agents.pipeline import VoiceCarePipeline
 from app.schemas.schemas import VoiceQueryRequest, VoiceQueryResponse
@@ -24,41 +30,34 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/api/voice", tags=["voice"])
 settings = get_settings()
 
+_RATE_WINDOW_SECONDS = 60
+_VERCEL_ORIGIN_RE = re.compile(r"^https://[a-z0-9.-]+\.vercel\.app$", re.IGNORECASE)
+
+# Live voice WebSocket connections per client IP (per-worker; enough to stop
+# a single host from opening unbounded pipeline connections).
+_ws_connections: dict[str, int] = {}
+
 # ================================================================
 # Rate-Limiting Dependency
 # ================================================================
 
-async def rate_limit_dependency(request: VoiceQueryRequest) -> None:
-    """
-    Simple in-memory rate limiter: max 5 voice queries/minute per phone.
-    Uses the memory service (Redis) so it works across multiple workers.
-    Falls back gracefully if Redis is unavailable.
-    """
-    phone = request.phone
-    if not phone:
-        return  # anonymous requests are not rate-limited here
-
-    try:
-        memory = await get_memory_service()
-        limit = settings.voice_rate_limit_per_minute
-        window = 60  # seconds
-        key = f"rate_limit:voice:{phone}"
-
-        # Increment the counter; set expiry on first hit
-        count = await memory.increment_with_expiry(key, window)
-        if count is not None and count > limit:
-            logger.warning("rate_limit_exceeded", phone=phone, count=count)
-            raise HTTPException(
-                status_code=429,
-                detail=ErrorMessages.RATE_LIMIT_VOICE,
-                headers={"Retry-After": str(window)},
-            )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        # Fail open: if the rate-limit store is unavailable, allow the voice
-        # query through rather than blocking customers with a 503.
-        logger.warning("voice_rate_limit_unavailable_fail_open", error=str(exc))
+async def rate_limit_dependency(request: Request, body: VoiceQueryRequest) -> None:
+    """Per-IP limit for every caller (anonymous included), plus the tighter
+    per-phone limit when a phone number is supplied. Degrades to an in-process
+    counter when the shared store is unavailable (see app/core/rate_limit.py)."""
+    await enforce_rate_limit(
+        key=f"rate_limit:voice:ip:{get_client_ip(request)}",
+        limit=settings.voice_rate_limit_ip_per_minute,
+        window_seconds=_RATE_WINDOW_SECONDS,
+        detail=ErrorMessages.RATE_LIMIT_VOICE,
+    )
+    if body.phone:
+        await enforce_rate_limit(
+            key=f"rate_limit:voice:{body.phone}",
+            limit=settings.voice_rate_limit_per_minute,
+            window_seconds=_RATE_WINDOW_SECONDS,
+            detail=ErrorMessages.RATE_LIMIT_VOICE,
+        )
 
 
 # ================================================================
@@ -67,26 +66,26 @@ async def rate_limit_dependency(request: VoiceQueryRequest) -> None:
 
 @router.post("/query", response_model=VoiceQueryResponse)
 async def process_voice_query(
-    request: VoiceQueryRequest,
+    body: VoiceQueryRequest,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(rate_limit_dependency),
 ):
     """Process a text or voice query through the 9-agent pipeline."""
     # Build initial pipeline state
     state = PipelineState(
-        raw_text=request.text,
-        raw_audio_base64=request.audio_base64,
-        language_detected=request.language or "English",
-        language_code=_language_to_code(request.language) if request.language else "en",
-        phone=request.phone,
-        input_order_id=request.order_id,
+        raw_text=body.text,
+        raw_audio_base64=body.audio_base64,
+        language_detected=body.language or "English",
+        language_code=_language_to_code(body.language) if body.language else "en",
+        phone=body.phone,
+        input_order_id=body.order_id,
     )
 
     # Load conversation history from Redis if multi-turn
-    if request.session_id:
-        state.session_id = request.session_id
+    if body.session_id:
+        state.session_id = body.session_id
         memory = await get_memory_service()
-        history = await memory.get_conversation_history(request.session_id)
+        history = await memory.get_conversation_history(body.session_id)
         state.conversation_history = history
 
     # Run the pipeline
@@ -99,7 +98,7 @@ async def process_voice_query(
     # Store conversation turn in memory
     memory = await get_memory_service()
     await memory.store_conversation_turn(
-        state.session_id, "customer", state.transcript_original or request.text or ""
+        state.session_id, "customer", state.transcript_original or body.text or ""
     )
     await memory.store_conversation_turn(
         state.session_id, "ai", state.response_english or state.response_text or ""
@@ -129,10 +128,38 @@ async def process_voice_query(
 # WebSocket Endpoint
 # ================================================================
 
+def _origin_allowed(origin: str) -> bool:
+    """Mirror of the CORS policy for WebSocket handshakes.
+
+    Browsers always send Origin; a mismatched one is rejected. A missing
+    Origin (non-browser client) is allowed — those callers are still bounded
+    by the per-IP connection cap and message budget.
+    """
+    normalized = origin.rstrip("/")
+    if normalized in settings.allowed_origins:
+        return True
+    allow_vercel = (not settings.is_production) or settings.cors_allow_vercel_previews
+    return bool(allow_vercel and _VERCEL_ORIGIN_RE.match(normalized))
+
+
 @router.websocket("/ws/{session_id}")
 async def voice_websocket(websocket: WebSocket, session_id: str):
     """WebSocket endpoint for real-time pipeline status streaming."""
     import asyncio as _asyncio
+
+    origin = websocket.headers.get("origin")
+    if origin and not _origin_allowed(origin):
+        logger.warning("websocket_origin_rejected", session_id=session_id)
+        await websocket.close(code=4403)
+        return
+
+    client_ip = get_client_ip(websocket)
+    if _ws_connections.get(client_ip, 0) >= settings.ws_max_connections_per_ip:
+        logger.warning("websocket_connection_cap", client_ip=client_ip)
+        await websocket.close(code=4429)
+        return
+    _ws_connections[client_ip] = _ws_connections.get(client_ip, 0) + 1
+
     await websocket.accept()
 
     async def on_stage_update(update: dict):
@@ -172,6 +199,26 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
                 await websocket.send_json({
                     "error": "VALIDATION_ERROR",
                     "detail": "Audio payload exceeds 10 MB limit.",
+                })
+                continue
+
+            # Message budget — shares the per-IP counter with the REST
+            # endpoint so switching transports cannot double the allowance.
+            within_ip_budget = await is_within_limit(
+                f"rate_limit:voice:ip:{client_ip}",
+                settings.voice_rate_limit_ip_per_minute,
+                _RATE_WINDOW_SECONDS,
+            )
+            within_phone_budget = not ws_request.phone or await is_within_limit(
+                f"rate_limit:voice:{ws_request.phone}",
+                settings.voice_rate_limit_per_minute,
+                _RATE_WINDOW_SECONDS,
+            )
+            if not (within_ip_budget and within_phone_budget):
+                await websocket.send_json({
+                    "error": "RATE_LIMITED",
+                    "detail": ErrorMessages.RATE_LIMIT_VOICE,
+                    "retry_after": _RATE_WINDOW_SECONDS,
                 })
                 continue
 
@@ -259,6 +306,11 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
             pass
     finally:
         ping_task.cancel()
+        remaining = _ws_connections.get(client_ip, 1) - 1
+        if remaining > 0:
+            _ws_connections[client_ip] = remaining
+        else:
+            _ws_connections.pop(client_ip, None)
 
 
 # ================================================================

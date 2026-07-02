@@ -24,6 +24,8 @@ from app.schemas.schemas import (
     TicketSummary, TicketDetail, HandoffNote, AnalyticsOverview,
 )
 
+from app.core.rate_limit import enforce as enforce_rate_limit, get_client_ip
+
 logger = structlog.get_logger()
 
 # 60 requests per minute per IP for dashboard reads
@@ -32,24 +34,12 @@ _TICKET_RATE_WINDOW = 60
 
 
 async def _ticket_rate_limit(request: Request) -> None:
-    client_ip = request.client.host if request.client else "unknown"
-    try:
-        memory = await get_memory_service()
-        count = await memory.increment_with_expiry(
-            f"rate_limit:tickets:{client_ip}", _TICKET_RATE_WINDOW
-        )
-        if count is not None and count > _TICKET_RATE_LIMIT:
-            raise HTTPException(
-                status_code=429,
-                detail="Too many requests. Please slow down.",
-                headers={"Retry-After": str(_TICKET_RATE_WINDOW)},
-            )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        # Fail open: if the rate-limit store is unavailable, allow the request
-        # through rather than blocking all dashboard access with a 503.
-        logger.warning("ticket_rate_limit_unavailable_fail_open", error=str(exc))
+    await enforce_rate_limit(
+        key=f"rate_limit:tickets:{get_client_ip(request)}",
+        limit=_TICKET_RATE_LIMIT,
+        window_seconds=_TICKET_RATE_WINDOW,
+        detail="Too many requests. Please slow down.",
+    )
 
 
 router = APIRouter(
