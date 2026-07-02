@@ -281,6 +281,16 @@ body {
   width: 100%;
 }
 
+/* ---- Login split: brand column collapses under 860px ---- */
+@media (max-width: 860px) {
+  .login-shell {
+    gap: 0 !important;
+  }
+  .login-shell > div:first-child {
+    display: none !important;
+  }
+}
+
 /* ---- Header admin link (accent-hover pill) ---- */
 .header-admin-link {
   display: inline-flex;
