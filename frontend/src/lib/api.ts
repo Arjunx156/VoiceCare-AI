@@ -185,11 +185,13 @@ export async function getTickets(params?: {
   status?: string;
   priority?: string;
   language?: string;
+  search?: string;
 }): Promise<TicketSummary[]> {
   const query = new URLSearchParams();
   if (params?.status) query.set("status", params.status);
   if (params?.priority) query.set("priority", params.priority);
   if (params?.language) query.set("language", params.language);
+  if (params?.search) query.set("search", params.search);
   const qs = query.toString();
   return apiFetch<TicketSummary[]>(`/api/tickets/${qs ? `?${qs}` : ""}`);
 }

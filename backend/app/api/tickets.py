@@ -10,7 +10,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, case, and_, update
+from sqlalchemy import select, func, case, and_, or_, update
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
@@ -84,16 +84,23 @@ def _ticket_to_summary(ticket: SupportTicket) -> TicketSummary:
     )
 
 
+def _search_pattern(term: str) -> str:
+    """Escape LIKE wildcards in a user-supplied search term (used with escape='\\\\')."""
+    escaped = term.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+    return f"%{escaped}%"
+
+
 @router.get("/", response_model=List[TicketSummary])
 async def list_tickets(
     status: Optional[str] = Query(None),
     priority: Optional[str] = Query(None),
     language: Optional[str] = Query(None),
+    search: Optional[str] = Query(None, max_length=100),
     limit: int = Query(50, le=200),
     offset: int = Query(0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List support tickets with optional filters."""
+    """List support tickets with optional filters and free-text search."""
     # Eager-load user to avoid N+1 queries; exclude soft-deleted tickets
     query = (
         select(SupportTicket)
@@ -108,6 +115,17 @@ async def list_tickets(
         query = query.where(SupportTicket.priority == priority)
     if language:
         query = query.where(SupportTicket.language == language)
+    if search and search.strip():
+        pattern = _search_pattern(search.strip())
+        # Outer join so tickets without a user row still match on their own fields
+        query = query.outerjoin(SupportTicket.user).where(
+            or_(
+                User.name.ilike(pattern, escape="\\"),
+                User.phone.ilike(pattern, escape="\\"),
+                SupportTicket.summary.ilike(pattern, escape="\\"),
+                SupportTicket.ticket_number.ilike(pattern, escape="\\"),
+            )
+        )
 
     query = query.limit(limit).offset(offset)
     result = await db.execute(query)

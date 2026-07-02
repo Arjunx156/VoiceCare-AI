@@ -138,3 +138,58 @@ async def test_customers_list_and_profile(authed_client, seeded_ticket):
 async def test_customer_profile_invalid_id_400(authed_client):
     resp = await authed_client.get("/api/customers/not-a-uuid")
     assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# GET /api/tickets/?search=  (free-text ticket search)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_ticket_search_by_customer_phone(authed_client, seeded_ticket):
+    # Phone is unique per seeded fixture, so this narrows to exactly one row.
+    resp = await authed_client.get("/api/tickets/", params={"search": seeded_ticket["phone"]})
+    assert resp.status_code == 200, resp.text
+    rows = resp.json()
+    assert len(rows) == 1
+    assert rows[0]["ticket_id"] == seeded_ticket["ticket_id"]
+    assert rows[0]["user_name"] == "Asha Rao"
+
+
+@pytest.mark.asyncio
+async def test_ticket_search_matches_summary_case_insensitively(authed_client, sessionmaker_):
+    token = f"zebra{uuid.uuid4().hex[:8]}"  # unique so the shared DB can't collide
+    async with sessionmaker_() as s:
+        user = User(name="Sam Iyer", phone="8" + uuid.uuid4().hex[:9], preferred_language="Tamil")
+        s.add(user)
+        await s.flush()
+        s.add(SupportTicket(
+            user_id=user.user_id,
+            ticket_type="Refund",
+            priority="Medium",
+            status="Open",
+            language="Tamil",
+            summary=f"Refund pending for order {token.upper()}",
+        ))
+        await s.commit()
+
+    resp = await authed_client.get("/api/tickets/", params={"search": token})
+    assert resp.status_code == 200, resp.text
+    rows = resp.json()
+    assert len(rows) == 1
+    assert token.upper() in rows[0]["summary"]
+
+
+@pytest.mark.asyncio
+async def test_ticket_search_escapes_like_wildcards(authed_client, seeded_ticket):
+    # A bare '%' must be treated as a literal, not a match-everything wildcard.
+    resp = await authed_client.get("/api/tickets/", params={"search": "%"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == []
+
+
+@pytest.mark.asyncio
+async def test_ticket_search_no_match_returns_empty(authed_client, seeded_ticket):
+    resp = await authed_client.get("/api/tickets/", params={"search": "no-such-customer-xyz"})
+    assert resp.status_code == 200
+    assert resp.json() == []

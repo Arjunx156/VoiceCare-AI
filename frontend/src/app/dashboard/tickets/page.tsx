@@ -39,28 +39,41 @@ type FetchResult =
 
 export default function TicketsPage() {
   const [filter, setFilter] = useState({ status: "", priority: "" });
+  const [search, setSearch] = useState("");
   const [result, setResult] = useState<FetchResult | null>(null);
   const { entry } = useMotionSafe();
 
-  const filterKey = `${filter.status}|${filter.priority}`;
+  // JSON key is unambiguous even if the search text contains "|".
+  const filterKey = JSON.stringify([filter.status, filter.priority, search.trim()]);
 
   useEffect(() => {
     let cancelled = false;
-    const [status, priority] = filterKey.split("|");
-    getTickets({ status: status || undefined, priority: priority || undefined })
-      .then((tickets) => {
-        if (!cancelled) setResult({ key: filterKey, tickets });
+    const [status, priority, searchTerm] = JSON.parse(filterKey) as [string, string, string];
+
+    function run() {
+      getTickets({
+        status: status || undefined,
+        priority: priority || undefined,
+        search: searchTerm || undefined,
       })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setResult({
-            key: filterKey,
-            error: err instanceof Error ? err.message : "Failed to load tickets",
-          });
-        }
-      });
+        .then((tickets) => {
+          if (!cancelled) setResult({ key: filterKey, tickets });
+        })
+        .catch((err: unknown) => {
+          if (!cancelled) {
+            setResult({
+              key: filterKey,
+              error: err instanceof Error ? err.message : "Failed to load tickets",
+            });
+          }
+        });
+    }
+
+    // Debounce keystrokes while typing a search; filters apply immediately.
+    const timer = setTimeout(run, searchTerm ? 300 : 0);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [filterKey]);
 
@@ -78,6 +91,23 @@ export default function TicketsPage() {
         subtitle={error ?? undefined}
         actions={
           <>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, phone, ticket #…"
+              aria-label="Search tickets"
+              style={{
+                padding: "8px 14px",
+                borderRadius: 999,
+                fontSize: 12,
+                fontFamily: "var(--font-sans)",
+                background: "var(--bg-panel)",
+                border: "1px solid var(--border-subtle)",
+                color: "var(--text-primary)",
+                width: 220,
+              }}
+            />
             <select
               value={filter.status}
               onChange={(e) => setFilter((f) => ({ ...f, status: e.target.value }))}
@@ -110,7 +140,7 @@ export default function TicketsPage() {
           <EmptyState
             icon={Inbox}
             title="No tickets found"
-            hint={filter.status || filter.priority ? "Try clearing the filters." : "New voice queries will appear here."}
+            hint={filter.status || filter.priority || search ? "Try clearing the search or filters." : "New voice queries will appear here."}
           />
         ) : (
           tickets.map((ticket, i) => (
