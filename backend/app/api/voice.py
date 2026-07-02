@@ -62,6 +62,33 @@ async def rate_limit_dependency(request: Request, body: VoiceQueryRequest) -> No
         )
 
 
+def _build_voice_response(state: PipelineState) -> dict:
+    """Single source of truth for the client-facing pipeline result.
+
+    Used by both the REST endpoint (wrapped in VoiceQueryResponse) and the
+    WebSocket final message, so the two transports can never drift apart.
+    """
+    return {
+        "session_id": state.session_id,
+        "ticket_id": state.ticket_id or "",
+        "ticket_number": state.ticket_number,
+        "ticket_created": state.ticket_created,
+        "order_number": (state.order_data or {}).get("order_number"),
+        "response_text": state.response_text or "",
+        "response_audio_base64": state.response_audio_base64,
+        "language": state.language_detected,
+        "intent": state.intent or "general_inquiry",
+        "sentiment": state.sentiment,
+        "priority": state.priority,
+        "recommended_action": state.recommended_action or "Inform",
+        "policy_reference": state.policy_reference,
+        "confidence_score": state.confidence_score,
+        "is_escalated": state.is_escalated,
+        "escalation_reason": state.escalation_reason,
+        "agent_trace": [step.model_dump(mode="json") for step in state.agent_trace],
+    }
+
+
 # ================================================================
 # REST Endpoint
 # ================================================================
@@ -111,25 +138,7 @@ async def process_voice_query(
         state.session_id, "ai", state.response_english or state.response_text or ""
     )
 
-    return VoiceQueryResponse(
-        session_id=state.session_id,
-        ticket_id=state.ticket_id or "",
-        ticket_number=state.ticket_number,
-        ticket_created=state.ticket_created,
-        order_number=(state.order_data or {}).get("order_number"),
-        response_text=state.response_text or "",
-        response_audio_base64=state.response_audio_base64,
-        language=state.language_detected,
-        intent=state.intent or "general_inquiry",
-        sentiment=state.sentiment,
-        priority=state.priority,
-        recommended_action=state.recommended_action or "Inform",
-        policy_reference=state.policy_reference,
-        confidence_score=state.confidence_score,
-        is_escalated=state.is_escalated,
-        escalation_reason=state.escalation_reason,
-        agent_trace=[step.model_dump(mode="json") for step in state.agent_trace],
-    )
+    return VoiceQueryResponse(**_build_voice_response(state))
 
 
 # ================================================================
@@ -268,28 +277,12 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
                 pipeline = VoiceCarePipeline(db=db, on_stage_update=on_stage_update)
                 state = await pipeline.run(state)
 
-                # Send final response — include all VoiceQueryResponse fields so
-                # the frontend can display confidence score, priority, trace, etc.
+                # Send final response — all VoiceQueryResponse fields plus the
+                # WS framing keys, built from the shared response builder.
                 await websocket.send_json({
                     "type": "response",
-                    "session_id": state.session_id,
-                    "ticket_id": state.ticket_id or "",
-                    "ticket_number": state.ticket_number,
-                    "ticket_created": state.ticket_created,
-                    "order_number": (state.order_data or {}).get("order_number"),
-                    "response_text": state.response_text or "",
-                    "response_audio_base64": state.response_audio_base64,
-                    "language": state.language_detected,
-                    "intent": state.intent or "general_inquiry",
-                    "sentiment": state.sentiment,
-                    "priority": state.priority,
-                    "recommended_action": state.recommended_action or "Inform",
-                    "policy_reference": state.policy_reference,
-                    "confidence_score": state.confidence_score,
-                    "is_escalated": state.is_escalated,
-                    "escalation_reason": state.escalation_reason,
-                    "agent_trace": [step.model_dump(mode="json") for step in state.agent_trace],
                     "is_complete": True,
+                    **_build_voice_response(state),
                 })
 
                 # Store turns

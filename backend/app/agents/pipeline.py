@@ -68,28 +68,6 @@ class VoiceCarePipeline:
                 # Detect language and transcribe
                 lang_code = state.language_code or "hi"
                 try:
-                    """
-                    # --- BHASHINI STT (COMMENTED OUT FOR FUTURE USE) ---
-                    transcript, detected_lang = await self.bhashini.speech_to_text(
-                        state.raw_audio_base64, lang_code
-                    )
-                    state.transcript_original = transcript
-                    state.language_code = detected_lang
-
-                    # Get language name
-                    lang_names = {v: k for k, v in LANGUAGE_CODES.items()}
-                    state.language_detected = lang_names.get(detected_lang, "Hindi")
-
-                    # Translate to English for downstream processing
-                    if detected_lang != "en":
-                        state.transcript_english = await self.bhashini.translate_text(
-                            transcript, detected_lang, "en"
-                        )
-                    else:
-                        state.transcript_english = transcript
-
-                    decision = "Bhashini STT transcription"
-                    """
                     # --- GROQ WHISPER STT (FAST, FREE API) ---
                     import base64
                     import httpx

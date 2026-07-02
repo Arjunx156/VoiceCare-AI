@@ -65,6 +65,25 @@ def _parse_ticket_id(ticket_id: str) -> uuid.UUID:
         raise HTTPException(status_code=400, detail="Invalid ticket ID")
 
 
+def _ticket_to_summary(ticket: SupportTicket) -> TicketSummary:
+    """Single mapping from the ORM row (with eager-loaded user) to the list DTO."""
+    return TicketSummary(
+        ticket_id=ticket.ticket_id,
+        ticket_number=ticket.ticket_number,
+        user_name=ticket.user.name if ticket.user else "Unknown",
+        phone=ticket.user.phone if ticket.user else "",
+        ticket_type=ticket.ticket_type,
+        priority=ticket.priority,
+        status=ticket.status,
+        language=ticket.language,
+        sentiment=ticket.sentiment,
+        summary=ticket.summary,
+        created_at=ticket.created_at,
+        resolved_at=ticket.resolved_at,
+        assigned_to=ticket.assigned_to,
+    )
+
+
 @router.get("/", response_model=List[TicketSummary])
 async def list_tickets(
     status: Optional[str] = Query(None),
@@ -94,24 +113,7 @@ async def list_tickets(
     result = await db.execute(query)
     tickets = result.scalars().all()
 
-    return [
-        TicketSummary(
-            ticket_id=t.ticket_id,
-            ticket_number=t.ticket_number,
-            user_name=t.user.name if t.user else "Unknown",
-            phone=t.user.phone if t.user else "",
-            ticket_type=t.ticket_type,
-            priority=t.priority,
-            status=t.status,
-            language=t.language,
-            sentiment=t.sentiment,
-            summary=t.summary,
-            created_at=t.created_at,
-            resolved_at=t.resolved_at,
-            assigned_to=t.assigned_to,
-        )
-        for t in tickets
-    ]
+    return [_ticket_to_summary(t) for t in tickets]
 
 
 @router.get("/escalations", response_model=List[TicketSummary])
@@ -132,24 +134,7 @@ async def list_escalations(
     result = await db.execute(query)
     tickets = result.scalars().all()
 
-    return [
-        TicketSummary(
-            ticket_id=t.ticket_id,
-            ticket_number=t.ticket_number,
-            user_name=t.user.name if t.user else "Unknown",
-            phone=t.user.phone if t.user else "",
-            ticket_type=t.ticket_type,
-            priority=t.priority,
-            status=t.status,
-            language=t.language,
-            sentiment=t.sentiment,
-            summary=t.summary,
-            created_at=t.created_at,
-            resolved_at=t.resolved_at,
-            assigned_to=t.assigned_to,
-        )
-        for t in tickets
-    ]
+    return [_ticket_to_summary(t) for t in tickets]
 
 
 @router.get("/analytics", response_model=AnalyticsOverview)
