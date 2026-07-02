@@ -48,7 +48,7 @@ export default function StatusStream({ currentStage, isComplete, isProcessing }:
   const activeKey = STAGE_KEYS[Math.min(Math.max(currentStage, 1), 9) - 1];
 
   return (
-    <div className="w-full panel" style={{ padding: "20px 24px" }}>
+    <div className="w-full panel-elevated" style={{ padding: "20px 24px" }}>
       <span className="eyebrow">
         {isComplete ? t("status.complete") : t("status.processing")}
       </span>

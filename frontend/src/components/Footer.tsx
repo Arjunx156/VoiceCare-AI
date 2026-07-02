@@ -55,8 +55,10 @@ export default function Footer({
     <footer
       style={{
         width: "100%",
-        maxWidth: 560,
+        maxWidth: 600,
         padding: "0 24px 48px",
+        position: "relative",
+        zIndex: 2,
         display: "flex",
         flexDirection: "column",
         gap: 20,
@@ -116,6 +118,21 @@ export default function Footer({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, width: "100%" }}>
         {!showTextMode ? (
           <div style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+            {/* Soft ambient glow behind the record control */}
+            <span
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                width: 128,
+                height: 128,
+                borderRadius: "50%",
+                background: "radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)",
+                filter: "blur(14px)",
+                opacity: isListening ? 0.9 : 0.5,
+                transition: "opacity 300ms ease-out",
+                pointerEvents: "none",
+              }}
+            />
             {isListening && <span className="record-ring" />}
             <motion.button
               whileHover={!isProcessing ? { scale: 1.02 } : {}}

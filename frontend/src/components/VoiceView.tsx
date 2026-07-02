@@ -8,6 +8,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ConversationThread from "@/components/ConversationThread";
 import BhashiniWarning from "@/components/BhashiniWarning";
+import { GlowBackdrop, GrainOverlay } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { useVoiceInteraction } from "@/hooks/useVoiceInteraction";
 
@@ -91,9 +92,17 @@ export default function VoiceView(props: VoiceState) {
         flexDirection: "column",
         alignItems: "center",
         position: "relative",
+        overflow: "hidden",
         zIndex: 1,
       }}
     >
+      {/* Atmosphere — decorative, behind all content */}
+      <GrainOverlay />
+      <GlowBackdrop
+        size={620}
+        style={{ top: "22%", left: "50%", transform: "translateX(-50%)" }}
+      />
+
       <Header />
 
       <AnimatePresence>
@@ -104,9 +113,11 @@ export default function VoiceView(props: VoiceState) {
 
       <section
         style={{
+          position: "relative",
+          zIndex: 1,
           flex: 1,
           width: "100%",
-          maxWidth: 560,
+          maxWidth: 600,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -120,9 +131,10 @@ export default function VoiceView(props: VoiceState) {
           variants={fadeUp}
           initial="hidden"
           animate="show"
-          style={{ textAlign: "center", marginBottom: 8 }}
+          style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}
         >
-          <span className="eyebrow" style={{ textAlign: "center", display: "block" }}>
+          <span className="pulse-dot" aria-hidden="true" />
+          <span className="eyebrow" style={{ marginBottom: 0 }}>
             {eyebrow}
           </span>
         </motion.div>
@@ -132,13 +144,12 @@ export default function VoiceView(props: VoiceState) {
           variants={fadeUp}
           initial="hidden"
           animate="show"
+          className="display-h1"
           style={{
-            fontSize: "clamp(28px, 5vw, 44px)",
-            fontWeight: 800,
             color: "var(--text-primary)",
             textAlign: "center",
-            lineHeight: 1.15,
-            marginBottom: 32,
+            maxWidth: "16ch",
+            marginBottom: 36,
           }}
         >
           {headline}

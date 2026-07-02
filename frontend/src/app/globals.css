@@ -249,6 +249,20 @@ body {
   text-transform: uppercase;
 }
 
+/* ---- Pulsing accent dot (paired with an eyebrow to signal "live") ---- */
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1);   opacity: 1; box-shadow: 0 0 0 0 var(--accent-glow); }
+  50%      { transform: scale(1.1); opacity: 0.85; box-shadow: 0 0 0 4px transparent; }
+}
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  animation: pulse-dot 2s var(--ease-out-expo) infinite;
+}
+
 /* ---- Eyebrow Label ---- */
 .eyebrow {
   font-size: 12px;
@@ -265,6 +279,33 @@ body {
   height: 1px;
   background: var(--border-subtle);
   width: 100%;
+}
+
+/* ---- Header admin link (accent-hover pill) ---- */
+.header-admin-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  text-decoration: none;
+  transition: color var(--dur-fast) ease-out, border-color var(--dur-fast) ease-out, background var(--dur-fast) ease-out;
+}
+.header-admin-link:hover {
+  color: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--accent-dim);
+}
+.header-admin-link svg {
+  transition: transform var(--dur-fast) var(--ease-out-expo);
+}
+.header-admin-link:hover svg {
+  transform: translateX(2px);
 }
 
 /* ---- Status dots (semantic, not accent) ---- */
