@@ -16,6 +16,11 @@
   --accent:         #FF5A2B;
   --accent-dim:     rgba(255, 90, 43, 0.15);
   --accent-border:  rgba(255, 90, 43, 0.3);
+  --accent-glow:    rgba(255, 90, 43, 0.35);
+  /* Warmer second stop used ONLY inside coral gradients (hero word, hairlines,
+     chart fills) — never as a standalone UI color, so the palette stays "one accent". */
+  --accent-2:       #FF8A3D;
+  --accent-gradient: linear-gradient(105deg, var(--accent) 0%, var(--accent-2) 100%);
 
   /* ---- Text ---- */
   --text-primary:   #F5F5F5;
@@ -44,6 +49,17 @@
 
   /* ---- Font ---- */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+
+  /* ---- Fluid type scale (clamp: min at 320px → max at ~1280px) ---- */
+  --text-hero: clamp(2.75rem, 1.6rem + 5.75vw, 5.5rem);   /* 44 → 88 */
+  --text-h1:   clamp(2rem, 1.4rem + 3vw, 3.25rem);        /* 32 → 52 */
+  --text-h2:   clamp(1.375rem, 1.1rem + 1.4vw, 1.875rem); /* 22 → 30 */
+
+  /* ---- Motion easing (promoted from the fade-up curve) ---- */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast:   150ms;
+  --dur-normal: 300ms;
 }
 
 /* ---- Reset ---- */
@@ -111,13 +127,24 @@ body {
   border: 1px solid var(--border-raised);
   border-radius: 18px;
 }
+/* Elevated panel: layered bg + a 1px inset top highlight for depth (no glass,
+   no drop shadow — the highlight simulates a light source from above). */
+.panel-elevated {
+  position: relative;
+  background: linear-gradient(180deg, var(--bg-panel-raised) 0%, var(--bg-panel) 100%);
+  border: 1px solid var(--border-raised);
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
 /* Hover lift: 2px + border brightens, no shadow */
 .panel-hover {
-  transition: transform 150ms ease-out, border-color 150ms ease-out;
+  transition: transform 150ms var(--ease-out-expo), border-color 150ms ease-out, box-shadow 150ms ease-out;
 }
 .panel-hover:hover {
   transform: translateY(-2px);
-  border-color: var(--border-raised);
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 1px var(--accent-border), 0 12px 32px -18px var(--accent-glow);
 }
 
 /* ---- Spinner (single definition — replaces per-page inline keyframes) ---- */
@@ -152,6 +179,35 @@ body {
 .btn-pill:hover  { transform: scale(1.02); filter: brightness(1.1); }
 .btn-pill:active { transform: scale(0.98); }
 .btn-pill:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* Shine sweep: a soft diagonal highlight glides across on hover (primary only).
+   Pure transform/opacity, clipped to the pill, decorative. */
+.btn-pill-shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-pill-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: translateX(0) skewX(-18deg);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.btn-pill-shine:hover::after {
+  animation: btn-shine 700ms var(--ease-out-expo);
+}
+@keyframes btn-shine {
+  0%   { transform: translateX(0) skewX(-18deg);     opacity: 0; }
+  15%  { opacity: 1; }
+  100% { transform: translateX(360%) skewX(-18deg);  opacity: 0; }
+}
 
 .btn-pill-accent {
   background: var(--accent);
@@ -287,6 +343,66 @@ body {
 .fade-up-delay-2 { animation-delay: 120ms; }
 .fade-up-delay-3 { animation-delay: 180ms; }
 .fade-up-delay-4 { animation-delay: 240ms; }
+
+/* ============================================================
+   DISPLAY TYPE & ATMOSPHERE
+   ============================================================ */
+
+/* ---- Display headings (Space Grotesk, tight tracking) ---- */
+.display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.display-hero { font-family: var(--font-display); font-weight: 600; font-size: var(--text-hero); letter-spacing: -0.035em; line-height: 1.0;  }
+.display-h1   { font-family: var(--font-display); font-weight: 600; font-size: var(--text-h1);   letter-spacing: -0.025em; line-height: 1.08; }
+.display-h2   { font-family: var(--font-display); font-weight: 600; font-size: var(--text-h2);   letter-spacing: -0.02em;  line-height: 1.15; }
+
+/* ---- Coral gradient text mask (one highlighted word) ---- */
+.text-gradient {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* ---- Accent hairline (thin gradient rule) ---- */
+.hairline-accent {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, var(--accent-border), transparent);
+}
+
+/* ---- Radial coral glow backdrop (static, GPU-friendly, non-interactive) ---- */
+.glow-backdrop {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, var(--accent-glow) 0%, transparent 68%);
+  filter: blur(48px);
+  opacity: 0.6;
+}
+
+/* ---- Fine grain overlay (adds texture/atmosphere; sits above bg, below content) ---- */
+.grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+/* ---- Slow ambient drift for glow backdrops ---- */
+@keyframes glow-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.55; }
+  50%      { transform: translate3d(0, -3%, 0) scale(1.06); opacity: 0.7; }
+}
+.glow-animate { animation: glow-drift 9s ease-in-out infinite; }
 
 /* ---- Reduced motion overrides ---- */
 @media (prefers-reduced-motion: reduce) {
