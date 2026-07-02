@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { adminLogin, getAuthToken } from "@/lib/api";
+import { adminLogin, getAuthToken, clearAuthToken } from "@/lib/api";
 import { Button, Panel } from "@/components/ui";
 
 // Only honor internal, single-slash paths as a redirect target — never an
@@ -24,7 +24,21 @@ function LoginForm() {
 
   // Already logged in → go straight to dashboard (hard nav, see handleSubmit).
   useEffect(() => {
-    if (getAuthToken()) window.location.assign(safeDest(params.get("from")));
+    const token = getAuthToken();
+    if (!token) return;
+
+    // If the middleware cookie expired but the localStorage token is still
+    // around, clear the stale token to prevent an infinite redirect loop
+    // (login → dashboard → middleware redirect → login → …).
+    const hasCookie = document.cookie
+      .split(";")
+      .some((c) => c.trim().startsWith("vc_logged_in=1"));
+    if (!hasCookie) {
+      clearAuthToken();
+      return;
+    }
+
+    window.location.assign(safeDest(params.get("from")));
   }, [params]);
 
   // Show a "server waking up" message if login is taking > 10 s (Render cold start).
