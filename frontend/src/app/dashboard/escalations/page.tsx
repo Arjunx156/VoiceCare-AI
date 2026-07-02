@@ -14,7 +14,7 @@ import { getEscalations, claimTicket, type TicketSummary } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { useMotionSafe } from "@/lib/motion";
 import { priorityMeta, sentimentMeta } from "@/lib/theme";
-import { Badge, Button, EmptyState, LoadingBlock, Panel, PriorityBadge } from "@/components/ui";
+import { Badge, Button, EmptyState, LanguageLabel, LoadingBlock, Panel, PriorityBadge } from "@/components/ui";
 
 // "Raised" means Critical or High — needs attention now
 function isRaised(priority: string) {
@@ -166,7 +166,7 @@ export default function EscalationsPage() {
                       {ticket.user_name}
                     </p>
                     <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                      {ticket.phone} · {ticket.language}
+                      {ticket.phone} · <LanguageLabel language={ticket.language} />
                     </p>
 
                     <div className="divider" style={{ margin: "12px 0" }} />

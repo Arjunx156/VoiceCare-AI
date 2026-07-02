@@ -106,7 +106,7 @@ export default function AnalyticsPage() {
         {/* Ticket Volume by Language — larger block */}
         <motion.div {...entry(0.28)} className="panel" style={{ padding: "24px 24px 16px" }}>
           <span className="eyebrow">TICKET VOLUME</span>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
+          <h2 className="section-title" style={{ marginBottom: 20 }}>
             By Language
           </h2>
           <ResponsiveContainer width="100%" height={240}>
@@ -123,7 +123,7 @@ export default function AnalyticsPage() {
         {/* By Category — smaller, donut */}
         <motion.div {...entry(0.34)} className="panel" style={{ padding: "24px 20px 16px" }}>
           <span className="eyebrow">CATEGORY</span>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>
+          <h2 className="section-title" style={{ marginBottom: 12 }}>
             Breakdown
           </h2>
           <ResponsiveContainer width="100%" height={240}>
@@ -151,7 +151,7 @@ export default function AnalyticsPage() {
         {/* By Priority */}
         <motion.div {...entry(0.42)} className="panel" style={{ padding: "24px 24px 16px" }}>
           <span className="eyebrow">PRIORITY</span>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
+          <h2 className="section-title" style={{ marginBottom: 20 }}>
             Distribution
           </h2>
           <ResponsiveContainer width="100%" height={200}>
@@ -172,7 +172,7 @@ export default function AnalyticsPage() {
         {/* By Sentiment */}
         <motion.div {...entry(0.48)} className="panel" style={{ padding: "24px 24px 16px" }}>
           <span className="eyebrow">SENTIMENT</span>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>
+          <h2 className="section-title" style={{ marginBottom: 12 }}>
             Customer Mood
           </h2>
           <ResponsiveContainer width="100%" height={200}>

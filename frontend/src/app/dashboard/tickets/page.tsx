@@ -12,7 +12,7 @@ import { Inbox } from "lucide-react";
 import { getTickets, type TicketSummary } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { useMotionSafe } from "@/lib/motion";
-import { EmptyState, PageHeader, PriorityBadge, SkeletonList, StatusBadge } from "@/components/ui";
+import { EmptyState, LanguageLabel, PageHeader, PriorityBadge, SkeletonList, StatusBadge } from "@/components/ui";
 
 const FILTER_OPTIONS = {
   status:   ["", "Open", "In Progress", "Escalated", "Resolved", "Closed"],
@@ -192,7 +192,9 @@ export default function TicketsPage() {
 
                 {/* Middle: language + sentiment */}
                 <div style={{ flexShrink: 0, textAlign: "right", minWidth: 60 }}>
-                  <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{ticket.language}</p>
+                  <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                    <LanguageLabel language={ticket.language} />
+                  </p>
                   <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{ticket.sentiment || "—"}</p>
                 </div>
 

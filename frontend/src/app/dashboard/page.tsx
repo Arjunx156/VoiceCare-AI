@@ -11,7 +11,7 @@ import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { getAnalytics, getEscalations, type AnalyticsOverview, type TicketSummary } from "@/lib/api";
 import { useMotionSafe } from "@/lib/motion";
-import { Button, EmptyState, LoadingBlock, PriorityBadge, StatCard } from "@/components/ui";
+import { Button, EmptyState, LanguageLabel, LoadingBlock, PriorityBadge, StatCard } from "@/components/ui";
 
 type FetchResult =
   | { key: number; analytics: AnalyticsOverview; escalations: TicketSummary[] }
@@ -102,7 +102,7 @@ export default function DashboardPage() {
         {/* Ticket volume by language — the larger block */}
         <motion.div {...entry(0.36)} className="panel" style={{ padding: "24px 28px" }}>
           <span className="eyebrow">TICKET VOLUME</span>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
+          <h2 className="section-title" style={{ marginBottom: 20 }}>
             By Language
           </h2>
           {Object.entries(analytics.tickets_by_language).length > 0 ? (
@@ -111,8 +111,8 @@ export default function DashboardPage() {
                 .sort(([, a], [, b]) => (b as number) - (a as number))
                 .map(([lang, count]) => (
                   <div key={lang} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: 13, color: "var(--text-secondary)", width: 80, flexShrink: 0 }}>
-                      {lang}
+                    <span style={{ fontSize: 13, color: "var(--text-secondary)", width: 88, flexShrink: 0 }}>
+                      <LanguageLabel language={lang} />
                     </span>
                     <div
                       aria-hidden="true"
@@ -154,7 +154,7 @@ export default function DashboardPage() {
         {/* Right column: category breakdown */}
         <motion.div {...entry(0.42)} className="panel" style={{ padding: "24px 22px" }}>
           <span className="eyebrow">BY CATEGORY</span>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
+          <h2 className="section-title" style={{ marginBottom: 20 }}>
             Ticket Types
           </h2>
           {Object.entries(analytics.tickets_by_category).length > 0 ? (

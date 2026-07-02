@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { PriorityBadge, StatusBadge } from "@/components/ui";
+import { LanguageLabel, PriorityBadge, StatusBadge } from "@/components/ui";
 import type { TicketDetail } from "@/lib/api";
 
 const crumbLink: React.CSSProperties = { color: "var(--text-muted)", textDecoration: "none" };
@@ -25,7 +25,7 @@ export function TicketHeader({ ticket, ticketId }: { ticket: TicketDetail; ticke
           <span className="eyebrow">{ticket.ticket_type || "SUPPORT"}</span>
           <h1 className="page-title">{ticket.user_name}</h1>
           <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
-            {ticket.phone} · {ticket.language}
+            {ticket.phone} · <LanguageLabel language={ticket.language} />
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0, paddingTop: 4 }}>

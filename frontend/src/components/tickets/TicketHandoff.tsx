@@ -22,7 +22,7 @@ export function TicketHandoff({ handoff }: { handoff: HandoffNote }) {
   return (
     <Panel style={{ padding: 24 }}>
       <span className="eyebrow">AUTO-GENERATED HANDOFF NOTE</span>
-      <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 24 }}>
+      <h2 className="section-title" style={{ marginBottom: 24 }}>
         Escalation Brief
       </h2>
 

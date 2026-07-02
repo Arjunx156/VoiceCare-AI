@@ -14,7 +14,7 @@ import { getCustomerProfile, type CustomerProfile } from "@/lib/api";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { useMotionSafe } from "@/lib/motion";
 import { sentimentMeta, statusMeta } from "@/lib/theme";
-import { EmptyState, LoadingBlock, StatusBadge } from "@/components/ui";
+import { EmptyState, LanguageLabel, LoadingBlock, StatusBadge } from "@/components/ui";
 
 function Detail({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
@@ -81,7 +81,7 @@ export default function CustomerProfilePage() {
       {/* Header */}
       <div>
         <span className="eyebrow">
-          {profile.customer_segment.toUpperCase()} · {profile.preferred_language}
+          {profile.customer_segment.toUpperCase()} · <LanguageLabel language={profile.preferred_language} />
           {profile.customer_code ? ` · ${profile.customer_code}` : ""}
         </span>
         <h1 className="page-title">{profile.name}</h1>

@@ -13,7 +13,7 @@ export function TicketReplay({ trace }: { trace: AgentTraceStep[] }) {
   return (
     <Panel style={{ padding: 24 }}>
       <span className="eyebrow">AGENT DECISION REPLAY</span>
-      <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 24 }}>
+      <h2 className="section-title" style={{ marginBottom: 24 }}>
         Pipeline Trace
       </h2>
       {trace.length > 0 ? (
