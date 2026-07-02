@@ -914,8 +914,13 @@ class VoiceCarePipeline:
 
         except Exception as e:
             logger.error("ticket_creation_failed", error=str(e), exc_info=True)
-            state.error = f"Ticket creation failed: {str(e)}"
             # Savepoint already rolled back — outer transaction is clean.
+            # Non-fatal: the customer already received their answer, so surface
+            # the persistence failure via ticket_created=False (never a 500,
+            # and never a dangling ticket_id that was rolled back).
+            state.ticket_id = None
+            state.ticket_number = None
+            state.ticket_created = False
 
         return state
 

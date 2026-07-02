@@ -51,6 +51,7 @@ class VoiceQueryResponse(BaseModel):
     session_id: str
     ticket_id: str
     ticket_number: Optional[str] = None   # short customer-facing code, e.g. TKT-9QXM2
+    ticket_created: bool = False          # False when the turn's ticket write failed
     order_number: Optional[str] = None    # short order code, e.g. ORD-7K3F (if order looked up)
     response_text: str
     response_audio_base64: Optional[str] = None

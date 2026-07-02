@@ -23,6 +23,8 @@ from app.core.rate_limit import (
 )
 from app.agents.state import PipelineState
 from app.agents.pipeline import VoiceCarePipeline
+from pydantic import ValidationError
+
 from app.schemas.schemas import VoiceQueryRequest, VoiceQueryResponse
 from app.services.memory_service import get_memory_service
 
@@ -93,7 +95,12 @@ async def process_voice_query(
     state = await pipeline.run(state)
 
     if state.has_error:
-        raise HTTPException(status_code=500, detail=state.error)
+        # Log the real failure server-side; never echo internals to the client.
+        logger.error("voice_query_failed", session_id=state.session_id, error=state.error)
+        raise HTTPException(
+            status_code=500,
+            detail="Voice query processing failed. Please try again.",
+        )
 
     # Store conversation turn in memory
     memory = await get_memory_service()
@@ -108,6 +115,7 @@ async def process_voice_query(
         session_id=state.session_id,
         ticket_id=state.ticket_id or "",
         ticket_number=state.ticket_number,
+        ticket_created=state.ticket_created,
         order_number=(state.order_data or {}).get("order_number"),
         response_text=state.response_text or "",
         response_audio_base64=state.response_audio_base64,
@@ -181,11 +189,27 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
         while True:
             data = await websocket.receive_json()
 
-            # Validate incoming payload with Pydantic schema
+            # Validate incoming payload with Pydantic schema. Only field-level
+            # locations/messages are returned — never the submitted values.
             try:
                 ws_request = VoiceQueryRequest(**data)
-            except Exception as ve:
-                await websocket.send_json({"error": "VALIDATION_ERROR", "detail": str(ve)})
+            except ValidationError as ve:
+                await websocket.send_json({
+                    "error": "VALIDATION_ERROR",
+                    "detail": [
+                        {
+                            "field": ".".join(str(loc) for loc in err.get("loc", [])),
+                            "message": err.get("msg", "Invalid value"),
+                        }
+                        for err in ve.errors()
+                    ],
+                })
+                continue
+            except TypeError:
+                await websocket.send_json({
+                    "error": "VALIDATION_ERROR",
+                    "detail": "Message must be a JSON object.",
+                })
                 continue
 
             # Reject oversized inputs before any processing
@@ -251,6 +275,7 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
                     "session_id": state.session_id,
                     "ticket_id": state.ticket_id or "",
                     "ticket_number": state.ticket_number,
+                    "ticket_created": state.ticket_created,
                     "order_number": (state.order_data or {}).get("order_number"),
                     "response_text": state.response_text or "",
                     "response_audio_base64": state.response_audio_base64,
@@ -318,8 +343,20 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
 # ================================================================
 
 @router.delete("/session/{session_id}")
-async def clear_session(session_id: str):
+async def clear_session(session_id: str, request: Request):
     """Clear conversation history and identity context for a session (new conversation)."""
+    try:
+        uuid.UUID(session_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid session ID format.")
+
+    await enforce_rate_limit(
+        key=f"rate_limit:session_clear:{get_client_ip(request)}",
+        limit=settings.voice_rate_limit_ip_per_minute,
+        window_seconds=_RATE_WINDOW_SECONDS,
+        detail="Too many requests. Please slow down.",
+    )
+
     try:
         memory = await get_memory_service()
         await memory.clear_conversation(session_id)

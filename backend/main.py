@@ -225,20 +225,22 @@ async def health_check():
 
     checks: dict[str, str] = {}
 
-    # Database
+    # Database — log the real error, expose only a generic status publicly.
     try:
         async with async_session() as session:
             await session.execute(text("SELECT 1"))
         checks["database"] = "ok"
     except Exception as exc:
-        checks["database"] = f"error: {exc}"
+        logger.error("health_check_database_failed", error=str(exc))
+        checks["database"] = "error"
 
     # Chroma (in-process, just confirm collection is accessible)
     try:
         count = get_chroma_service().get_collection_count()
         checks["chroma"] = f"ok ({count} policies)"
     except Exception as exc:
-        checks["chroma"] = f"error: {exc}"
+        logger.error("health_check_chroma_failed", error=str(exc))
+        checks["chroma"] = "error"
 
     overall = "healthy" if all(v == "ok" or v.startswith("ok") for v in checks.values()) else "degraded"
     return {
