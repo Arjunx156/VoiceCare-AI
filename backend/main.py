@@ -139,6 +139,25 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     )
 
 
+class BodySizeLimitMiddleware(BaseHTTPMiddleware):
+    """Rejects oversized request bodies before they are read into memory.
+
+    Defense in depth alongside the Pydantic field limits — a huge body is
+    refused from the declared Content-Length without buffering it.
+    """
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        from app.core.constants import MAX_BODY_BYTES
+
+        content_length = request.headers.get("content-length")
+        if content_length and content_length.isdigit() and int(content_length) > MAX_BODY_BYTES:
+            return JSONResponse(
+                status_code=413,
+                content={"error": "PAYLOAD_TOO_LARGE", "detail": "Request body too large."},
+            )
+        return await call_next(request)
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         response = await call_next(request)
@@ -171,6 +190,7 @@ class RequestTimingMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(RequestTimingMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(BodySizeLimitMiddleware)
 
 # CORS — production allows the explicit frontend URL(s) from FRONTEND_URL.
 # The vercel.app wildcard is always on outside production, and can be opted

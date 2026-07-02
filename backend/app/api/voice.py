@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from app.core.database import get_db
 from app.core.config import get_settings
 from app.core.errors import RateLimitError, ErrorMessages
-from app.core.constants import LANGUAGE_CODES
+from app.core.constants import LANGUAGE_CODES, MAX_AUDIO_B64_LEN, MAX_TEXT_LEN
 from app.agents.state import PipelineState
 from app.agents.pipeline import VoiceCarePipeline
 from app.schemas.schemas import VoiceQueryRequest, VoiceQueryResponse
@@ -23,12 +23,6 @@ from app.services.memory_service import get_memory_service
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/voice", tags=["voice"])
 settings = get_settings()
-
-# ~10 MB audio limit expressed as base64 character count (10 * 1024 * 1024 * 4 / 3)
-_MAX_AUDIO_B64_LEN = 14_316_558
-# Max plain-text query length to prevent LLM abuse / DoS via massive prompts
-_MAX_TEXT_LEN = 5_000
-
 
 # ================================================================
 # Rate-Limiting Dependency
@@ -168,13 +162,13 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
                 continue
 
             # Reject oversized inputs before any processing
-            if ws_request.text and len(ws_request.text) > _MAX_TEXT_LEN:
+            if ws_request.text and len(ws_request.text) > MAX_TEXT_LEN:
                 await websocket.send_json({
                     "error": "VALIDATION_ERROR",
-                    "detail": f"Text input exceeds {_MAX_TEXT_LEN} character limit.",
+                    "detail": f"Text input exceeds {MAX_TEXT_LEN} character limit.",
                 })
                 continue
-            if ws_request.audio_base64 and len(ws_request.audio_base64) > _MAX_AUDIO_B64_LEN:
+            if ws_request.audio_base64 and len(ws_request.audio_base64) > MAX_AUDIO_B64_LEN:
                 await websocket.send_json({
                     "error": "VALIDATION_ERROR",
                     "detail": "Audio payload exceeds 10 MB limit.",

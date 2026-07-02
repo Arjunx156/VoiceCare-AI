@@ -8,6 +8,8 @@ from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
+from app.core.constants import MAX_AUDIO_B64_LEN, MAX_TEXT_LEN
+
 
 # ============================================================
 # Voice Query Schemas
@@ -15,12 +17,24 @@ from pydantic import BaseModel, Field
 
 class VoiceQueryRequest(BaseModel):
     """Request to process a voice/text query."""
-    text: Optional[str] = Field(None, description="Text query (for text-only mode)")
-    audio_base64: Optional[str] = Field(None, description="Base64 encoded audio")
-    language: Optional[str] = Field(None, description="Language hint (auto-detected if empty)")
-    phone: Optional[str] = Field(None, description="Customer phone for lookup")
-    order_id: Optional[str] = Field(None, description="Specific order ID to check")
-    session_id: Optional[str] = Field(None, description="Existing session ID for multi-turn")
+    text: Optional[str] = Field(
+        None, max_length=MAX_TEXT_LEN, description="Text query (for text-only mode)"
+    )
+    audio_base64: Optional[str] = Field(
+        None, max_length=MAX_AUDIO_B64_LEN, description="Base64 encoded audio (≤10 MB)"
+    )
+    language: Optional[str] = Field(
+        None, max_length=32, description="Language hint (auto-detected if empty)"
+    )
+    phone: Optional[str] = Field(
+        None, max_length=20, description="Customer phone for lookup"
+    )
+    order_id: Optional[str] = Field(
+        None, max_length=64, description="Specific order ID to check"
+    )
+    session_id: Optional[str] = Field(
+        None, max_length=64, description="Existing session ID for multi-turn"
+    )
 
 
 class PipelineStageUpdate(BaseModel):
