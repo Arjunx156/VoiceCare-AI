@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { adminLogin, getAuthToken } from "@/lib/api";
+import { Button, Panel } from "@/components/ui";
 
 // Only honor internal, single-slash paths as a redirect target — never an
 // absolute URL or protocol-relative "//host" (open-redirect protection).
@@ -28,7 +29,7 @@ function LoginForm() {
 
   // Show a "server waking up" message if login is taking > 10 s (Render cold start).
   useEffect(() => {
-    if (!loading) { setWarmingUp(false); return; }
+    if (!loading) return;
     const t = setTimeout(() => setWarmingUp(true), 10_000);
     return () => clearTimeout(t);
   }, [loading]);
@@ -37,6 +38,7 @@ function LoginForm() {
     e.preventDefault();
     if (!email.trim() || !password) return;
     setLoading(true);
+    setWarmingUp(false);
     setError(null);
     try {
       await adminLogin(email.trim(), password);
@@ -52,7 +54,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="panel" style={{ width: "100%", maxWidth: 400, padding: "36px 32px" }}>
+    <Panel style={{ width: "100%", maxWidth: 400, padding: "36px 32px" }}>
       <span className="eyebrow">ADMIN ACCESS</span>
       <h1 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", marginTop: 8, marginBottom: 6 }}>
         Sign in to VoiceCare
@@ -79,73 +81,52 @@ function LoginForm() {
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "0.04em" }}>
-            EMAIL
+          <label htmlFor="login-email" className="field-label">
+            Email
           </label>
           <input
+            id="login-email"
+            className="text-input"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             required
-            style={{
-              background: "var(--bg-base)",
-              border: "1px solid var(--border-subtle)",
-              borderRadius: 10,
-              padding: "10px 14px",
-              fontSize: 14,
-              color: "var(--text-primary)",
-              outline: "none",
-              width: "100%",
-              boxSizing: "border-box",
-            }}
           />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "0.04em" }}>
-            PASSWORD
+          <label htmlFor="login-password" className="field-label">
+            Password
           </label>
           <input
+            id="login-password"
+            className="text-input"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
             required
-            style={{
-              background: "var(--bg-base)",
-              border: "1px solid var(--border-subtle)",
-              borderRadius: 10,
-              padding: "10px 14px",
-              fontSize: 14,
-              color: "var(--text-primary)",
-              outline: "none",
-              width: "100%",
-              boxSizing: "border-box",
-            }}
           />
         </div>
 
         {error && (
-          <p style={{ fontSize: 13, color: "var(--status-high)", margin: 0 }}>{error}</p>
+          <p role="alert" style={{ fontSize: 13, color: "var(--status-high)", margin: 0 }}>
+            {error}
+          </p>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn-pill-accent"
-          style={{ marginTop: 8, opacity: loading ? 0.6 : 1, cursor: loading ? "not-allowed" : "pointer" }}
-        >
+        <Button type="submit" isLoading={loading} style={{ marginTop: 8 }}>
           {loading ? "Signing in…" : "Sign in"}
-        </button>
+        </Button>
 
-        {warmingUp && (
-          <p style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", margin: 0, lineHeight: 1.5 }}>
+        {loading && warmingUp && (
+          <p aria-live="polite" style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", margin: 0, lineHeight: 1.5 }}>
             Server is waking up — this can take up to 60 s on free hosting. Please wait…
           </p>
         )}
       </form>
-    </div>
+    </Panel>
   );
 }
 

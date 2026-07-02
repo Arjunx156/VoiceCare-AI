@@ -144,7 +144,9 @@ async function apiFetch<T>(path: string, options?: RequestInit & { timeoutMs?: n
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const { timeoutMs: _drop, ...fetchOptions } = options ?? {};
+    // Strip our custom option so it never reaches fetch()
+    const fetchOptions = { ...(options ?? {}) };
+    delete fetchOptions.timeoutMs;
     const res = await fetch(`${BACKEND_URL}${path}`, {
       ...fetchOptions,
       signal: options?.signal ?? controller.signal,

@@ -167,6 +167,32 @@ body {
   color: var(--text-primary);
 }
 
+/* ---- Text input ---- */
+.text-input {
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 150ms ease-out;
+}
+.text-input:hover { border-color: var(--border-raised); }
+.text-input:focus-visible { border-color: var(--accent-border); }
+.text-input::placeholder { color: var(--text-muted); }
+
+/* ---- Field label ---- */
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* ---- Eyebrow Label ---- */
 .eyebrow {
   font-size: 12px;
