@@ -6,6 +6,61 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 
+class TestGttsFallbackGate:
+
+    @pytest.mark.asyncio
+    async def test_gtts_fallback_skipped_when_disabled(self):
+        """ALLOW_GTTS_FALLBACK=false: no response text is sent to Google."""
+        from app.services.bhashini_service import BhashiniService
+
+        service = BhashiniService()
+        disabled_settings = MagicMock()
+        disabled_settings.allow_gtts_fallback = False
+
+        with (
+            patch.object(
+                service, "_get_pipeline_config",
+                new=AsyncMock(side_effect=Exception("Bhashini down")),
+            ),
+            patch("app.core.config.get_settings", return_value=disabled_settings),
+            patch("app.services.bhashini_service.httpx.AsyncClient") as mock_client,
+        ):
+            result = await service.text_to_speech("Your refund of 2500 was approved", "hi")
+
+        assert result is None
+        mock_client.assert_not_called()  # no HTTP egress at all
+
+    @pytest.mark.asyncio
+    async def test_gtts_fallback_runs_when_enabled(self):
+        """Default behavior unchanged: fallback audio is produced."""
+        from app.services.bhashini_service import BhashiniService
+
+        service = BhashiniService()
+        enabled_settings = MagicMock()
+        enabled_settings.allow_gtts_fallback = True
+
+        mock_response = MagicMock()
+        mock_response.content = b"mp3bytes"
+        mock_response.raise_for_status = MagicMock()
+        mock_http = MagicMock()
+        mock_http.get = AsyncMock(return_value=mock_response)
+        mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+        mock_http.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch.object(
+                service, "_get_pipeline_config",
+                new=AsyncMock(side_effect=Exception("Bhashini down")),
+            ),
+            patch("app.core.config.get_settings", return_value=enabled_settings),
+            patch("app.services.bhashini_service.httpx.AsyncClient", return_value=mock_http),
+        ):
+            result = await service.text_to_speech("Hello there", "hi")
+
+        assert result is not None
+        assert result.startswith("mp3:")
+
+
 class TestBhashiniSTT:
 
     @pytest.mark.asyncio

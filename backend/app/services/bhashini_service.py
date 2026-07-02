@@ -206,6 +206,15 @@ class BhashiniService:
 
         except Exception as e:
             logger.error("tts_failed", error=str(e), language=target_language)
+            # The gTTS fallback ships the customer-facing response text (which
+            # can include names, order codes, amounts) to translate.google.com.
+            # Privacy-sensitive deployments disable it via ALLOW_GTTS_FALLBACK
+            # and deliver the answer text-only when Bhashini TTS is down.
+            from app.core.config import get_settings
+            if not get_settings().allow_gtts_fallback:
+                logger.info("gtts_fallback_disabled", reason="allow_gtts_fallback=false")
+                return None  # Let frontend fall back to browser TTS
+
             # Fallback: split text into ≤200-char chunks (Google TTS URL limit),
             # fetch each chunk as MP3, concatenate the raw bytes, and return
             # the result base64-encoded with a "mp3" marker so the frontend
