@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import BackendWarmup from "@/components/BackendWarmup";
+
+// Backend origin (Render) — known at build time on Vercel. Used to preconnect
+// so the first API/WS call skips DNS + TCP + TLS setup.
+const backendOrigin = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,7 +36,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} antialiased`}>{children}</body>
+      <body className={`${inter.variable} antialiased`}>
+        {/* React 19 hoists resource links into <head> */}
+        {backendOrigin && (
+          <>
+            <link rel="preconnect" href={backendOrigin} crossOrigin="anonymous" />
+            <link rel="dns-prefetch" href={backendOrigin} />
+          </>
+        )}
+        <BackendWarmup />
+        {children}
+      </body>
     </html>
   );
 }
