@@ -137,7 +137,9 @@ export default function VoiceView(props: VoiceState) {
             fontWeight: 800,
             color: "var(--text-primary)",
             textAlign: "center",
-            lineHeight: 1.15,
+            lineHeight: 1.12,
+            letterSpacing: "-0.02em",
+            maxWidth: "18ch",
             marginBottom: 32,
           }}
         >

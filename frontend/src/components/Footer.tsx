@@ -124,8 +124,8 @@ export default function Footer({
               disabled={isProcessing}
               className="btn-pill btn-pill-accent"
               style={{
-                width: 64,
-                height: 64,
+                width: 72,
+                height: 72,
                 padding: 0,
                 fontSize: 20,
                 background: isListening ? "var(--error)" : "var(--accent)",
