@@ -108,7 +108,10 @@ class TestGenerateResolution:
             )
 
         assert result["recommended_action"] == "Inform"
-        assert "confidence_score" in result
+        # The LLM never ran — confidence must be low enough to trip the
+        # deterministic low-confidence escalation rule (< 0.4).
+        assert result["confidence_score"] < 0.4
+        assert result["requires_human_review"] is True
 
 
 # ---------------------------------------------------------------------------

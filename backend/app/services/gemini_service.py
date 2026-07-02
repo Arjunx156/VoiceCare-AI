@@ -234,8 +234,10 @@ Rules:
                 "resolution_summary": "We are experiencing high traffic, but your request is noted.",
                 "policy_reference": "Standard Practice",
                 "internal_note": "AI rate limit hit, defaulted to basic resolution.",
-                "confidence_score": 0.8,
-                "requires_human_review": False,
+                # Honest low confidence: the LLM never ran, so the value must
+                # trip escalation Rule 5 (< 0.4) instead of masking the outage.
+                "confidence_score": 0.3,
+                "requires_human_review": True,
                 "reason_for_action": "System fallback"
             }
 
