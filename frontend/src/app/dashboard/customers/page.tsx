@@ -12,7 +12,7 @@ import { Users } from "lucide-react";
 import { getCustomers, type CustomerSummary } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { useMotionSafe } from "@/lib/motion";
-import { EmptyState, LoadingBlock } from "@/components/ui";
+import { EmptyState, SkeletonList } from "@/components/ui";
 
 const SEGMENT_COLOR: Record<string, string> = {
   Premium: "var(--status-medium)",
@@ -64,7 +64,7 @@ export default function CustomersPage() {
       />
 
       {loading ? (
-        <LoadingBlock label="Loading customers" />
+        <SkeletonList rows={6} label="Loading customers" />
       ) : customers.length === 0 ? (
         <EmptyState
           icon={Users}

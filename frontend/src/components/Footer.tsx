@@ -129,13 +129,35 @@ export default function Footer({
                 padding: 0,
                 fontSize: 20,
                 background: isListening ? "var(--error)" : "var(--accent)",
-                opacity: isProcessing ? 0.4 : 1,
+                // Busy reads as "working" (spinner, slight dim) — not disabled-broken.
+                opacity: isProcessing ? 0.75 : 1,
                 cursor: isProcessing ? "not-allowed" : "pointer",
               }}
-              aria-label={isListening ? t("footer.stopRecording") : t("footer.startRecording")}
+              aria-label={
+                isProcessing
+                  ? t("status.processing")
+                  : isListening
+                  ? t("footer.stopRecording")
+                  : t("footer.startRecording")
+              }
               aria-pressed={isListening}
             >
-              {isListening ? (
+              {isProcessing ? (
+                // Busy ring (white on accent) — reuses the global `spin`
+                // keyframe; freezes under prefers-reduced-motion.
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    border: "2.5px solid rgba(255,255,255,0.35)",
+                    borderTopColor: "#fff",
+                    animation: "spin 1s linear infinite",
+                    display: "inline-block",
+                  }}
+                />
+              ) : isListening ? (
                 <svg width="18" height="18" fill="white" viewBox="0 0 24 24">
                   <rect x="6" y="6" width="12" height="12" rx="2" />
                 </svg>

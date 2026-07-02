@@ -100,8 +100,9 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
-      {/* Asymmetric two-column: large language bar + smaller category donut */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
+      {/* Asymmetric two-column: large language bar + smaller category donut
+          (collapses to one column under 900px — .grid-main-side) */}
+      <div className="grid-main-side">
         {/* Ticket Volume by Language — larger block */}
         <motion.div {...entry(0.28)} className="panel" style={{ padding: "24px 24px 16px" }}>
           <span className="eyebrow">TICKET VOLUME</span>
@@ -145,8 +146,8 @@ export default function AnalyticsPage() {
         </motion.div>
       </div>
 
-      {/* Priority + Sentiment side by side */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      {/* Priority + Sentiment side by side (stacks under 900px — .grid-half) */}
+      <div className="grid-half">
         {/* By Priority */}
         <motion.div {...entry(0.42)} className="panel" style={{ padding: "24px 24px 16px" }}>
           <span className="eyebrow">PRIORITY</span>

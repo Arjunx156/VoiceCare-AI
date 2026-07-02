@@ -67,6 +67,25 @@ test("login flow lands on the dashboard overview", async ({ page }) => {
   await expect(page.getByText("ESCALATED", { exact: true })).toBeVisible();
 });
 
+test("dashboard shell works on a phone viewport", async ({ page }) => {
+  await mockDashboardApis(page);
+  await page.setViewportSize({ width: 375, height: 720 });
+
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("admin@e2e.test");
+  await page.getByLabel("Password").fill("a-password");
+  await page.getByRole("button", { name: /sign in/i }).click();
+  await expect(page).toHaveURL(/\/dashboard/);
+
+  // Top-bar nav is reachable and the page doesn't overflow horizontally.
+  await expect(page.getByRole("link", { name: "Tickets" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Support Operations" })).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
 test("tickets page sends the debounced search to the API", async ({ page }) => {
   await mockDashboardApis(page);
 

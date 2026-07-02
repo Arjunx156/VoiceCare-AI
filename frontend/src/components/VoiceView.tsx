@@ -67,6 +67,17 @@ export default function VoiceView(props: VoiceState) {
 
   const { t } = useI18n();
 
+  // Secondary state cue beside the eyebrow (never the only cue — the eyebrow
+  // and headline text change too). Semantic status colors, not the accent,
+  // except "listening" which IS the brand moment.
+  const stateDotColor = isListening
+    ? "var(--accent)"
+    : isProcessing
+    ? "var(--status-medium)"
+    : isComplete
+    ? "var(--status-low)"
+    : "var(--status-calm)";
+
   const eyebrow = isListening
     ? t("voice.eyebrow.listening")
     : isProcessing
@@ -121,9 +132,20 @@ export default function VoiceView(props: VoiceState) {
           variants={fadeUp}
           initial="hidden"
           animate="show"
-          style={{ textAlign: "center", marginBottom: 8 }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            marginBottom: 8,
+          }}
         >
-          <span className="eyebrow" style={{ textAlign: "center", display: "block" }}>
+          <span
+            className="status-dot"
+            aria-hidden="true"
+            style={{ background: stateDotColor, transition: "background 300ms ease-out" }}
+          />
+          <span className="eyebrow" style={{ marginBottom: 0 }}>
             {eyebrow}
           </span>
         </motion.div>

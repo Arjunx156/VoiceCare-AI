@@ -96,8 +96,9 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Asymmetric two-column: large chart block + smaller stat cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
+      {/* Asymmetric two-column: large chart block + smaller stat cards
+          (collapses to one column under 900px — .grid-main-side) */}
+      <div className="grid-main-side">
         {/* Ticket volume by language — the larger block */}
         <motion.div {...entry(0.36)} className="panel" style={{ padding: "24px 28px" }}>
           <span className="eyebrow">TICKET VOLUME</span>

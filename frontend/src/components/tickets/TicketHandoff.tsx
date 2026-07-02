@@ -26,7 +26,7 @@ export function TicketHandoff({ handoff }: { handoff: HandoffNote }) {
         Escalation Brief
       </h2>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+      <div className="grid-half" style={{ gap: 10, marginBottom: 20 }}>
         {facts.map((fact) => (
           <div key={fact.label} style={{ background: "var(--bg-panel-raised)", borderRadius: 12, padding: "12px 14px" }}>
             <span className="eyebrow" style={{ marginBottom: 4 }}>{fact.label}</span>

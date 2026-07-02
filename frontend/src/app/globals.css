@@ -202,6 +202,88 @@ body {
   letter-spacing: -0.02em;
 }
 
+/* ---- Skeleton loading blocks (subtle pulse; frozen under reduced motion) ---- */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+.skeleton {
+  background: var(--bg-panel-raised);
+  border-radius: 6px;
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+/* ============================================================
+   DASHBOARD RESPONSIVE SHELL & GRIDS
+   ============================================================ */
+
+/* Two-column analytics layouts collapse to one column on small screens. */
+.grid-main-side {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+.grid-half {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .grid-main-side,
+  .grid-half {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Shell: sidebar column on desktop → top bar with horizontal nav on mobile. */
+@media (max-width: 768px) {
+  .dash-shell {
+    flex-direction: column;
+  }
+  .dash-sidebar {
+    width: 100% !important;
+    flex-direction: row !important;
+    align-items: center;
+    padding: 10px 12px !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-subtle);
+    gap: 8px;
+  }
+  .dash-sidebar .dash-nav {
+    flex-direction: row !important;
+    overflow-x: auto;
+    padding: 0 4px !important;
+    gap: 4px !important;
+    /* Let the row scroll without a visible scrollbar */
+    scrollbar-width: none;
+  }
+  .dash-sidebar .dash-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .dash-sidebar .dash-nav a {
+    white-space: nowrap;
+  }
+  .dash-sidebar .dash-brand {
+    padding: 0 !important;
+    flex-shrink: 0;
+  }
+  /* Hide the wordmark text + bottom links on the compact bar; the mic mark
+     stays as the home link and Sign out stays reachable. */
+  .dash-sidebar .dash-brand-text,
+  .dash-sidebar .dash-divider,
+  .dash-sidebar .dash-voice-link {
+    display: none !important;
+  }
+  .dash-sidebar .dash-bottom {
+    margin-top: 0 !important;
+    padding: 0 !important;
+    margin-left: auto;
+  }
+  .dash-main {
+    padding: 20px 16px !important;
+  }
+}
+
 /* ---- Eyebrow Label ---- */
 .eyebrow {
   font-size: 12px;

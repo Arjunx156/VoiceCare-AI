@@ -12,7 +12,7 @@ import { Inbox } from "lucide-react";
 import { getTickets, type TicketSummary } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { useMotionSafe } from "@/lib/motion";
-import { EmptyState, LoadingBlock, PageHeader, PriorityBadge, StatusBadge } from "@/components/ui";
+import { EmptyState, PageHeader, PriorityBadge, SkeletonList, StatusBadge } from "@/components/ui";
 
 const FILTER_OPTIONS = {
   status:   ["", "Open", "In Progress", "Escalated", "Resolved", "Closed"],
@@ -135,7 +135,7 @@ export default function TicketsPage() {
       {/* Ticket list — editorial list-row pattern */}
       <motion.div {...entry(0.1)} className="panel" style={{ overflow: "hidden" }}>
         {loading ? (
-          <LoadingBlock label="Loading tickets" />
+          <SkeletonList rows={6} label="Loading tickets" />
         ) : tickets.length === 0 ? (
           <EmptyState
             icon={Inbox}

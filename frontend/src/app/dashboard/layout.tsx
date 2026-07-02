@@ -94,9 +94,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg-base)", position: "relative", zIndex: 1 }}>
-      {/* Sidebar */}
+    <div className="dash-shell" style={{ minHeight: "100vh", display: "flex", background: "var(--bg-base)", position: "relative", zIndex: 1 }}>
+      {/* Sidebar (top bar under 768px — see DASHBOARD RESPONSIVE in globals.css) */}
       <aside
+        className="dash-sidebar"
         style={{
           width: 220,
           flexShrink: 0,
@@ -110,6 +111,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Logo */}
         <Link
           href="/"
+          className="dash-brand"
           style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 20px 24px", textDecoration: "none" }}
         >
           {/* Mic mark */}
@@ -128,17 +130,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <line x1="12" y1="19" x2="12" y2="23" stroke="white" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </div>
-          <div>
+          <div className="dash-brand-text">
             <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"}</p>
             <p style={{ fontSize: 10, color: "var(--text-muted)", letterSpacing: "0.04em" }}>Admin Dashboard</p>
           </div>
         </Link>
 
         {/* Divider */}
-        <div className="divider" style={{ marginBottom: 12 }} />
+        <div className="divider dash-divider" style={{ marginBottom: 12 }} />
 
         {/* Nav */}
-        <nav aria-label="Dashboard navigation" style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 12px" }}>
+        <nav className="dash-nav" aria-label="Dashboard navigation" style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 12px" }}>
           {NAV_ITEMS.map((item) => {
             const isActive =
               item.href === "/dashboard"
@@ -189,10 +191,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
         {/* Bottom — back to voice + logout */}
-        <div style={{ marginTop: "auto", padding: "12px 12px 0" }}>
-          <div className="divider" style={{ marginBottom: 12 }} />
+        <div className="dash-bottom" style={{ marginTop: "auto", padding: "12px 12px 0" }}>
+          <div className="divider dash-divider" style={{ marginBottom: 12 }} />
           <Link
             href="/"
+            className="dash-voice-link"
             style={{
               display: "flex",
               alignItems: "center",
@@ -240,7 +243,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, overflow: "auto", padding: "32px 36px" }}>
+      <main className="dash-main" style={{ flex: 1, overflow: "auto", padding: "32px 36px" }}>
         <DashboardErrorBoundary>{children}</DashboardErrorBoundary>
       </main>
     </div>
