@@ -43,22 +43,22 @@ export default function TicketDetailPage() {
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const data = await getTicketDetail(ticketId);
-      setTicket(data);
-      if (data.status === "Escalated") {
-        try {
-          setHandoff(await getHandoffNote(ticketId));
-        } catch (err) {
-          console.error("Failed to load handoff note:", err);
+  const load = useCallback(() => {
+    return getTicketDetail(ticketId)
+      .then(async (data) => {
+        setTicket(data);
+        if (data.status === "Escalated") {
+          try {
+            setHandoff(await getHandoffNote(ticketId));
+          } catch (err) {
+            console.error("Failed to load handoff note:", err);
+          }
         }
-      }
-    } catch (err) {
-      console.error("Failed to load ticket:", err);
-    } finally {
-      setLoading(false);
-    }
+      })
+      .catch((err: unknown) => {
+        console.error("Failed to load ticket:", err);
+      })
+      .finally(() => setLoading(false));
   }, [ticketId]);
 
   useEffect(() => {

@@ -9,24 +9,12 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { UserX } from "lucide-react";
 import { getCustomerProfile, type CustomerProfile } from "@/lib/api";
-
-const STATUS_COLOR: Record<string, string> = {
-  Escalated: "var(--status-high)",
-  Resolved:  "var(--status-low)",
-  Open:      "var(--status-calm)",
-  "In Progress": "var(--status-medium)",
-  Closed:    "var(--text-muted)",
-};
-
-const SENTIMENT_COLOR: Record<string, string> = {
-  Calm: "var(--status-low)",
-  Confused: "var(--status-medium)",
-  Dissatisfied: "var(--status-medium)",
-  Angry: "var(--status-high)",
-  "Very Angry": "var(--status-critical)",
-  "High-risk Escalation": "var(--status-critical)",
-};
+import { formatDate, formatDateTime } from "@/lib/format";
+import { useMotionSafe } from "@/lib/motion";
+import { sentimentMeta, statusMeta } from "@/lib/theme";
+import { EmptyState, LoadingBlock, StatusBadge } from "@/components/ui";
 
 function Detail({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
@@ -45,6 +33,7 @@ export default function CustomerProfilePage() {
 
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const { entry } = useMotionSafe();
 
   useEffect(() => {
     async function load() {
@@ -60,41 +49,33 @@ export default function CustomerProfilePage() {
   }, [customerId]);
 
   if (loading) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 256 }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: "50%",
-          border: "2px solid var(--border-subtle)", borderTopColor: "var(--accent)",
-          animation: "spin 1s linear infinite",
-        }} />
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      </div>
-    );
+    return <LoadingBlock label="Loading customer" />;
   }
 
   if (!profile) {
     return (
-      <div style={{ textAlign: "center", padding: "80px 0" }}>
-        <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Customer not found</p>
-        <Link href="/dashboard/customers" style={{ fontSize: 13, color: "var(--accent)", marginTop: 8, display: "inline-block" }}>
-          Back to customers
-        </Link>
-      </div>
+      <EmptyState
+        icon={UserX}
+        title="Customer not found"
+        action={
+          <Link href="/dashboard/customers" style={{ fontSize: 13, color: "var(--accent)" }}>
+            Back to customers
+          </Link>
+        }
+      />
     );
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      {...entry()}
       style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 860 }}
     >
       {/* Breadcrumb */}
-      <nav style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}>
+      <nav aria-label="Breadcrumb" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}>
         <Link href="/dashboard/customers" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Customers</Link>
-        <span>›</span>
-        <span style={{ color: "var(--text-secondary)" }}>{profile.name}</span>
+        <span aria-hidden="true">›</span>
+        <span style={{ color: "var(--text-secondary)" }} aria-current="page">{profile.name}</span>
       </nav>
 
       {/* Header */}
@@ -119,11 +100,11 @@ export default function CustomerProfilePage() {
             {profile.sentiment_timeline.map((s, i) => (
               <span
                 key={i}
-                title={new Date(s.recorded_at).toLocaleString()}
+                title={formatDateTime(s.recorded_at)}
                 style={{
                   fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999,
                   background: "var(--bg-panel-raised)",
-                  color: SENTIMENT_COLOR[s.label] || "var(--text-secondary)",
+                  color: sentimentMeta(s.label).fg,
                   border: "1px solid var(--border-subtle)",
                 }}
               >
@@ -159,9 +140,9 @@ export default function CustomerProfilePage() {
                     </span>
                   )}
                   <span style={{ fontSize: 12, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>
-                    {new Date(o.order_date).toLocaleDateString()}
+                    {formatDate(o.order_date)}
                   </span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: STATUS_COLOR[o.status] || "var(--text-secondary)" }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: statusMeta(o.status).fg }}>
                     {o.status}
                   </span>
                   <span style={{ flex: 1 }} />
@@ -202,9 +183,9 @@ export default function CustomerProfilePage() {
                       <Detail label="Tracking" value={o.shipment.tracking_number} mono />
                     )}
                     {o.shipment?.actual_delivery ? (
-                      <Detail label="Delivered" value={new Date(o.shipment.actual_delivery).toLocaleDateString()} />
+                      <Detail label="Delivered" value={formatDate(o.shipment.actual_delivery)} />
                     ) : o.shipment?.expected_delivery ? (
-                      <Detail label="Expected" value={new Date(o.shipment.expected_delivery).toLocaleDateString()} />
+                      <Detail label="Expected" value={formatDate(o.shipment.expected_delivery)} />
                     ) : null}
                     {o.payment && (
                       <Detail label="Payment" value={`${o.payment.method} · ${o.payment.status}`} />
@@ -237,9 +218,7 @@ export default function CustomerProfilePage() {
                 <span style={{ fontSize: 13, color: "var(--text-primary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {t.summary || "—"}
                 </span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: STATUS_COLOR[t.status] || "var(--text-secondary)" }}>
-                  {t.status}
-                </span>
+                <StatusBadge status={t.status} />
               </Link>
             ))}
           </div>

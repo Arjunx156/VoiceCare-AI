@@ -39,8 +39,10 @@ export const SENTIMENT_META: Record<string, BadgeMeta> = {
   Calm:         meta("var(--status-calm)",   "rgba(96,125,139,0.12)"),
   Confused:     meta("var(--status-calm)",   "rgba(96,125,139,0.12)"),
   Negative:     meta("var(--status-medium)", "rgba(212,160,23,0.12)"),
+  Dissatisfied: meta("var(--status-medium)", "rgba(212,160,23,0.12)"),
   Angry:        meta("var(--status-angry)",  "rgba(229,57,53,0.12)"),
   "Very Angry": meta("var(--status-critical)", "rgba(198,40,40,0.12)"),
+  "High-risk Escalation": meta("var(--status-critical)", "rgba(198,40,40,0.12)"),
 };
 
 export function priorityMeta(priority: string | null | undefined): BadgeMeta {

@@ -8,7 +8,11 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { Users } from "lucide-react";
 import { getCustomers, type CustomerSummary } from "@/lib/api";
+import { formatDate } from "@/lib/format";
+import { useMotionSafe } from "@/lib/motion";
+import { EmptyState, LoadingBlock } from "@/components/ui";
 
 const SEGMENT_COLOR: Record<string, string> = {
   Premium: "var(--status-medium)",
@@ -38,11 +42,11 @@ export default function CustomersPage() {
     return () => clearTimeout(t);
   }, [search, load]);
 
+  const { entry } = useMotionSafe();
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      {...entry()}
       style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 900 }}
     >
       <div>
@@ -53,29 +57,22 @@ export default function CustomersPage() {
       </div>
 
       <input
+        className="text-input"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by name, phone, or email…"
-        style={{
-          width: "100%",
-          padding: "11px 16px",
-          borderRadius: 12,
-          fontSize: 14,
-          fontFamily: "var(--font-sans)",
-          background: "var(--bg-panel)",
-          border: "1px solid var(--border-subtle)",
-          color: "var(--text-primary)",
-        }}
+        aria-label="Search customers"
+        style={{ background: "var(--bg-panel)", borderRadius: 12 }}
       />
 
       {loading ? (
-        <p style={{ fontSize: 13, color: "var(--text-muted)", padding: "32px 0", textAlign: "center" }}>
-          Loading…
-        </p>
+        <LoadingBlock label="Loading customers" />
       ) : customers.length === 0 ? (
-        <p style={{ fontSize: 13, color: "var(--text-muted)", padding: "32px 0", textAlign: "center" }}>
-          No customers found.
-        </p>
+        <EmptyState
+          icon={Users}
+          title="No customers found"
+          hint={search ? "Try a different name, phone, or email." : "Customers appear after their first voice query."}
+        />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {customers.map((c) => (
@@ -108,7 +105,7 @@ export default function CustomersPage() {
                 {c.ticket_count} ticket{c.ticket_count === 1 ? "" : "s"}
               </span>
               <span style={{ fontSize: 12, color: "var(--text-muted)", width: 110, textAlign: "right" }}>
-                {c.last_contact ? new Date(c.last_contact).toLocaleDateString() : "—"}
+                {c.last_contact ? formatDate(c.last_contact) : "—"}
               </span>
             </Link>
           ))}

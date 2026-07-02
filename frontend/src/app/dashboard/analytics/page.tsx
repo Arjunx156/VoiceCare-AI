@@ -1,75 +1,54 @@
 "use client";
 
 /**
- * CommerceMind VoiceCare AI — Analytics Page v2
- * Design brief: asymmetric two-column, eyebrow labels, editorial panels.
- * Charts use recharts with the new design system palette.
+ * Analytics — asymmetric two-column, eyebrow labels, editorial panels.
+ * Charts use recharts with the shared design-system palette (lib/theme).
  */
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { BarChart3 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { getAnalytics, type AnalyticsOverview } from "@/lib/api";
+import { CHART_COLORS, PRIORITY_HEX, chartTooltipStyle, sentimentHex } from "@/lib/theme";
+import { useMotionSafe } from "@/lib/motion";
+import { EmptyState, LoadingBlock, Panel, StatCard } from "@/components/ui";
 
-// Semantic color palette for charts (separate from brand accent)
-const CHART_COLORS = [
-  "#FF5A2B", "#D4A017", "#4CAF73", "#607D8B",
-  "#E53935", "#8D6E63", "#42A5F5", "#AB47BC",
-];
+const AXIS_TICK = { fill: "#8A8A8A", fontSize: 11 };
 
-// Priority semantic bar colors
-const PRI_COLOR: Record<string, string> = {
-  Critical: "#C62828", High: "#E53935", Medium: "#D4A017", Low: "#4CAF73",
-};
-
-// Sentiment colors
-function sentColor(name: string) {
-  if (name === "Angry" || name === "Very Angry") return "#E53935";
-  if (name === "Negative") return "#D4A017";
-  if (name === "Calm" || name === "Confused") return "#607D8B";
-  return "#4CAF73";
-}
-
-// Shared tooltip style
-const tooltipStyle = {
-  contentStyle: {
-    background: "#161616",
-    border: "1px solid #262626",
-    borderRadius: 10,
-    color: "#F5F5F5",
-    fontSize: 12,
-  },
-  cursor: { fill: "rgba(255,255,255,0.04)" },
-};
+type FetchResult =
+  | { analytics: AnalyticsOverview }
+  | { error: string };
 
 export default function AnalyticsPage() {
-  const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
-  const [loading, setLoading]     = useState(true);
+  const [result, setResult] = useState<FetchResult | null>(null);
+  const { entry } = useMotionSafe();
 
   useEffect(() => {
-    async function load() {
-      try { setAnalytics(await getAnalytics()); }
-      catch (err) { console.error("Analytics load failed:", err); }
-      finally { setLoading(false); }
-    }
-    load();
+    let cancelled = false;
+    getAnalytics()
+      .then((analytics) => {
+        if (!cancelled) setResult({ analytics });
+      })
+      .catch((err: unknown) => {
+        console.error("Analytics load failed:", err);
+        if (!cancelled) {
+          setResult({ error: err instanceof Error ? err.message : "Failed to load analytics" });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  if (loading) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 256 }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: "50%",
-          border: "2px solid var(--border-subtle)", borderTopColor: "var(--accent)",
-          animation: "spin 1s linear infinite",
-        }} />
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      </div>
-    );
+  if (!result) {
+    return <LoadingBlock label="Loading analytics" />;
   }
+
+  const analytics = "analytics" in result ? result.analytics : null;
 
   if (!analytics || analytics.total_tickets === 0) {
     return (
@@ -78,13 +57,13 @@ export default function AnalyticsPage() {
           <span className="eyebrow">ANALYTICS</span>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)" }}>Insights</h1>
         </div>
-        <div className="panel" style={{ textAlign: "center", padding: "80px 0" }}>
-          <p style={{ fontSize: 40, marginBottom: 12 }}>📊</p>
-          <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>No data yet</p>
-          <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6 }}>
-            Start processing voice queries to see analytics
-          </p>
-        </div>
+        <Panel>
+          <EmptyState
+            icon={BarChart3}
+            title={"error" in result ? "Unable to load analytics" : "No data yet"}
+            hint={"error" in result ? result.error : "Start processing voice queries to see analytics"}
+          />
+        </Panel>
       </div>
     );
   }
@@ -94,14 +73,17 @@ export default function AnalyticsPage() {
   const priData  = Object.entries(analytics.tickets_by_priority).map(([name, value]) => ({ name, value }));
   const sentData = Object.entries(analytics.tickets_by_sentiment).map(([name, value]) => ({ name, value }));
 
+  const kpis = [
+    { label: "RESOLUTION RATE", value: `${analytics.resolution_rate}%` },
+    { label: "ESCALATION RATE", value: `${analytics.escalation_rate}%` },
+    { label: "TOTAL TICKETS",   value: analytics.total_tickets },
+    { label: "OPEN NOW",        value: analytics.open_tickets },
+  ];
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      >
+      <motion.div {...entry()}>
         <span className="eyebrow">ANALYTICS</span>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
           Ticket Insights
@@ -113,24 +95,9 @@ export default function AnalyticsPage() {
 
       {/* KPI strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        {[
-          { eyebrow: "RESOLUTION RATE", value: `${analytics.resolution_rate}%` },
-          { eyebrow: "ESCALATION RATE", value: `${analytics.escalation_rate}%` },
-          { eyebrow: "TOTAL TICKETS",   value: analytics.total_tickets },
-          { eyebrow: "OPEN NOW",        value: analytics.open_tickets },
-        ].map((s, i) => (
-          <motion.div
-            key={s.eyebrow}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="panel panel-hover"
-            style={{ padding: "18px 20px" }}
-          >
-            <span className="eyebrow">{s.eyebrow}</span>
-            <p style={{ fontSize: 30, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
-              {s.value}
-            </p>
+        {kpis.map((s, i) => (
+          <motion.div key={s.label} {...entry(i * 0.06)}>
+            <StatCard label={s.label} value={s.value} />
           </motion.div>
         ))}
       </div>
@@ -138,13 +105,7 @@ export default function AnalyticsPage() {
       {/* Asymmetric two-column: large language bar + smaller category donut */}
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
         {/* Ticket Volume by Language — larger block */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.28, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="panel"
-          style={{ padding: "24px 24px 16px" }}
-        >
+        <motion.div {...entry(0.28)} className="panel" style={{ padding: "24px 24px 16px" }}>
           <span className="eyebrow">TICKET VOLUME</span>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
             By Language
@@ -152,22 +113,16 @@ export default function AnalyticsPage() {
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={langData} margin={{ left: -16, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: "#5A5A5A", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#5A5A5A", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip {...tooltipStyle} />
+              <XAxis dataKey="name" tick={AXIS_TICK} axisLine={false} tickLine={false} />
+              <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} />
+              <Tooltip {...chartTooltipStyle} />
               <Bar dataKey="value" fill="#FF5A2B" radius={[4, 4, 0, 0]} maxBarSize={40} />
             </BarChart>
           </ResponsiveContainer>
         </motion.div>
 
         {/* By Category — smaller, donut */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.34, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="panel"
-          style={{ padding: "24px 20px 16px" }}
-        >
+        <motion.div {...entry(0.34)} className="panel" style={{ padding: "24px 20px 16px" }}>
           <span className="eyebrow">CATEGORY</span>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>
             Breakdown
@@ -185,7 +140,7 @@ export default function AnalyticsPage() {
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip {...tooltipStyle} />
+              <Tooltip {...chartTooltipStyle} />
               <Legend wrapperStyle={{ color: "#9A9A9A", fontSize: 10, paddingTop: 8 }} />
             </PieChart>
           </ResponsiveContainer>
@@ -195,13 +150,7 @@ export default function AnalyticsPage() {
       {/* Priority + Sentiment side by side */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         {/* By Priority */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.42, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="panel"
-          style={{ padding: "24px 24px 16px" }}
-        >
+        <motion.div {...entry(0.42)} className="panel" style={{ padding: "24px 24px 16px" }}>
           <span className="eyebrow">PRIORITY</span>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
             Distribution
@@ -209,12 +158,12 @@ export default function AnalyticsPage() {
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={priData} layout="vertical" margin={{ left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#262626" horizontal={false} />
-              <XAxis type="number" tick={{ fill: "#5A5A5A", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <XAxis type="number" tick={AXIS_TICK} axisLine={false} tickLine={false} />
               <YAxis dataKey="name" type="category" tick={{ fill: "#9A9A9A", fontSize: 11 }} axisLine={false} tickLine={false} width={60} />
-              <Tooltip {...tooltipStyle} />
+              <Tooltip {...chartTooltipStyle} />
               <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                {priData.map((entry, i) => (
-                  <Cell key={i} fill={PRI_COLOR[entry.name] || "#9A9A9A"} />
+                {priData.map((priority, i) => (
+                  <Cell key={i} fill={PRIORITY_HEX[priority.name] || "#9A9A9A"} />
                 ))}
               </Bar>
             </BarChart>
@@ -222,13 +171,7 @@ export default function AnalyticsPage() {
         </motion.div>
 
         {/* By Sentiment */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.48, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="panel"
-          style={{ padding: "24px 24px 16px" }}
-        >
+        <motion.div {...entry(0.48)} className="panel" style={{ padding: "24px 24px 16px" }}>
           <span className="eyebrow">SENTIMENT</span>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>
             Customer Mood
@@ -242,11 +185,11 @@ export default function AnalyticsPage() {
                 cx="50%" cy="50%"
                 innerRadius={45} outerRadius={70}
               >
-                {sentData.map((entry, i) => (
-                  <Cell key={i} fill={sentColor(entry.name)} />
+                {sentData.map((sentiment, i) => (
+                  <Cell key={i} fill={sentimentHex(sentiment.name)} />
                 ))}
               </Pie>
-              <Tooltip {...tooltipStyle} />
+              <Tooltip {...chartTooltipStyle} />
               <Legend wrapperStyle={{ color: "#9A9A9A", fontSize: 10 }} />
             </PieChart>
           </ResponsiveContainer>

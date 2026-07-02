@@ -1,28 +1,20 @@
 "use client";
 
 /**
- * CommerceMind VoiceCare AI — Escalations Page v2
- * Design brief: outlined panels for Low/Medium, raised card with corner badge for Critical/High.
- * Semantic colors only (never --accent for urgency).
+ * Escalation queue — outlined panels for Low/Medium, raised card with a
+ * corner badge for Critical/High. Semantic colors only (never --accent for
+ * urgency). Polls every 5s with exponential backoff to 60s on errors.
  */
 
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { CheckCircle2 } from "lucide-react";
 import { getEscalations, claimTicket, type TicketSummary } from "@/lib/api";
-
-const PRIORITY_COLOR: Record<string, string> = {
-  Critical: "var(--status-critical)",
-  High:     "var(--status-high)",
-  Medium:   "var(--status-medium)",
-  Low:      "var(--status-low)",
-};
-const PRIORITY_BG: Record<string, string> = {
-  Critical: "rgba(198,40,40,0.12)",
-  High:     "rgba(229,57,53,0.12)",
-  Medium:   "rgba(212,160,23,0.12)",
-  Low:      "rgba(76,175,115,0.12)",
-};
+import { formatDate } from "@/lib/format";
+import { useMotionSafe } from "@/lib/motion";
+import { priorityMeta, sentimentMeta } from "@/lib/theme";
+import { Badge, Button, EmptyState, LoadingBlock, Panel, PriorityBadge } from "@/components/ui";
 
 // "Raised" means Critical or High — needs attention now
 function isRaised(priority: string) {
@@ -34,6 +26,7 @@ export default function EscalationsPage() {
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState<string | null>(null);
   const [claiming, setClaiming]       = useState<string | null>(null);
+  const { entry } = useMotionSafe();
 
   const handleClaim = useCallback(async (ticketId: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -90,16 +83,7 @@ export default function EscalationsPage() {
   }, []);
 
   if (loading && escalations.length === 0) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 256 }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: "50%",
-          border: "2px solid var(--border-subtle)", borderTopColor: "var(--accent)",
-          animation: "spin 1s linear infinite",
-        }} />
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      </div>
-    );
+    return <LoadingBlock label="Loading escalations" />;
   }
 
   if (error && escalations.length === 0) {
@@ -114,11 +98,7 @@ export default function EscalationsPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      >
+      <motion.div {...entry()}>
         <span className="eyebrow">ESCALATION QUEUE</span>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.1 }}>
           {escalations.length > 0
@@ -131,29 +111,20 @@ export default function EscalationsPage() {
       </motion.div>
 
       {escalations.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="panel"
-          style={{ textAlign: "center", padding: "80px 0" }}
-        >
-          <p style={{ fontSize: 40, marginBottom: 12 }}>🎉</p>
-          <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>No pending escalations</p>
-          <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6 }}>
-            All tickets are being handled by AI
-          </p>
-        </motion.div>
+        <Panel>
+          <EmptyState
+            icon={CheckCircle2}
+            title="No pending escalations"
+            hint="All tickets are being handled by AI"
+          />
+        </Panel>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
           {escalations.map((ticket, i) => {
             const raised = isRaised(ticket.priority);
+            const meta = priorityMeta(ticket.priority);
             return (
-              <motion.div
-                key={ticket.ticket_id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-              >
+              <motion.div key={ticket.ticket_id} {...entry(Math.min(i * 0.06, 0.4))}>
                 <Link href={`/dashboard/tickets/${ticket.ticket_id}`} style={{ textDecoration: "none", display: "block" }}>
                   <div
                     className="panel-hover"
@@ -162,7 +133,7 @@ export default function EscalationsPage() {
                       padding: "20px 22px",
                       position: "relative",
                       overflow: "hidden",
-                      border: `1px solid ${raised ? PRIORITY_BG[ticket.priority] : "var(--border-subtle)"}`,
+                      border: `1px solid ${raised ? meta.bg : "var(--border-subtle)"}`,
                       background: raised ? "var(--bg-panel-raised)" : "var(--bg-panel)",
                       cursor: "pointer",
                     }}
@@ -178,8 +149,8 @@ export default function EscalationsPage() {
                           fontSize: 10,
                           fontWeight: 700,
                           letterSpacing: "0.06em",
-                          background: PRIORITY_BG[ticket.priority],
-                          color: PRIORITY_COLOR[ticket.priority],
+                          background: meta.bg,
+                          color: meta.fg,
                           textTransform: "uppercase",
                         }}
                       >
@@ -198,10 +169,8 @@ export default function EscalationsPage() {
                       {ticket.phone} · {ticket.language}
                     </p>
 
-                    {/* Divider */}
                     <div className="divider" style={{ margin: "12px 0" }} />
 
-                    {/* Summary */}
                     <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>
                       {ticket.summary || `${ticket.ticket_type} issue`}
                     </p>
@@ -209,28 +178,14 @@ export default function EscalationsPage() {
                     {/* Footer */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
                       <div style={{ display: "flex", gap: 8 }}>
-                        {/* Priority pill — only shown if not raised (raised has corner badge) */}
-                        {!raised && (
-                          <span style={{
-                            fontSize: 10, fontWeight: 600, padding: "3px 9px", borderRadius: 999,
-                            background: PRIORITY_BG[ticket.priority] || "transparent",
-                            color: PRIORITY_COLOR[ticket.priority] || "var(--text-secondary)",
-                          }}>
-                            {ticket.priority}
-                          </span>
-                        )}
+                        {/* Priority pill — raised cards already carry the corner badge */}
+                        {!raised && <PriorityBadge priority={ticket.priority} />}
                         {ticket.sentiment && (
-                          <span style={{
-                            fontSize: 10, fontWeight: 500, padding: "3px 9px", borderRadius: 999,
-                            background: "rgba(96,125,139,0.12)",
-                            color: "var(--status-calm)",
-                          }}>
-                            {ticket.sentiment}
-                          </span>
+                          <Badge meta={sentimentMeta(ticket.sentiment)}>{ticket.sentiment}</Badge>
                         )}
                       </div>
                       <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                        {new Date(ticket.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                        {formatDate(ticket.created_at)}
                       </span>
                     </div>
 
@@ -241,18 +196,15 @@ export default function EscalationsPage() {
                           Claimed by {ticket.assigned_to}
                         </span>
                       ) : (
-                        <button
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           onClick={(e) => handleClaim(ticket.ticket_id, e)}
-                          disabled={claiming === ticket.ticket_id}
-                          className="btn-pill"
-                          style={{
-                            fontSize: 11, padding: "5px 14px",
-                            opacity: claiming === ticket.ticket_id ? 0.6 : 1,
-                            cursor: claiming === ticket.ticket_id ? "not-allowed" : "pointer",
-                          }}
+                          isLoading={claiming === ticket.ticket_id}
+                          style={{ fontSize: 11, padding: "5px 14px" }}
                         >
                           {claiming === ticket.ticket_id ? "Claiming…" : "Claim"}
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
