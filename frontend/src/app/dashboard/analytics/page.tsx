@@ -91,8 +91,8 @@ export default function AnalyticsPage() {
         </p>
       </motion.div>
 
-      {/* KPI strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+      {/* KPI strip (auto-fit so it doesn't crush on narrow screens) */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
         {kpis.map((s, i) => (
           <motion.div key={s.label} {...entry(i * 0.06)}>
             <StatCard label={s.label} value={s.value} />

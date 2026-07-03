@@ -13,7 +13,7 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 import { getAnalytics, getEscalations, type AnalyticsOverview, type TicketSummary } from "@/lib/api";
 import { chartTooltipStyle } from "@/lib/theme";
 import { useMotionSafe } from "@/lib/motion";
-import { Button, EmptyState, LanguageLabel, LoadingBlock, PriorityBadge, StatCard } from "@/components/ui";
+import { Button, EmptyState, LanguageLabel, PriorityBadge, StatCard } from "@/components/ui";
 
 type FetchResult =
   | { key: number; analytics: AnalyticsOverview; escalations: TicketSummary[] }
@@ -46,7 +46,36 @@ export default function DashboardPage() {
   const current = result?.key === retryCount ? result : null;
 
   if (!current) {
-    return <LoadingBlock label="Loading dashboard" />;
+    // Skeleton mirrors the real layout (header → featured pair → stat row)
+    // so content doesn't jump when data lands.
+    const bar = (w: number | string, h: number, mb = 0): React.CSSProperties => ({
+      display: "block", width: w, height: h, marginBottom: mb,
+    });
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 32 }} role="status" aria-label="Loading dashboard">
+        <div>
+          <span className="skeleton" style={bar(90, 10, 12)} />
+          <span className="skeleton" style={bar(280, 26)} />
+        </div>
+        <div className="grid-half">
+          {[0, 1].map((i) => (
+            <div key={i} className="panel" style={{ padding: "26px 28px" }}>
+              <span className="skeleton" style={bar(80, 9, 14)} />
+              <span className="skeleton" style={bar(120, 40)} />
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="panel" style={{ padding: "20px 22px" }}>
+              <span className="skeleton" style={bar(70, 8, 12)} />
+              <span className="skeleton" style={bar(60, 28)} />
+            </div>
+          ))}
+        </div>
+        <span className="sr-only">Loading dashboard</span>
+      </div>
+    );
   }
 
   if ("error" in current) {

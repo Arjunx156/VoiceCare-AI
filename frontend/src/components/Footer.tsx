@@ -56,7 +56,7 @@ export default function Footer({
       style={{
         width: "100%",
         maxWidth: 560,
-        padding: "0 24px 28px",
+        padding: "12px 24px 28px",
         display: "flex",
         flexDirection: "column",
         gap: 14,

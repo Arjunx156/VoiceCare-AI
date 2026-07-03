@@ -256,12 +256,14 @@ export default function VoiceView(props: VoiceState) {
           </motion.div>
         )}
 
+        {/* marginBottom keeps the sphere from visually crowding the language
+            pills below — the canvas renders the orb close to its own edge. */}
         <motion.div
           custom={2}
           variants={fadeUp}
           initial="hidden"
           animate="show"
-          style={{ width: "100%", height: 256 }}
+          style={{ width: "100%", height: 256, marginBottom: 16 }}
         >
           <Suspense fallback={<div style={{ width: "100%", height: "100%" }} />}>
             <VoiceOrb
