@@ -46,8 +46,8 @@ export default function DashboardPage() {
   const current = result?.key === retryCount ? result : null;
 
   if (!current) {
-    // Skeleton mirrors the real layout (header → featured pair → stat row)
-    // so content doesn't jump when data lands.
+    // Skeleton mirrors the real layout (header → uniform stat row) so
+    // content doesn't jump when data lands.
     const bar = (w: number | string, h: number, mb = 0): React.CSSProperties => ({
       display: "block", width: w, height: h, marginBottom: mb,
     });
@@ -57,16 +57,8 @@ export default function DashboardPage() {
           <span className="skeleton" style={bar(90, 10, 12)} />
           <span className="skeleton" style={bar(280, 26)} />
         </div>
-        <div className="grid-half">
-          {[0, 1].map((i) => (
-            <div key={i} className="panel" style={{ padding: "26px 28px" }}>
-              <span className="skeleton" style={bar(80, 9, 14)} />
-              <span className="skeleton" style={bar(120, 40)} />
-            </div>
-          ))}
-        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
-          {[0, 1, 2, 3].map((i) => (
+          {[0, 1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="panel" style={{ padding: "20px 22px" }}>
               <span className="skeleton" style={bar(70, 8, 12)} />
               <span className="skeleton" style={bar(60, 28)} />
@@ -98,12 +90,11 @@ export default function DashboardPage() {
   const { analytics, escalations } = current;
   const total = analytics.total_tickets || 0;
 
-  const escalatedCount = analytics.escalated_tickets || 0;
-
-  // The two numbers an operator checks first, at featured size; the rest compact.
-  const compactStats = [
-    { label: "TOTAL",      value: total,                                hint: "all time" },
-    { label: "RESOLVED",   value: analytics.resolved_tickets || 0,      hint: "closed" },
+  const stats = [
+    { label: "TOTAL",      value: total,                              hint: "all time" },
+    { label: "OPEN",       value: analytics.open_tickets || 0,        hint: "awaiting resolution" },
+    { label: "ESCALATED",  value: analytics.escalated_tickets || 0,   hint: "needs human" },
+    { label: "RESOLVED",   value: analytics.resolved_tickets || 0,    hint: "closed" },
     { label: "RESOLUTION", value: `${analytics.resolution_rate || 0}%`, hint: "resolution rate" },
     { label: "ESCALATION", value: `${analytics.escalation_rate || 0}%`, hint: "escalation rate" },
   ];
@@ -121,31 +112,10 @@ export default function DashboardPage() {
         </p>
       </motion.div>
 
-      {/* Featured pair — what needs attention right now */}
-      <div className="grid-half">
-        <motion.div {...entry(0.05)}>
-          <StatCard
-            featured
-            label="OPEN NOW"
-            value={analytics.open_tickets || 0}
-            hint="awaiting resolution"
-          />
-        </motion.div>
-        <motion.div {...entry(0.1)}>
-          <StatCard
-            featured
-            label="ESCALATED"
-            value={escalatedCount}
-            tone={escalatedCount > 0 ? "danger" : "default"}
-            hint={escalatedCount > 0 ? "need a human now" : "queue is clear"}
-          />
-        </motion.div>
-      </div>
-
-      {/* Compact stat row */}
+      {/* Stats — 4 primary + 2 rate, one uniform row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
-        {compactStats.map((s, i) => (
-          <motion.div key={s.label} {...entry(0.15 + i * 0.05)}>
+        {stats.map((s, i) => (
+          <motion.div key={s.label} {...entry(i * 0.06)}>
             <StatCard {...s} />
           </motion.div>
         ))}
@@ -153,7 +123,7 @@ export default function DashboardPage() {
 
       {/* Ticket volume trend — the pipeline's heartbeat over time */}
       {trend.length > 1 && (
-        <motion.div {...entry(0.3)} className="panel" style={{ padding: "24px 28px 10px" }}>
+        <motion.div {...entry(0.36)} className="panel" style={{ padding: "24px 28px 10px" }}>
           <span className="eyebrow">VOLUME</span>
           <h2 className="section-title" style={{ marginBottom: 16 }}>
             Tickets Over Time
@@ -199,7 +169,7 @@ export default function DashboardPage() {
           (collapses to one column under 900px — .grid-main-side) */}
       <div className="grid-main-side">
         {/* Ticket volume by language — the larger block */}
-        <motion.div {...entry(0.36)} className="panel" style={{ padding: "24px 28px" }}>
+        <motion.div {...entry(0.42)} className="panel" style={{ padding: "24px 28px" }}>
           <span className="eyebrow">TICKET VOLUME</span>
           <h2 className="section-title" style={{ marginBottom: 20 }}>
             By Language
@@ -251,7 +221,7 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Right column: category breakdown */}
-        <motion.div {...entry(0.42)} className="panel" style={{ padding: "24px 22px" }}>
+        <motion.div {...entry(0.48)} className="panel" style={{ padding: "24px 22px" }}>
           <span className="eyebrow">BY CATEGORY</span>
           <h2 className="section-title" style={{ marginBottom: 20 }}>
             Ticket Types
@@ -285,7 +255,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Escalation Queue — editorial list rows */}
-      <motion.div {...entry(0.5)} className="panel" style={{ padding: "24px 28px" }}>
+      <motion.div {...entry(0.56)} className="panel" style={{ padding: "24px 28px" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 20 }}>
           <span className="eyebrow" style={{ marginBottom: 0 }}>ESCALATION QUEUE</span>
           {escalations.length > 0 && (
