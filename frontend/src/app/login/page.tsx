@@ -124,6 +124,21 @@ function LoginForm() {
           />
         </div>
 
+        <p
+          style={{
+            fontSize: 12,
+            color: "var(--text-muted)",
+            lineHeight: 1.6,
+            margin: 0,
+            padding: "8px 10px",
+            borderRadius: 8,
+            background: "var(--bg-muted, rgba(127,127,127,0.08))",
+            border: "1px dashed var(--border-subtle, rgba(127,127,127,0.25))",
+          }}
+        >
+          Demo credentials — <strong>admin@voicecare.ai</strong> / <strong>VoiceCare-Judge2026!</strong>
+        </p>
+
         {error && (
           <p role="alert" style={{ fontSize: 13, color: "var(--status-high)", margin: 0 }}>
             {error}
