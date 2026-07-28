@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { MessageKey } from "@/lib/i18n/messages/en";
+import type { StageMap } from "@/hooks/useVoiceInteraction";
 
 const STAGE_KEYS: MessageKey[] = [
   "status.stage1",
@@ -18,8 +19,16 @@ const STAGE_KEYS: MessageKey[] = [
 
 interface StatusStreamProps {
   currentStage: number;
+  stages: StageMap;
   isComplete: boolean;
   isProcessing: boolean;
+  totalDurationMs?: number | null;
+}
+
+/** Milliseconds as a compact, readable figure: 42 ms, 380 ms, 1.24 s. */
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)} ms`;
+  return `${(ms / 1000).toFixed(2)} s`;
 }
 
 function Checkmark() {
@@ -37,21 +46,42 @@ function Checkmark() {
   );
 }
 
-export default function StatusStream({ currentStage, isComplete, isProcessing }: StatusStreamProps) {
+export default function StatusStream({
+  currentStage,
+  stages,
+  isComplete,
+  isProcessing,
+  totalDurationMs,
+}: StatusStreamProps) {
   const { t } = useI18n();
 
-  // The status stream is purely a live, in-flight indicator. Once the turn
-  // finishes (isProcessing flips false) the completed Q&A lives in the chat
-  // transcript instead, so the stream disappears rather than lingering.
-  if (!isProcessing) return null;
+  // Stays mounted after the turn finishes so the per-agent timings remain
+  // readable — they are the point of this panel, and unmounting on completion
+  // would flash them away at the exact moment they became complete.
+  if (!isProcessing && !isComplete) return null;
 
   const activeKey = STAGE_KEYS[Math.min(Math.max(currentStage, 1), 9) - 1];
 
   return (
     <div className="w-full panel" style={{ padding: "20px 24px" }}>
-      <span className="eyebrow">
-        {isComplete ? t("status.complete") : t("status.processing")}
-      </span>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+        <span className="eyebrow">
+          {isComplete ? t("status.complete") : t("status.processing")}
+        </span>
+        {totalDurationMs != null && (
+          <span
+            style={{
+              marginLeft: "auto",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#4CAF73",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {formatDuration(totalDurationMs)}
+          </span>
+        )}
+      </div>
 
       {/* Screen readers hear only the current stage, not every list repaint */}
       <span className="sr-only" aria-live="polite">
@@ -61,8 +91,11 @@ export default function StatusStream({ currentStage, isComplete, isProcessing }:
       <ol style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "10px" }}>
         {STAGE_KEYS.map((key, idx) => {
           const stepNum = idx + 1;
-          const isActive = stepNum === currentStage && !isComplete;
-          const isDone   = stepNum < currentStage || isComplete;
+          const stage   = stages[stepNum];
+          // Driven by what the server actually reported for each stage, so the
+          // concurrent pair (3 and 4) can both show as running at once.
+          const isActive = stage?.status === "running";
+          const isDone   = stage?.status === "done";
           const isFuture = !isActive && !isDone;
 
           return (
@@ -116,6 +149,25 @@ export default function StatusStream({ currentStage, isComplete, isProcessing }:
                     transformOrigin: "left",
                   }}
                 />
+              )}
+
+              {/* != null, not truthiness: agent 6 is deterministic and finishes
+                  in well under a millisecond, so a real 0 must still render. */}
+              {isDone && stage?.durationMs != null && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  style={{
+                    marginLeft: "auto",
+                    fontSize: "11px",
+                    color: "var(--text-muted)",
+                    fontVariantNumeric: "tabular-nums",
+                    flexShrink: 0,
+                  }}
+                >
+                  {formatDuration(stage.durationMs)}
+                </motion.span>
               )}
             </li>
           );

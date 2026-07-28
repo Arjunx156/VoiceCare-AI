@@ -109,6 +109,8 @@ export default function VoiceView(props: VoiceState) {
     isComplete,
     audioLevelRef,
     currentStage,
+    stages,
+    totalDurationMs,
     response,
     turns,
     restoredTurns,
@@ -303,8 +305,10 @@ export default function VoiceView(props: VoiceState) {
           <ConversationThread turns={turns} restoredTurns={restoredTurns} />
         </div>
 
+        {/* Kept mounted through completion so the per-agent timings stay
+            readable once the run finishes. */}
         <AnimatePresence>
-          {isProcessing && (
+          {(isProcessing || isComplete) && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -314,8 +318,10 @@ export default function VoiceView(props: VoiceState) {
             >
               <StatusStream
                 currentStage={currentStage}
+                stages={stages}
                 isComplete={isComplete}
                 isProcessing={isProcessing}
+                totalDurationMs={totalDurationMs}
               />
             </motion.div>
           )}

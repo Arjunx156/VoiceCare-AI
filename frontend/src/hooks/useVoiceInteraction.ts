@@ -19,6 +19,15 @@ export interface RestoredTurn {
   aiText: string;
 }
 
+/** Live execution state of one pipeline stage, as reported over the socket. */
+export interface StageState {
+  status: "running" | "done";
+  durationMs?: number;
+}
+
+/** stageNumber → its current state. Absent means "not started". */
+export type StageMap = Record<number, StageState>;
+
 // Minimal type shim for the browser Web Speech API (not in TS lib by default)
 interface SpeechRecognitionInstance {
   lang: string;
@@ -36,6 +45,13 @@ interface SpeechRecognitionEvent {
 }
 
 const MAX_WS_RETRIES = 3;
+// How long to wait for Bhashini speech before falling back to the browser's own
+// synthesiser. Long enough that good-quality Bhashini audio usually wins the
+// race; short enough that a slow or failed TTS never leaves a silent gap.
+const BHASHINI_AUDIO_GRACE_MS = 1200;
+// Backstop for the deferred stages. If TTS or the ticket write hangs, the
+// terminal `done` frame never arrives — without this the UI would spin forever.
+const DEFERRED_STAGES_TIMEOUT_MS = 12_000;
 const LS_LANG_KEY = "vc_lang";
 // sessionStorage (not localStorage): the conversation survives a reload in the
 // same tab, but a new tab or window still starts a fresh conversation — which
@@ -71,8 +87,12 @@ function readStoredLang(): string {
 export function useVoiceInteraction() {
   const [isListening, setIsListening]     = useState(false);
   const [isProcessing, setIsProcessing]   = useState(false);
-  const [currentStage, setCurrentStage]   = useState(0);
+  // Per-stage status and timing. A map rather than a scalar because stages 3
+  // and 4 run concurrently — a single "current stage" number flickers between
+  // them and cannot hold each one's duration.
+  const [stages, setStages]               = useState<StageMap>({});
   const [isComplete, setIsComplete]       = useState(false);
+  const [totalDurationMs, setTotalDurationMs] = useState<number | null>(null);
   const [response, setResponse]           = useState<VoiceQueryResponse | null>(null);
   // Full visible history of completed turns this conversation (persists across
   // mic presses; cleared only on "New conversation").
@@ -154,6 +174,23 @@ export function useVoiceInteraction() {
   const audioRef          = useRef<HTMLAudioElement | null>(null);
   // Timer id for the Chrome SpeechSynthesis resume-workaround (see below).
   const ttsTimerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Speech for the current turn has been started by someone (either the
+  // Bhashini audio frame or the grace-period fallback), so the loser of that
+  // race must not start a second voice on top of it.
+  const ttsClaimedRef     = useRef(false);
+  const audioGraceRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deferredWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTurnTimers = useCallback(() => {
+    if (audioGraceRef.current) {
+      clearTimeout(audioGraceRef.current);
+      audioGraceRef.current = null;
+    }
+    if (deferredWatchdogRef.current) {
+      clearTimeout(deferredWatchdogRef.current);
+      deferredWatchdogRef.current = null;
+    }
+  }, []);
 
   const stopCurrentTTS = useCallback(() => {
     if (ttsTimerRef.current) {
@@ -175,8 +212,9 @@ export function useVoiceInteraction() {
       if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
       if (recognitionRef.current) recognitionRef.current.stop();
       stopCurrentTTS();
+      clearTurnTimers();
     };
-  }, [stopCurrentTTS]);
+  }, [stopCurrentTTS, clearTurnTimers]);
 
   const playBrowserTTS = useCallback((text: string, lang?: string) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
@@ -267,9 +305,16 @@ export function useVoiceInteraction() {
       // outer useCallback binding before its declaration completes.
       function attempt(retryCount: number) {
       setIsProcessing(true);
-      setCurrentStage(1);
+      setStages({});
+      setTotalDurationMs(null);
+      clearTurnTimers();
+      ttsClaimedRef.current = false;
 
       let completed = false;
+      // Frames are filtered on this once the answer arrives, so a turn the
+      // customer starts while the previous turn's stages 8-9 are still
+      // reporting cannot have the two interleaved.
+      let activeTurnId: string | undefined;
 
       try {
         const ws = createWebSocket(currentSessionId);
@@ -283,8 +328,27 @@ export function useVoiceInteraction() {
           }));
         };
 
+        // Ends the turn: stop waiting, release the UI, close the socket.
+        const finishTurn = () => {
+          completed = true;
+          clearTurnTimers();
+          setIsComplete(true);
+          setIsProcessing(false);
+          ws.close();
+        };
+
         ws.onmessage = (event) => {
           const message = parseWsMessage(event.data);
+
+          // Late frames from a previous turn on this socket are not ours.
+          if (
+            activeTurnId &&
+            "turnId" in message &&
+            message.turnId &&
+            message.turnId !== activeTurnId
+          ) {
+            return;
+          }
 
           switch (message.kind) {
             case "ping":
@@ -292,24 +356,91 @@ export function useVoiceInteraction() {
               return; // keep-alive / unrecognized frames are ignored
 
             case "stage":
-              setCurrentStage(message.stageNumber);
+              setStages((prev) => ({
+                ...prev,
+                [message.stageNumber]:
+                  message.status === "done"
+                    ? { status: "done", durationMs: message.durationMs }
+                    : { status: "running" },
+              }));
               return;
 
             case "response": {
-              completed = true;
+              // The answer, delivered after agent 7. Speech synthesis and the
+              // ticket write are still in flight and report via later frames.
               const ai = message.response;
-              setCurrentStage(9);
+              activeTurnId = message.turnId;
               setResponse(ai);
               setTurns((prev) => [...prev, { customer: overrides.text ?? "", ai }]);
-              setIsComplete(true);
-              playAudioResponse(ai.response_audio_base64, ai.response_text, selectedLanguage);
-              setIsProcessing(false);
-              ws.close();
+              setTotalDurationMs(ai.total_duration_ms ?? null);
+
+              if (ai.response_audio_base64) {
+                // Blocking path (HTTP-shaped response): audio already present.
+                ttsClaimedRef.current = true;
+                playAudioResponse(ai.response_audio_base64, ai.response_text, selectedLanguage);
+              } else if (ai.response_text) {
+                // Give Bhashini a moment to land; if it doesn't, speak with the
+                // browser's synthesiser rather than leaving the reply silent.
+                audioGraceRef.current = setTimeout(() => {
+                  audioGraceRef.current = null;
+                  if (ttsClaimedRef.current) return;
+                  ttsClaimedRef.current = true;
+                  playAudioResponse(undefined, ai.response_text, selectedLanguage);
+                }, BHASHINI_AUDIO_GRACE_MS);
+              }
+
+              // Don't close yet — stages 8 and 9 still have frames to send.
+              deferredWatchdogRef.current = setTimeout(() => {
+                deferredWatchdogRef.current = null;
+                if (!completed) finishTurn();
+              }, DEFERRED_STAGES_TIMEOUT_MS);
+              return;
+            }
+
+            case "audio": {
+              // Bhashini beat the grace period — use the better voice.
+              if (ttsClaimedRef.current) return;
+              ttsClaimedRef.current = true;
+              if (audioGraceRef.current) {
+                clearTimeout(audioGraceRef.current);
+                audioGraceRef.current = null;
+              }
+              playAudioResponse(message.audioBase64, undefined, selectedLanguage);
+              return;
+            }
+
+            case "done": {
+              // Terminal frame: every stage has reported, the ticket exists and
+              // the trace is complete. Fold it into both the standalone
+              // `response` and the rendered turn, which are separate objects.
+              const settle = (prev: VoiceQueryResponse): VoiceQueryResponse => ({
+                ...prev,
+                ticket_id: message.ticketId || prev.ticket_id,
+                ticket_number: message.ticketNumber ?? prev.ticket_number,
+                ticket_created: message.ticketCreated,
+                agent_trace: message.agentTrace.length
+                  ? message.agentTrace
+                  : prev.agent_trace,
+                total_duration_ms: message.totalDurationMs ?? prev.total_duration_ms,
+              });
+              setResponse((prev) => (prev ? settle(prev) : prev));
+              setTurns((prev) =>
+                prev.length === 0
+                  ? prev
+                  : prev.map((turn, i) =>
+                      i === prev.length - 1 ? { ...turn, ai: settle(turn.ai) } : turn,
+                    ),
+              );
+              if (message.totalDurationMs != null) {
+                setTotalDurationMs(message.totalDurationMs);
+              }
+              finishTurn();
               return;
             }
 
             case "error":
               completed = true;
+              clearTurnTimers();
               setErrorCode("generic");
               setIsProcessing(false);
               ws.close();
@@ -346,7 +477,7 @@ export function useVoiceInteraction() {
 
       attempt(initialRetryCount);
     },
-    [selectedLanguage, sessionId, phone, playAudioResponse]
+    [selectedLanguage, sessionId, phone, playAudioResponse, clearTurnTimers]
   );
 
   const monitorAudio = useCallback((stream: MediaStream) => {
@@ -398,7 +529,8 @@ export function useVoiceInteraction() {
       setErrorCode(null);
       setResponse(null);
       setIsComplete(false);
-      setCurrentStage(0);
+      setStages({});
+      setTotalDurationMs(null);
       setBhashiniWarning(false);
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -456,6 +588,7 @@ export function useVoiceInteraction() {
 
   const startNewConversation = useCallback(async () => {
     stopCurrentTTS();
+    clearTurnTimers();
     // Clear server-side memory for the current session
     if (sessionId) {
       try { await clearConversation(sessionId); } catch { /* best-effort */ }
@@ -468,19 +601,27 @@ export function useVoiceInteraction() {
     setTurns([]);
     setRestoredTurns([]);
     setIsComplete(false);
-    setCurrentStage(0);
+    setStages({});
+    setTotalDurationMs(null);
     setErrorCode(null);
     setLiveTranscript("");
     setTextInput("");
     setPhone("");
-  }, [sessionId, stopCurrentTTS]);
+  }, [sessionId, stopCurrentTTS, clearTurnTimers]);
 
   return {
     isListening,
     isProcessing,
     isComplete,
     audioLevelRef,
-    currentStage,
+    stages,
+    // Highest stage that has reported. Kept as a scalar for the components that
+    // only need "how far along are we".
+    currentStage: Object.keys(stages).reduce(
+      (max, key) => Math.max(max, Number(key)),
+      0,
+    ),
+    totalDurationMs,
     response,
     turns,
     restoredTurns,

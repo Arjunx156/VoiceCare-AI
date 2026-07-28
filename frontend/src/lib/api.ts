@@ -49,6 +49,9 @@ export interface VoiceQueryResponse {
   is_escalated: boolean;
   escalation_reason?: string;
   agent_trace: AgentTraceStep[];
+  // End-to-end wall clock for the turn. On the WebSocket answer frame this is
+  // time-to-answer; the terminal `done` frame replaces it with the full figure.
+  total_duration_ms?: number;
 }
 
 export interface AgentTraceStep {

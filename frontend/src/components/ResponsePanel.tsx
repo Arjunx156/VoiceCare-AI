@@ -80,6 +80,13 @@ export default function ResponsePanel({
           <span>{t("response.confidence")} {(response.confidence_score * 100).toFixed(0)}%</span>
         )}
         <span>{response.sentiment}</span>
+        {response.total_duration_ms != null && (
+          <span style={{ marginLeft: "auto", fontVariantNumeric: "tabular-nums" }}>
+            {response.total_duration_ms < 1000
+              ? `${Math.round(response.total_duration_ms)} ms`
+              : `${(response.total_duration_ms / 1000).toFixed(2)} s`}
+          </span>
+        )}
       </div>
     </motion.div>
   );
