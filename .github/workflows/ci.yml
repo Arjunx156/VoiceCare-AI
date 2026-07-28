@@ -32,8 +32,26 @@ jobs:
       # Tests need no secrets: external services (Gemini/Bhashini/Chroma) are
       # mocked, the DB is in-memory SQLite, and conftest forces the in-process
       # memory backend so nothing reaches Upstash.
-      - name: Run tests
-        run: pytest -q
+      # The coverage floor lives in .coveragerc (fail_under).
+      - name: Run tests with coverage
+        run: pytest -q --cov --cov-report=term-missing --cov-report=html
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/htmlcov/
+          retention-days: 7
+
+      # The machine-readable run record that feeds the public /tests page.
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-report
+          path: backend/test-report.json
+          retention-days: 7
 
   frontend:
     name: Frontend — lint, test, build
@@ -58,6 +76,15 @@ jobs:
 
       - name: Unit tests
         run: npm run test -- --run
+
+      # Verify the /tests page data can still be produced from this commit.
+      # Not diffed against the committed copy — timestamps and durations change
+      # every run, so a byte comparison would always fail. The committed file is
+      # refreshed deliberately via `npm run test:json && npm run test:report`.
+      - name: Verify the test report still builds
+        run: |
+          npm run test:json
+          npm run test:report
 
       - name: Production build (includes TypeScript check)
         run: npm run build

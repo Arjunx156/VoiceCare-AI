@@ -110,4 +110,8 @@ IMPLEMENTATION_STATUS.md
 # Playwright
 frontend/test-results/
 frontend/playwright-report/
+# Raw per-runner JSON. The merged, committed artefact that the /tests page
+# renders is frontend/src/data/test-report.json — that one IS tracked.
+frontend/test-reports/
+backend/test-report.json
 frontend/blob-report/

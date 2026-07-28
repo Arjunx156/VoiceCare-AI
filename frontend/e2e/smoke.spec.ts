@@ -129,3 +129,30 @@ test("tickets page sends the debounced search to the API", async ({ page }) => {
     .poll(() => searches.includes("Asha"), { timeout: 5_000 })
     .toBe(true);
 });
+
+test("test suite page is public and lists every category", async ({ page }) => {
+  // Deliberately no login: /tests sits outside the middleware matcher so the
+  // suite can be shown to anyone without handing out dashboard access.
+  await page.goto("/tests");
+
+  await expect(page.getByRole("heading", { name: "The test suite" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /^All/ })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /^Performance/ })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /^Security/ })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /^Multilingual/ })).toBeVisible();
+});
+
+test("test suite page filters by category and by search", async ({ page }) => {
+  await page.goto("/tests");
+
+  const summary = page.getByRole("tabpanel").getByText(/^\d+ tests?$/);
+  const allCount = Number((await summary.textContent())!.split(" ")[0]);
+
+  await page.getByRole("tab", { name: /^Resilience/ }).click();
+  const resilienceCount = Number((await summary.textContent())!.split(" ")[0]);
+  expect(resilienceCount).toBeGreaterThan(0);
+  expect(resilienceCount).toBeLessThan(allCount);
+
+  await page.getByPlaceholder(/Filter by name/).fill("zzz-no-such-test");
+  await expect(page.getByText(/No tests match/)).toBeVisible();
+});

@@ -1,4 +1,16 @@
-import { defineConfig } from "@playwright/test";
+import { defineConfig, type ReporterDescription } from "@playwright/test";
+
+// The JSON reporter always runs: scripts/build-test-report.mjs folds its output
+// into the public /tests page alongside the pytest and Vitest runs.
+//
+// Written to test-reports/, deliberately NOT the default test-results/ —
+// Playwright wipes that directory on start, which would delete the Vitest
+// report written before it.
+const reporters: ReporterDescription[] = [
+  ["json", { outputFile: "test-reports/playwright.json" }],
+  ["list"],
+];
+if (process.env.CI) reporters.push(["github"]);
 
 /**
  * E2E smoke suite — runs against a production `next start` on :3000.
@@ -11,7 +23,7 @@ export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["github"], ["list"]] : "list",
+  reporter: reporters,
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",

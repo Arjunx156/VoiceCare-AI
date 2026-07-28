@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "test:json": "vitest run --reporter=json --outputFile=test-reports/vitest.json",
+    "e2e": "playwright test",
+    "test:report": "node scripts/build-test-report.mjs"
   },
   "dependencies": {
     "@react-three/fiber": "^9.6.1",
