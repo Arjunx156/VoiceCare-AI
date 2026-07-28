@@ -22,54 +22,9 @@ from app.db.models import User, SupportTicket
 from app.api.auth import require_admin
 from app.core.database import get_db
 
-ADMIN_EMAIL = "agent@test.com"
-
-
-@pytest_asyncio.fixture
-async def sessionmaker_(engine):
-    return async_sessionmaker(engine, expire_on_commit=False)
-
-
-@pytest_asyncio.fixture
-async def authed_client(sessionmaker_):
-    """ASGI client with committing DB sessions and admin auth stubbed."""
-    from main import app
-
-    async def override_get_db():
-        async with sessionmaker_() as s:
-            yield s
-
-    app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[require_admin] = lambda: ADMIN_EMAIL
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
-        yield client
-
-    app.dependency_overrides.pop(get_db, None)
-    app.dependency_overrides.pop(require_admin, None)
-
-
-@pytest_asyncio.fixture
-async def seeded_ticket(sessionmaker_):
-    """A user + one escalated ticket committed to the shared test DB."""
-    phone = "9" + uuid.uuid4().hex[:9]
-    async with sessionmaker_() as s:
-        user = User(name="Asha Rao", phone=phone, preferred_language="Hindi")
-        s.add(user)
-        await s.flush()
-        ticket = SupportTicket(
-            user_id=user.user_id,
-            ticket_type="Complaint",
-            priority="High",
-            status="Escalated",
-            language="Hindi",
-            summary="Damaged product on arrival",
-        )
-        s.add(ticket)
-        await s.commit()
-        return {"user_id": str(user.user_id), "ticket_id": str(ticket.ticket_id), "phone": phone}
+# sessionmaker_, authed_client and seeded_ticket now live in tests/conftest.py
+# so the dashboard-API integration tests can share them.
+from tests.conftest import ADMIN_EMAIL
 
 
 @pytest.mark.asyncio

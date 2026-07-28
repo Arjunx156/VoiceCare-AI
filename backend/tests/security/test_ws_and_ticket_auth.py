@@ -41,7 +41,12 @@ class TestWebSocketHappyPath:
                 patch("app.core.database.async_session", return_value=session_cm),
                 patch("app.api.voice.VoiceCarePipeline") as MockPipeline,
             ):
-                MockPipeline.return_value.run = AsyncMock(return_value=completed)
+                # The WS delivers the answer after agents 1-7; agents 8-9 run in
+                # a background task and report via later frames. Session context
+                # is hydrated concurrently with the history read.
+                MockPipeline.return_value._hydrate_session_context = AsyncMock()
+                MockPipeline.return_value.run_critical = AsyncMock(return_value=completed)
+                MockPipeline.return_value.run_deferred = AsyncMock(return_value=completed)
                 client = TestClient(app)
                 with client.websocket_connect("/api/voice/ws/happy-session") as ws:
                     ws.send_json({"text": "Where is my order?"})
@@ -50,10 +55,13 @@ class TestWebSocketHappyPath:
             voice._ws_connections.clear()
 
         assert message["type"] == "response"
-        assert message["is_complete"] is True
         assert message["response_text"] == "Your order arrives tomorrow."
         assert message["intent"] == "order_status"
-        assert message["ticket_created"] is True
+        # is_complete now rides on the terminal `done` frame — the answer frame
+        # advertises what is still outstanding instead.
+        assert message["is_complete"] is False
+        assert set(message["pending"]) == {"tts", "ticket"}
+        assert message["turn_id"]
         # Contract: WS payload carries every REST response field
         from app.schemas.schemas import VoiceQueryResponse
 

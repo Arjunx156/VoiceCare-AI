@@ -7,6 +7,7 @@ import asyncio
 import json
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -15,6 +16,99 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
+
+from tests.report_plugin import TestReportCollector
+
+# ---------------------------------------------------------------------------
+# Category markers, applied from the directory a test lives in.
+#
+# Marking by hand never survives contact with a growing suite — the previous
+# markers were declared in pytest.ini and applied to exactly zero tests, so
+# `pytest -m unit` silently collected nothing. Deriving the marker from the
+# path makes the directory the single source of truth.
+# ---------------------------------------------------------------------------
+TEST_CATEGORIES = (
+    "unit",
+    "integration",
+    "performance",
+    "security",
+    "multilingual",
+    "resilience",
+    "contract",
+)
+
+
+def pytest_collection_modifyitems(items):
+    tests_root = Path(__file__).parent
+    for item in items:
+        try:
+            relative = Path(str(item.fspath)).relative_to(tests_root)
+        except ValueError:
+            continue
+        category = relative.parts[0] if len(relative.parts) > 1 else None
+        if category in TEST_CATEGORIES:
+            item.add_marker(getattr(pytest.mark, category))
+
+
+# ---------------------------------------------------------------------------
+# Machine-readable run report, consumed by the public /tests page.
+# ---------------------------------------------------------------------------
+_report_collector = TestReportCollector()
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Attach each test's docstring summary to its report.
+
+    Read here rather than at write time because the report is the only object
+    that survives to the reporting hook under distributed runs.
+    """
+    outcome = yield
+    report = outcome.get_result()
+    doc = (getattr(item, "function", None).__doc__ or "") if hasattr(item, "function") else ""
+    report.voicecare_docstring = doc.strip().split("\n\n")[0].replace("\n", " ").strip()
+
+
+def pytest_runtest_logreport(report):
+    _report_collector.record(report)
+
+
+def pytest_sessionfinish(session, exitstatus):
+    _report_collector.write()
+
+
+# ---------------------------------------------------------------------------
+# Pipeline test helpers, shared by every category that drives the agents
+# directly. These used to be copy-pasted between test_pipeline.py and
+# test_escalation_rules.py.
+# ---------------------------------------------------------------------------
+def make_mock_db(scalar_result=None, scalars_list=None):
+    """SQLAlchemy async-session mock. Returns `scalar_result` for every query."""
+    db = MagicMock()
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none = MagicMock(return_value=scalar_result)
+    mock_result.scalars = MagicMock(
+        return_value=MagicMock(all=MagicMock(return_value=scalars_list or []))
+    )
+    mock_result.first = MagicMock(return_value=None)
+    db.execute = AsyncMock(return_value=mock_result)
+    db.scalar_one_or_none = AsyncMock(return_value=scalar_result)
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.commit = AsyncMock()
+    db.rollback = AsyncMock()
+    return db
+
+
+def patch_all_services(gemini_svc, bhashini_svc, chroma_svc, memory_svc):
+    """Patch every external-service getter the pipeline resolves at construction."""
+    return (
+        patch("app.agents.pipeline.get_gemini_service", return_value=gemini_svc),
+        patch("app.agents.pipeline.get_bhashini_service", return_value=bhashini_svc),
+        patch("app.agents.pipeline.get_chroma_service", return_value=chroma_svc),
+        patch("app.agents.pipeline.get_memory_service", new=AsyncMock(return_value=memory_svc)),
+    )
+
 
 # ---------------------------------------------------------------------------
 # Event loop policy — needed for pytest-asyncio
@@ -54,6 +148,27 @@ def _reset_rate_limits():
 
 
 # ---------------------------------------------------------------------------
+# Process-wide caches created for latency reasons must not survive a test.
+#
+# The shared httpx.AsyncClient binds to whichever event loop is running when it
+# is first used, and pytest-asyncio gives each test its own loop — a client held
+# over from a previous test would raise on reuse. The Bhashini pipeline-config
+# cache is cleared for the ordinary reason: one test's stubbed config must not
+# silently satisfy the next test's lookup and mask a real cache bug.
+# ---------------------------------------------------------------------------
+@pytest.fixture(autouse=True)
+def _reset_process_caches():
+    import app.core.http as http_module
+    from app.services.bhashini_service import reset_pipeline_config_cache
+
+    http_module._client = None
+    reset_pipeline_config_cache()
+    yield
+    http_module._client = None
+    reset_pipeline_config_cache()
+
+
+# ---------------------------------------------------------------------------
 # In-memory async SQLite DB for fast, isolated tests
 # ---------------------------------------------------------------------------
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -77,6 +192,72 @@ async def engine():
     async with eng.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     await eng.dispose()
+
+
+# ---------------------------------------------------------------------------
+# Committing-session fixtures for endpoint tests.
+#
+# The dashboard endpoints commit their own transactions, so they cannot run on
+# the shared rollback-per-test session. These give each test independent
+# committing sessions against the same in-memory database; isolation comes from
+# every seeded customer getting a unique phone number.
+# ---------------------------------------------------------------------------
+ADMIN_EMAIL = "agent@test.com"
+
+
+@pytest_asyncio.fixture
+async def sessionmaker_(engine):
+    return async_sessionmaker(engine, expire_on_commit=False)
+
+
+@pytest_asyncio.fixture
+async def authed_client(sessionmaker_):
+    """ASGI client with committing DB sessions and admin auth stubbed."""
+    from app.api.auth import require_admin
+    from app.core.database import get_db
+    from main import app
+
+    async def override_get_db():
+        async with sessionmaker_() as s:
+            yield s
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[require_admin] = lambda: ADMIN_EMAIL
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        yield client
+
+    app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(require_admin, None)
+
+
+@pytest_asyncio.fixture
+async def seeded_ticket(sessionmaker_):
+    """A user + one escalated ticket committed to the shared test DB."""
+    from app.db.models import SupportTicket, User
+
+    phone = "9" + uuid.uuid4().hex[:9]
+    async with sessionmaker_() as s:
+        user = User(name="Asha Rao", phone=phone, preferred_language="Hindi")
+        s.add(user)
+        await s.flush()
+        ticket = SupportTicket(
+            user_id=user.user_id,
+            ticket_type="Complaint",
+            priority="High",
+            status="Escalated",
+            language="Hindi",
+            summary="Damaged product on arrival",
+        )
+        s.add(ticket)
+        await s.commit()
+        return {
+            "user_id": str(user.user_id),
+            "ticket_id": str(ticket.ticket_id),
+            "phone": phone,
+        }
 
 
 @pytest_asyncio.fixture
@@ -254,6 +435,20 @@ def mock_chroma_service():
                 "score": 0.95,
             }
         ]
+    )
+    # What the pipeline actually calls — one embed + one search for both shapes.
+    mock.query_with_context = MagicMock(
+        return_value=(
+            "Policy: Orders are delivered within 5-7 business days.",
+            [
+                {
+                    "id": "policy_1",
+                    "content": "Standard delivery policy: 5-7 business days.",
+                    "category": "Shipping",
+                    "score": 0.95,
+                }
+            ],
+        )
     )
     return mock
 

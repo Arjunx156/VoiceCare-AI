@@ -31,8 +31,12 @@ class TestChromaService:
         )
 
         mock_chroma = MagicMock()
-        mock_chroma.get_policy_context = MagicMock(return_value="Refund policy: 7 day window")
-        mock_chroma.query_policies = MagicMock(return_value=[{"content": "...", "score": 0.9}])
+        # Agent 4 makes a single query_with_context call, not a get_policy_context
+        # + query_policies pair — the query is embedded once per turn.
+        mock_chroma.query_with_context = MagicMock(return_value=(
+            "Refund policy: 7 day window",
+            [{"content": "...", "score": 0.9}],
+        ))
 
         import asyncio
         from unittest.mock import AsyncMock
@@ -55,8 +59,7 @@ class TestChromaService:
                 return await pipeline.agent_policy_rag(state)
 
         result = asyncio.get_event_loop().run_until_complete(run())
-        mock_chroma.get_policy_context.assert_called_once()
-        mock_chroma.query_policies.assert_called_once()
+        mock_chroma.query_with_context.assert_called_once()
         assert result.policy_context == "Refund policy: 7 day window"
 
     def test_policy_rag_agent_handles_chroma_failure(self):
@@ -68,8 +71,7 @@ class TestChromaService:
         state = PipelineState(transcript_english="My order is late")
 
         mock_chroma = MagicMock()
-        mock_chroma.get_policy_context = MagicMock(side_effect=Exception("ChromaDB unavailable"))
-        mock_chroma.query_policies = MagicMock(side_effect=Exception("ChromaDB unavailable"))
+        mock_chroma.query_with_context = MagicMock(side_effect=Exception("ChromaDB unavailable"))
 
         mock_memory = MagicMock()
         mock_memory.get_cache = AsyncMock(return_value=None)  # cache miss → triggers Chroma call

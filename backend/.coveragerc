@@ -1,0 +1,29 @@
+# Coverage scope for the application code that serves requests.
+#
+# The omissions below are operator tooling and an alternate backend, not
+# request-path code — including them would report a lower number without
+# pointing at anything a test should cover.
+
+[run]
+source = app
+omit =
+    # One-shot CLI scripts run by an operator, not by the app.
+    app/utils/seed_db.py
+    app/utils/clean_tickets.py
+    app/utils/cleanup_anonymous.py
+    # The Upstash backend. Tests deliberately force the in-process memory
+    # service (see the _force_in_process_memory fixture) so a developer .env
+    # with real credentials can never make the suite hit a live Redis.
+    app/services/redis_memory_service.py
+
+[report]
+# A ratchet, not a target. Currently at 79%; the goal is 80%+. Raise this
+# number as coverage improves so it can only ever go up — the remaining gap is
+# error branches in the dashboard write routes, not untested features.
+fail_under = 78
+skip_covered = false
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:
+    raise NotImplementedError
+    if __name__ == .__main__.:

@@ -147,3 +147,103 @@ class TestBhashiniSTT:
         assert result.transcript_original == "I need a refund"
         assert result.transcript_english == "I need a refund"
         mock_bhashini.speech_to_text.assert_not_called()
+
+
+class TestStaleInferenceKeyRecovery:
+    """Bhashini's inference key is handed out with the pipeline config, which we
+    now cache for six hours. A key that rotates inside that window would break
+    every TTS call until the cache expired."""
+
+    @pytest.fixture(autouse=True)
+    def _clear_cache(self):
+        from app.services.bhashini_service import reset_pipeline_config_cache
+
+        reset_pipeline_config_cache()
+        yield
+        reset_pipeline_config_cache()
+
+    @staticmethod
+    def _config(key: str) -> dict:
+        return {
+            "pipelineResponseConfig": [{"config": [{"serviceId": "svc-1"}]}],
+            "pipelineInferenceAPIEndPoint": {
+                "callbackUrl": "https://inference.example/tts",
+                "inferenceApiKey": {"value": key},
+            },
+        }
+
+    @pytest.mark.asyncio
+    async def test_a_401_refetches_the_config_and_retries(self):
+        """A rejected key is refreshed once, and the retry succeeds."""
+        import httpx
+
+        from app.services.bhashini_service import BhashiniService
+
+        service = BhashiniService()
+        configs = [self._config("stale-key"), self._config("fresh-key")]
+
+        rejected = MagicMock(status_code=401)
+        rejected.raise_for_status = MagicMock(
+            side_effect=httpx.HTTPStatusError(
+                "unauthorized", request=MagicMock(), response=MagicMock(status_code=401)
+            )
+        )
+        accepted = MagicMock(status_code=200)
+        accepted.raise_for_status = MagicMock()
+        accepted.json = MagicMock(
+            return_value={"pipelineResponse": [{"audio": [{"audioContent": "UklGRg=="}]}]}
+        )
+
+        get_config = AsyncMock(side_effect=configs)
+        client = MagicMock()
+        client.post = AsyncMock(side_effect=[rejected, accepted])
+
+        with (
+            patch.object(service, "_get_pipeline_config", new=get_config),
+            patch("app.services.bhashini_service.get_http_client", return_value=client),
+        ):
+            result = await service.text_to_speech("नमस्ते", "hi")
+
+        assert result == "UklGRg=="
+        assert get_config.await_count == 2
+        # The retry must ask for a fresh config, not be served the stale one.
+        assert get_config.await_args.kwargs["force_refresh"] is True
+
+    @pytest.mark.asyncio
+    async def test_a_500_is_not_treated_as_a_stale_key(self):
+        """Only auth failures trigger a refetch; a server error must not.
+
+        Refetching on every 5xx would hammer the config endpoint during an
+        upstream outage.
+        """
+        import httpx
+
+        from app.services.bhashini_service import BhashiniService
+
+        service = BhashiniService()
+        failing = MagicMock(status_code=503)
+        failing.raise_for_status = MagicMock(
+            side_effect=httpx.HTTPStatusError(
+                "unavailable", request=MagicMock(), response=MagicMock(status_code=503)
+            )
+        )
+
+        get_config = AsyncMock(return_value=self._config("some-key"))
+        client = MagicMock()
+        client.post = AsyncMock(return_value=failing)
+
+        disabled = MagicMock()
+        disabled.allow_gtts_fallback = False
+
+        with (
+            patch.object(service, "_get_pipeline_config", new=get_config),
+            patch("app.services.bhashini_service.get_http_client", return_value=client),
+            patch("app.core.config.get_settings", return_value=disabled),
+        ):
+            result = await service.text_to_speech("नमस्ते", "hi")
+
+        assert result is None
+        assert all(
+            call.kwargs.get("force_refresh") is not True
+            for call in get_config.await_args_list
+        )

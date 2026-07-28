@@ -22,8 +22,11 @@ class TestPolicyRAGCache:
         sample_pipeline_state.transcript_original = "Where is my order?"
 
         mock_chroma = MagicMock()
-        mock_chroma.get_policy_context = MagicMock(return_value="Policy: 5-7 days delivery")
-        mock_chroma.query_policies = MagicMock(return_value=[{"id": "p1", "content": "5-7 days", "score": 0.9}])
+        # One call yields both shapes — the agent no longer embeds the query twice.
+        mock_chroma.query_with_context = MagicMock(return_value=(
+            "Policy: 5-7 days delivery",
+            [{"id": "p1", "content": "5-7 days", "score": 0.9}],
+        ))
 
         mock_memory = MagicMock()
         mock_memory.get_cache = AsyncMock(return_value=None)  # cache miss
@@ -35,7 +38,7 @@ class TestPolicyRAGCache:
         with patch("app.agents.pipeline.get_memory_service", return_value=mock_memory):
             result = await pipeline.agent_policy_rag(sample_pipeline_state)
 
-        mock_chroma.get_policy_context.assert_called_once()
+        mock_chroma.query_with_context.assert_called_once()
         mock_memory.set_cache.assert_called_once()
         assert result.policy_context == "Policy: 5-7 days delivery"
 
@@ -64,7 +67,7 @@ class TestPolicyRAGCache:
         with patch("app.agents.pipeline.get_memory_service", return_value=mock_memory):
             result = await pipeline.agent_policy_rag(sample_pipeline_state)
 
-        mock_chroma.get_policy_context.assert_not_called()
+        mock_chroma.query_with_context.assert_not_called()
         mock_memory.set_cache.assert_not_called()
         assert result.policy_context == "Cached policy context"
         assert len(result.retrieved_policies) == 1
@@ -94,8 +97,7 @@ class TestPolicyRAGCache:
         sample_pipeline_state.transcript_original = "What is your return policy?"
 
         mock_chroma = MagicMock()
-        mock_chroma.get_policy_context = MagicMock(side_effect=RuntimeError("Chroma unavailable"))
-        mock_chroma.query_policies = MagicMock(side_effect=RuntimeError("Chroma unavailable"))
+        mock_chroma.query_with_context = MagicMock(side_effect=RuntimeError("Chroma unavailable"))
 
         mock_memory = MagicMock()
         mock_memory.get_cache = AsyncMock(return_value=None)
