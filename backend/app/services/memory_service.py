@@ -201,9 +201,11 @@ async def get_memory_service():
             import asyncio
             from app.services.redis_memory_service import RedisMemoryService
             svc = RedisMemoryService(url=url, token=token)
-            # 5-second timeout prevents the first request from hanging for
+            # 2-second timeout prevents the first request from hanging for
             # minutes if Upstash is unreachable (TCP connect can take 60-120 s).
-            reachable = await asyncio.wait_for(svc.ping(), timeout=5.0)
+            # main.py's lifespan calls this at boot so the wait normally lands
+            # on startup, not on a customer turn — 2s is ample for a REST ping.
+            reachable = await asyncio.wait_for(svc.ping(), timeout=2.0)
             if reachable:
                 logger.info("memory_backend", backend="upstash_redis")
                 _memory_service = svc

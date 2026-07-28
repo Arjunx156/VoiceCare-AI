@@ -230,6 +230,11 @@ class Refund(Base):
     # Relationships
     return_request: Mapped[Optional["Return"]] = relationship(back_populates="refund")
 
+    # Looked up on every refund-intent turn (pipeline agent 3).
+    __table_args__ = (
+        Index("idx_refunds_return_id", "return_id"),
+    )
+
 
 class Payment(Base):
     """Payment transactions."""
@@ -353,6 +358,9 @@ class SupportTicket(Base):
         Index("idx_tickets_status", "status"),
         Index("idx_tickets_priority", "priority"),
         Index("idx_tickets_created_at", "created_at"),
+        # Pipeline agent 9 looks up the existing ticket for the conversation on
+        # every single turn — without this it is a sequential scan.
+        Index("idx_tickets_session_id", "session_id"),
     )
 
 

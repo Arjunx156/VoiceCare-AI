@@ -2,6 +2,7 @@
 CommerceMind VoiceCare AI — FastAPI Application Entry Point
 """
 
+import asyncio
 import time
 import statistics
 import structlog
@@ -16,6 +17,7 @@ from app.core.errors import VoiceCareError, RateLimitError, AuthError
 
 from app.core.config import get_settings
 from app.core.database import init_db, close_db
+from app.core.http import close_http_client
 from app.api.voice import router as voice_router
 from app.api.tickets import router as tickets_router
 from app.api.customers import router as customers_router
@@ -61,6 +63,7 @@ _request_latencies: deque[float] = deque(maxlen=1000)
 
 
 from app.services.chroma_service import get_chroma_service
+from app.services.memory_service import get_memory_service
 from data.policies.policy_documents import get_all_policies
 
 @asynccontextmanager
@@ -85,10 +88,35 @@ async def lifespan(app: FastAPI):
             logger.info("seeding_chromadb_policies")
             policies = get_all_policies()
             chroma.ingest_policies(policies)
+        # Force the ONNX embedding model to load now. Seeding only warms it when
+        # the collection was empty; on a restart against an existing chroma_data
+        # volume the first *query* pays a 1-3s model load — i.e. the first
+        # customer of the day waits for it.
+        await asyncio.to_thread(chroma.query_policies, "warmup", 1)
+        logger.info("chroma_embedder_warm")
     except Exception as e:
         logger.error("chromadb_seeding_failed", error=str(e))
-        
+
+    # Pay the memory-backend handshake at boot. get_memory_service() pings
+    # Upstash with a timeout on first call; without this that lands on the first
+    # customer turn after a cold start.
+    try:
+        await get_memory_service()
+        logger.info("memory_backend_warm")
+    except Exception as e:
+        logger.warning("memory_warmup_failed", error=str(e))
+
     yield
+
+    # Let in-flight deferred stages (TTS + ticket writes) finish before the
+    # engine is disposed — otherwise close_db() yanks the connection pool out
+    # from under a ticket that is mid-write.
+    from app.api.voice import _deferred_tasks
+    if _deferred_tasks:
+        logger.info("draining_deferred_tasks", count=len(_deferred_tasks))
+        await asyncio.wait(list(_deferred_tasks), timeout=10)
+
+    await close_http_client()
     await close_db()
     logger.info("app_shutdown")
 

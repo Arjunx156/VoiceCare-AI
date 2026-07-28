@@ -20,6 +20,19 @@ from app.core.config import get_settings
 logger = structlog.get_logger()
 settings = get_settings()
 
+# Per-call output ceilings. These are blast-radius guardrails, not a speedup —
+# a well-behaved model stops at its stop token regardless. Call 3 stays generous
+# because it emits BOTH the native-script reply and its English translation, and
+# Devanagari/Tamil cost 3-4x more tokens per character; a truncated response
+# fails JSON parsing and falls through to the apologetic fallback, which is far
+# worse for the customer than a few hundred extra milliseconds.
+_MAX_TOKENS_INTENT = 512
+_MAX_TOKENS_RESOLUTION = 640
+_MAX_TOKENS_RESPONSE = 2048
+
+# Cap on a single history turn's text inside a prompt.
+_MAX_HISTORY_CHARS_PER_TURN = 300
+
 
 def _is_gemini_retryable(exc: Exception) -> bool:
     """Return True only for transient errors that are worth retrying.
@@ -47,8 +60,10 @@ class GeminiService:
         genai.configure(api_key=settings.gemini_api_key)
         self.model = genai.GenerativeModel("gemini-2.5-flash")
 
+    # 2 attempts, not 3: each attempt carries a 12s timeout plus an inline Groq
+    # fallback, so 3 attempts meant ~90s of dead air before the caller gave up.
     @retry(
-        stop=stop_after_attempt(3),
+        stop=stop_after_attempt(2),
         wait=wait_exponential(multiplier=1, min=1, max=8),
         retry=retry_if_exception(_is_gemini_retryable),
         before_sleep=lambda retry_state: logger.warning(
@@ -77,39 +92,62 @@ class GeminiService:
                 gen_config_kwargs.pop("thinking_config", None)
                 generation_config = genai.GenerationConfig(**gen_config_kwargs)
 
-            response = self.model.generate_content(
+            # generate_content_async, NOT generate_content: the sync method blocks
+            # the uvicorn event loop for the whole call (1.5-5s x3 per turn), which
+            # stalls the WS keep-alive ping and makes the asyncio.gather in
+            # pipeline.run() fake parallelism.
+            response = await self.model.generate_content_async(
                 prompt,
                 generation_config=generation_config,
-                request_options={"timeout": 30},
+                request_options={"timeout": 12},
             )
             return response.text
         except Exception as e:
             logger.error("gemini_call_failed", error=str(e))
             if settings.groq_api_key:
                 logger.info("falling_back_to_groq_llm")
-                import httpx
+                from app.core.http import get_http_client
                 try:
-                    async with httpx.AsyncClient(timeout=15.0) as client:
-                        resp = await client.post(
-                            "https://api.groq.com/openai/v1/chat/completions",
-                            headers={"Authorization": f"Bearer {settings.groq_api_key}"},
-                            json={
-                                # llama3-70b-8192 was decommissioned by Groq; use the
-                                # current 70B model so this fallback actually works when
-                                # Gemini hits its free-tier quota (429).
-                                "model": "llama-3.3-70b-versatile",
-                                "messages": [{"role": "user", "content": prompt}],
-                                "temperature": 0.3,
-                                "response_format": {"type": "json_object"}
-                            }
-                        )
-                        if resp.status_code == 200:
-                            return resp.json()["choices"][0]["message"]["content"]
-                        else:
-                            logger.error("groq_fallback_failed", status=resp.status_code, text=resp.text)
+                    client = get_http_client()
+                    resp = await client.post(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+                        json={
+                            # llama3-70b-8192 was decommissioned by Groq; use the
+                            # current 70B model so this fallback actually works when
+                            # Gemini hits its free-tier quota (429).
+                            "model": "llama-3.3-70b-versatile",
+                            "messages": [{"role": "user", "content": prompt}],
+                            "temperature": 0.3,
+                            "response_format": {"type": "json_object"}
+                        },
+                        timeout=15.0,
+                    )
+                    if resp.status_code == 200:
+                        return resp.json()["choices"][0]["message"]["content"]
+                    else:
+                        logger.error("groq_fallback_failed", status=resp.status_code, text=resp.text)
                 except Exception as groq_err:
                     logger.error("groq_fallback_exception", error=str(groq_err))
             raise
+
+    @staticmethod
+    def _compact_history(history: list, max_turns: int) -> str:
+        """Serialise the last N conversation turns as compact JSON.
+
+        Every token of prompt input costs time-to-first-token. The history was
+        previously dumped with indent=2 (20-40% pure whitespace) and, in
+        analyze_intent, entirely unbounded — a long session could push thousands
+        of stale tokens into every single call.
+        """
+        if not history:
+            return ""
+        trimmed = [
+            {**turn, "content": str(turn.get("content", ""))[:_MAX_HISTORY_CHARS_PER_TURN]}
+            if isinstance(turn, dict) else turn
+            for turn in history[-max_turns:]
+        ]
+        return json.dumps(trimmed, separators=(",", ":"), default=str)
 
     def _parse_json(self, text: str) -> dict:
         """Safely parse JSON from Gemini, stripping markdown if present."""
@@ -131,7 +169,7 @@ class GeminiService:
         """
         history_context = ""
         if conversation_history:
-            history_context = f"\n\nConversation history:\n{json.dumps(conversation_history, indent=2)}"
+            history_context = f"\n\nConversation history:\n{self._compact_history(conversation_history, 4)}"
 
         prompt = f"""You are an e-commerce customer support AI analyzing a customer query.
 The customer speaks {language}. Analyze the following query and extract structured information.
@@ -158,7 +196,7 @@ Rules:
 - Always provide a concise summary_english regardless of input language"""
 
         try:
-            result = await self._call_gemini(prompt)
+            result = await self._call_gemini(prompt, max_output_tokens=_MAX_TOKENS_INTENT)
             return self._parse_json(result)
         except Exception as e:
             logger.error("analyze_intent_fallback", error=str(e))
@@ -189,11 +227,11 @@ Rules:
         """
         order_context = "No order data available."
         if order_data:
-            order_context = f"Order details:\n{json.dumps(order_data, indent=2, default=str)}"
+            order_context = f"Order details:\n{json.dumps(order_data, separators=(',', ':'), default=str)}"
 
         history_context = ""
         if conversation_history:
-            history_context = f"\n\nConversation history (earlier turns in this session):\n{json.dumps(conversation_history[-6:], indent=2)}"
+            history_context = f"\n\nConversation history (earlier turns in this session):\n{self._compact_history(conversation_history, 4)}"
 
         prompt = f"""You are an e-commerce customer support AI making a resolution decision.
 
@@ -225,7 +263,7 @@ Rules:
 - When referring to the order, use the short "order_number" (e.g. ORD-7K3F). NEVER use the long internal "order_id" UUID."""
 
         try:
-            result = await self._call_gemini(prompt)
+            result = await self._call_gemini(prompt, max_output_tokens=_MAX_TOKENS_RESOLUTION)
             return self._parse_json(result)
         except Exception as e:
             logger.error("generate_resolution_fallback", error=str(e))
@@ -254,7 +292,7 @@ Rules:
         """
         history_context = ""
         if conversation_history:
-            history_context = f"\nConversation history (for context):\n{json.dumps(conversation_history[-4:], indent=2)}\n"
+            history_context = f"\nConversation history (for context):\n{self._compact_history(conversation_history, 2)}\n"
 
         prompt = f"""You are a friendly, empathetic e-commerce customer support assistant.
 Generate a natural, helpful response to the customer.
@@ -262,7 +300,7 @@ Generate a natural, helpful response to the customer.
 Original customer query: "{query}"
 Customer name: {customer_name}
 Target language: {language}
-{history_context}Resolution decided: {json.dumps(resolution, indent=2, default=str)}
+{history_context}Resolution decided: {json.dumps(resolution, separators=(',', ':'), default=str)}
 
 Return a JSON object with exactly these fields:
 {{
@@ -286,7 +324,7 @@ Rules:
 - No filler, no repetition, no restating the question back. Every sentence must add information."""
 
         try:
-            result = await self._call_gemini(prompt, max_output_tokens=2048)
+            result = await self._call_gemini(prompt, max_output_tokens=_MAX_TOKENS_RESPONSE)
             return self._parse_json(result)
         except Exception as e:
             logger.error("generate_response_fallback", error=str(e))

@@ -80,12 +80,9 @@ class ChromaService:
         )
         return policies
 
-    def get_policy_context(self, query: str, n_results: int = 3) -> str:
-        """
-        Get formatted policy context string for the resolution LLM call.
-        """
-        policies = self.query_policies(query, n_results)
-
+    @staticmethod
+    def _format_context(policies: List[dict]) -> str:
+        """Render retrieved policies into the prompt block the resolution LLM reads."""
         if not policies:
             return "No relevant policy documents found."
 
@@ -98,6 +95,24 @@ class ChromaService:
             )
 
         return "\n\n".join(context_parts)
+
+    def get_policy_context(self, query: str, n_results: int = 3) -> str:
+        """
+        Get formatted policy context string for the resolution LLM call.
+        """
+        return self._format_context(self.query_policies(query, n_results))
+
+    def query_with_context(
+        self, query: str, n_results: int = 3
+    ) -> tuple[str, List[dict]]:
+        """Both shapes the pipeline needs from ONE embed + ONE vector search.
+
+        The pipeline previously called get_policy_context() and query_policies()
+        back to back, which ran the sentence-transformer embedding and the vector
+        search twice per turn for byte-identical results.
+        """
+        policies = self.query_policies(query, n_results)
+        return self._format_context(policies), policies
 
     def ingest_policies(self, policies: List[dict]) -> int:
         """Bulk ingest policy documents."""

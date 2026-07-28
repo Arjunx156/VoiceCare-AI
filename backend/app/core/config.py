@@ -92,6 +92,13 @@ class Settings(BaseSettings):
     # (response is then delivered text-only when Bhashini is down).
     allow_gtts_fallback: bool = True
 
+    # ---- Latency ----
+    # The browser sends its own Web Speech API transcript alongside the audio.
+    # Trusting it skips a Groq Whisper round trip (0.8-2.5s, mostly the webm
+    # upload). Set false to always re-transcribe server-side if browser
+    # transcript quality proves inadequate for your languages.
+    trust_browser_transcript: bool = True
+
     # ----------------------------------------------------------------
     # Validators
     # ----------------------------------------------------------------
