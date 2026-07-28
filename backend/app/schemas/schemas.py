@@ -44,6 +44,9 @@ class PipelineStageUpdate(BaseModel):
     total_stages: int
     message: str
     is_complete: bool = False
+    status: str = "start"                    # "start" | "done"
+    duration_ms: Optional[float] = None      # set on the "done" frame only
+    turn_id: Optional[str] = None
 
 
 class VoiceQueryResponse(BaseModel):
@@ -65,6 +68,7 @@ class VoiceQueryResponse(BaseModel):
     is_escalated: bool
     escalation_reason: Optional[str] = None
     agent_trace: List[dict] = []
+    total_duration_ms: Optional[float] = None  # end-to-end wall clock for this turn
 
 
 # ============================================================

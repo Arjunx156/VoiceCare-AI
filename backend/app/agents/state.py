@@ -113,6 +113,15 @@ class PipelineState(BaseModel):
     # Multi-turn
     conversation_history: List[dict] = Field(default_factory=list)
 
+    def elapsed_ms(self) -> float:
+        """Milliseconds since this turn started.
+
+        Read at the moment a frame is built, so its meaning is "how long the
+        customer waited for *this*": on the response frame it is time-to-answer,
+        on the terminal done frame it is the full pipeline.
+        """
+        return round((datetime.utcnow() - self.started_at).total_seconds() * 1000, 1)
+
     def add_trace(self, agent_name, stage_number, input_summary, output_summary,
                   decision=None, reasoning=None, duration_ms=None):
         self.agent_trace.append(AgentTraceStep(

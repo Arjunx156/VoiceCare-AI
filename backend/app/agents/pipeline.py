@@ -15,6 +15,7 @@ from typing import Optional, Callable, Awaitable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import noload
 
 from app.agents.state import PipelineState
 from app.services.gemini_service import get_gemini_service
@@ -31,6 +32,25 @@ from app.utils.short_ids import generate_ticket_number, generate_customer_code
 
 logger = structlog.get_logger()
 
+# Shortest browser transcript we will trust in place of a Whisper round trip.
+# Below this, a "transcript" is usually a mis-heard fragment of noise.
+_MIN_BROWSER_TRANSCRIPT_CHARS = 8
+
+TOTAL_STAGES = 9
+
+# Human-readable label per stage, emitted with the start/done frames.
+STAGE_MESSAGES = {
+    1: "Listening...",
+    2: "Understanding your issue...",
+    3: "Checking your order...",
+    4: "Finding the right policy...",
+    5: "Determining the best resolution...",
+    6: "Checking if escalation needed...",
+    7: "Preparing your response...",
+    8: "Converting to speech...",
+    9: "Creating your support ticket...",
+}
+
 
 class VoiceCarePipeline:
     """
@@ -38,21 +58,63 @@ class VoiceCarePipeline:
     Each agent is a method that takes PipelineState, mutates it, and returns it.
     """
 
-    def __init__(self, db: AsyncSession, on_stage_update: Callable = None):
+    def __init__(
+        self,
+        db: AsyncSession,
+        on_stage_update: Callable = None,
+        turn_id: Optional[str] = None,
+    ):
         self.db = db
+        # Stamped on every frame so a customer who speaks again while the
+        # previous turn's deferred stages are still reporting can't have the two
+        # turns' updates interleaved in the UI.
+        self.turn_id = turn_id
+        self._session_context_loaded = False
         self.gemini = get_gemini_service()
         self.bhashini = get_bhashini_service()
         self.chroma = get_chroma_service()
         self.on_stage_update = on_stage_update  # WebSocket callback
 
-    async def _notify_stage(self, stage: int, message: str, is_complete: bool = False):
-        """Send stage update via WebSocket callback."""
-        if self.on_stage_update:
-            await self.on_stage_update({
-                "stage_number": stage,
-                "total_stages": 9,
-                "message": message,
-                "is_complete": is_complete,
+    async def _emit(self, payload: dict) -> None:
+        """Push a frame to the transport, if one is attached.
+
+        Send failures are swallowed deliberately. Without this guard a dead
+        socket raises inside whichever agent happened to be emitting, gets
+        caught by that agent's own `except`, and is misreported to the customer
+        as a pipeline error.
+        """
+        if not self.on_stage_update:
+            return
+        if self.turn_id:
+            payload = {**payload, "turn_id": self.turn_id}
+        try:
+            await self.on_stage_update(payload)
+        except Exception as exc:
+            logger.debug("stage_update_send_failed", error=str(exc))
+
+    async def _staged(self, stage: int, message: str, agent, state: PipelineState) -> PipelineState:
+        """Run one agent, bracketed by a start frame and a timed done frame.
+
+        Wrapping at the call site rather than inside each agent means the `done`
+        frame is emitted from a `finally` — so it still arrives when an agent
+        short-circuits with an early return (agent 5 does) or raises.
+        """
+        start = time.time()
+        base = {
+            "type": "stage",
+            "stage_number": stage,
+            "total_stages": TOTAL_STAGES,
+            "message": message,
+            "is_complete": False,
+        }
+        await self._emit({**base, "status": "start"})
+        try:
+            return await agent(state)
+        finally:
+            await self._emit({
+                **base,
+                "status": "done",
+                "duration_ms": round((time.time() - start) * 1000, 1),
             })
 
     # ================================================================
@@ -61,19 +123,45 @@ class VoiceCarePipeline:
     async def agent_voice_intake(self, state: PipelineState) -> PipelineState:
         """Convert audio to text using Bhashini STT, or pass through text input."""
         start = time.time()
-        await self._notify_stage(1, "Listening...")
 
         try:
-            if state.raw_audio_base64:
+            from app.core.config import get_settings
+            settings = get_settings()
+
+            # The browser already transcribed this utterance. useVoiceInteraction
+            # runs the Web Speech API with recognition.lang set to the customer's
+            # selected language, so the result is in the right script — and it
+            # arrives for free, while a Whisper round trip costs 0.8-2.5s mostly
+            # spent uploading the webm blob.
+            #
+            # Browsers without the Web Speech API (Safari, Firefox) send no text
+            # at all, so the length guard routes them to Whisper automatically —
+            # no browser sniffing needed. The floor also rejects the noise
+            # fragments ("uh", a single mis-heard syllable) where browser ASR is
+            # least reliable.
+            browser_transcript = (state.raw_text or "").strip()
+            trust_browser_transcript = (
+                settings.trust_browser_transcript
+                and len(browser_transcript) >= _MIN_BROWSER_TRANSCRIPT_CHARS
+            )
+
+            if state.raw_audio_base64 and trust_browser_transcript:
+                state.transcript_original = browser_transcript
+                state.transcript_english = browser_transcript
+                state.language_code = state.language_code or "en"
+                state.language_detected = LANGUAGE_NAMES.get(
+                    state.language_code, state.language_detected or "English"
+                )
+                decision = "Browser speech recognition (Whisper STT skipped)"
+
+            elif state.raw_audio_base64:
                 # Detect language and transcribe
                 lang_code = state.language_code or "hi"
                 try:
                     # --- GROQ WHISPER STT (FAST, FREE API) ---
                     import base64
-                    import httpx
-                    from app.core.config import get_settings
-                    
-                    settings = get_settings()
+                    from app.core.http import get_http_client
+
                     if not settings.groq_api_key:
                         raise Exception("GROQ_API_KEY is not set. Please add it to your environment variables.")
 
@@ -83,21 +171,21 @@ class VoiceCarePipeline:
                     if "base64," in audio_b64:
                         audio_b64 = audio_b64.split("base64,")[1]
                     audio_bytes = base64.b64decode(audio_b64)
-                    
-                    async with httpx.AsyncClient() as client:
-                        # We use 'audio.webm' as a generic extension, Groq handles most formats automatically
-                        files = {"file": ("audio.webm", audio_bytes, "audio/webm")}
-                        data = {"model": "whisper-large-v3", "language": lang_code if lang_code != "en" else "en"}
-                        
-                        response = await client.post(
-                            "https://api.groq.com/openai/v1/audio/transcriptions",
-                            headers={"Authorization": f"Bearer {settings.groq_api_key}"},
-                            files=files,
-                            data=data,
-                            timeout=15.0
-                        )
-                        response.raise_for_status()
-                        transcript = response.json().get("text", "")
+
+                    client = get_http_client()
+                    # We use 'audio.webm' as a generic extension, Groq handles most formats automatically
+                    files = {"file": ("audio.webm", audio_bytes, "audio/webm")}
+                    data = {"model": "whisper-large-v3", "language": lang_code if lang_code != "en" else "en"}
+
+                    response = await client.post(
+                        "https://api.groq.com/openai/v1/audio/transcriptions",
+                        headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+                        files=files,
+                        data=data,
+                        timeout=15.0
+                    )
+                    response.raise_for_status()
+                    transcript = response.json().get("text", "")
 
                     state.transcript_original = transcript
                     state.language_code = lang_code
@@ -164,7 +252,6 @@ class VoiceCarePipeline:
     async def agent_intent_analysis(self, state: PipelineState) -> PipelineState:
         """Analyze intent, sentiment, and priority using Gemini."""
         start = time.time()
-        await self._notify_stage(2, "Understanding your issue...")
 
         try:
             query = state.transcript_english or state.transcript_original
@@ -208,14 +295,19 @@ class VoiceCarePipeline:
     async def agent_order_lookup(self, state: PipelineState) -> PipelineState:
         """Look up order, shipment, return, refund, payment data from Postgres."""
         start = time.time()
-        await self._notify_stage(3, "Checking your order...")
 
         try:
             # Find user by phone
             phone = state.phone or state.extracted_phone
             if phone:
+                # noload("*") on every entity query in this file: models.py sets
+                # lazy="selectin" on nearly all relationships, so a bare
+                # select(User) fans out to 15-25 sequential round trips. The
+                # pipeline reads scalar columns only, so none of that is used.
+                # Do NOT change the model defaults — api/tickets.py depends on
+                # the eager loading.
                 user_result = await self.db.execute(
-                    select(User).where(User.phone == phone)
+                    select(User).where(User.phone == phone).options(noload("*"))
                 )
                 user = user_result.scalar_one_or_none()
 
@@ -237,7 +329,7 @@ class VoiceCarePipeline:
                                 select(Order).where(
                                     Order.order_id == order_uuid,
                                     Order.user_id == user.user_id
-                                )
+                                ).options(noload("*"))
                             )
                             order = order_result.scalar_one_or_none()
                         except ValueError:
@@ -253,6 +345,7 @@ class VoiceCarePipeline:
                             .where(Order.user_id == user.user_id)
                             .order_by(Order.order_date.desc())
                             .limit(1)
+                            .options(noload("*"))
                         )
                         order = order_result.scalar_one_or_none()
 
@@ -283,7 +376,7 @@ class VoiceCarePipeline:
 
                         # Shipment
                         ship_result = await self.db.execute(
-                            select(Shipment).where(Shipment.order_id == order.order_id)
+                            select(Shipment).where(Shipment.order_id == order.order_id).options(noload("*"))
                         )
                         shipment = ship_result.scalar_one_or_none()
                         if shipment:
@@ -297,7 +390,7 @@ class VoiceCarePipeline:
 
                         # Return
                         ret_result = await self.db.execute(
-                            select(Return).where(Return.order_id == order.order_id)
+                            select(Return).where(Return.order_id == order.order_id).options(noload("*"))
                         )
                         ret = ret_result.scalar_one_or_none()
                         if ret:
@@ -310,7 +403,7 @@ class VoiceCarePipeline:
 
                             # Refund linked to return
                             ref_result = await self.db.execute(
-                                select(Refund).where(Refund.return_id == ret.return_id)
+                                select(Refund).where(Refund.return_id == ret.return_id).options(noload("*"))
                             )
                             refund = ref_result.scalar_one_or_none()
                             if refund:
@@ -323,7 +416,7 @@ class VoiceCarePipeline:
 
                         # Payment
                         pay_result = await self.db.execute(
-                            select(Payment).where(Payment.order_id == order.order_id)
+                            select(Payment).where(Payment.order_id == order.order_id).options(noload("*"))
                         )
                         payments = pay_result.scalars().all()
                         if payments:
@@ -354,6 +447,7 @@ class VoiceCarePipeline:
                     select(User)
                     .where(User.name.ilike(f"%{state.extracted_name.strip()}%"))
                     .limit(5)
+                    .options(noload("*"))
                 )).scalars().all()
 
                 state.identity_needs_confirmation = True
@@ -375,6 +469,7 @@ class VoiceCarePipeline:
                         .where(Order.user_id == candidate.user_id)
                         .order_by(Order.order_date.desc())
                         .limit(1)
+                        .options(noload("*"))
                     )
                     candidate_order = order_result.scalar_one_or_none()
                     if candidate_order:
@@ -405,7 +500,6 @@ class VoiceCarePipeline:
     async def agent_policy_rag(self, state: PipelineState) -> PipelineState:
         """Retrieve relevant policy documents from Chroma vector store."""
         start = time.time()
-        await self._notify_stage(4, "Finding the right policy...")
 
         try:
             import hashlib
@@ -419,8 +513,13 @@ class VoiceCarePipeline:
                 state.retrieved_policies = cached.get("retrieved_policies", [])
                 logger.info("policy_rag_cache_hit", query_len=len(query))
             else:
-                state.policy_context = self.chroma.get_policy_context(query, n_results=3)
-                state.retrieved_policies = self.chroma.query_policies(query, n_results=3)
+                # One embed + one vector search for both shapes, and offloaded to
+                # a worker thread — chromadb's PersistentClient is synchronous, so
+                # calling it inline blocks the event loop and stops the
+                # agent_order_lookup running alongside us in run()'s gather.
+                state.policy_context, state.retrieved_policies = await asyncio.to_thread(
+                    self.chroma.query_with_context, query, 3
+                )
                 await memory.set_cache(
                     cache_key,
                     {
@@ -457,7 +556,6 @@ class VoiceCarePipeline:
     async def agent_resolution(self, state: PipelineState) -> PipelineState:
         """Generate resolution decision using Gemini — policy-grounded."""
         start = time.time()
-        await self._notify_stage(5, "Determining the best resolution...")
 
         try:
             # Short-circuit: the caller has not yet corroborated their identity
@@ -533,7 +631,6 @@ class VoiceCarePipeline:
     async def agent_escalation_check(self, state: PipelineState) -> PipelineState:
         """Check 5 deterministic escalation rules — no LLM call."""
         start = time.time()
-        await self._notify_stage(6, "Checking if escalation needed...")
 
         rules_triggered = []
 
@@ -588,7 +685,6 @@ class VoiceCarePipeline:
     async def agent_response_generation(self, state: PipelineState) -> PipelineState:
         """Generate final customer-facing response in their language."""
         start = time.time()
-        await self._notify_stage(7, "Preparing your response...")
 
         try:
             query = state.transcript_original or state.transcript_english
@@ -644,7 +740,6 @@ class VoiceCarePipeline:
     async def agent_tts(self, state: PipelineState) -> PipelineState:
         """Convert response text to speech using Bhashini TTS."""
         start = time.time()
-        await self._notify_stage(8, "Converting to speech...")
 
         try:
             if state.response_text and state.language_code != "en":
@@ -677,7 +772,6 @@ class VoiceCarePipeline:
     async def agent_ticket_creation(self, state: PipelineState) -> PipelineState:
         """Create support ticket, messages, and resolution in Postgres."""
         start = time.time()
-        await self._notify_stage(9, "Creating your support ticket...")
 
         # Wrap everything in a SAVEPOINT so that any flush/constraint failure
         # rolls back only this agent's writes — the outer transaction stays
@@ -699,7 +793,7 @@ class VoiceCarePipeline:
                         conv_hex = str(state.session_id).replace("-", "")[:16]
                         phone_val = f"anon-{conv_hex}"
                     existing = (await self.db.execute(
-                        select(User).where(User.phone == phone_val)
+                        select(User).where(User.phone == phone_val).options(noload("*"))
                     )).scalar_one_or_none()
                     if existing:
                         user_id = existing.user_id
@@ -715,16 +809,20 @@ class VoiceCarePipeline:
                                 break
                             customer_code = generate_customer_code()
 
-                        new_user = User(
+                        # The primary key is generated here rather than left to
+                        # the column default so dependent rows can reference it
+                        # without a flush. Each flush against the remote
+                        # database is a full round trip, and this agent used to
+                        # make four of them.
+                        user_id = uuid.uuid4()
+                        self.db.add(User(
+                            user_id=user_id,
                             name=state.extracted_name or "Anonymous Caller",
                             phone=phone_val,
                             customer_code=customer_code,
                             customer_segment="Anonymous",
                             created_by="pipeline-anon",
-                        )
-                        self.db.add(new_user)
-                        await self.db.flush()
-                        user_id = new_user.user_id
+                        ))
 
                 order_id = None
                 if state.order_data:
@@ -741,7 +839,7 @@ class VoiceCarePipeline:
 
                 # Get-or-create the VoiceSession keyed by the conversation id.
                 session = (await self.db.execute(
-                    select(VoiceSession).where(VoiceSession.session_id == conv_id)
+                    select(VoiceSession).where(VoiceSession.session_id == conv_id).options(noload("*"))
                 )).scalar_one_or_none()
                 if session is None:
                     session = VoiceSession(
@@ -760,7 +858,6 @@ class VoiceCarePipeline:
                     session.transcript_original = state.transcript_original
                     session.transcript_english = state.transcript_english
                     session.ended_at = datetime.utcnow()
-                await self.db.flush()
 
                 # Reuse the existing ticket for this conversation if there is one.
                 ticket = (await self.db.execute(
@@ -768,6 +865,7 @@ class VoiceCarePipeline:
                     .where(SupportTicket.session_id == conv_id)
                     .order_by(SupportTicket.created_at.desc())
                     .limit(1)
+                    .options(noload("*"))
                 )).scalar_one_or_none()
 
                 # Statuses an admin owns — an AI turn must never downgrade these.
@@ -789,6 +887,7 @@ class VoiceCarePipeline:
                         ticket_number = generate_ticket_number()
 
                     ticket = SupportTicket(
+                        ticket_id=uuid.uuid4(),
                         user_id=user_id,
                         order_id=order_id,
                         session_id=session.session_id,
@@ -803,7 +902,6 @@ class VoiceCarePipeline:
                         resolved_at=datetime.utcnow() if not state.is_escalated else None,
                     )
                     self.db.add(ticket)
-                    await self.db.flush()
                 else:
                     # Continue the same ticket: refresh latest-turn fields without
                     # clobbering an admin's status or a prior escalation.
@@ -843,6 +941,18 @@ class VoiceCarePipeline:
                     language="English",
                 ))
 
+                # Record stage 9's own trace step BEFORE serialising the trace.
+                # Serialising first meant the persisted ticket has never once
+                # contained stage 9 — the admin replay showed 8 of 9 agents.
+                state.add_trace(
+                    agent_name="Ticket Creation",
+                    stage_number=9,
+                    input_summary=f"User: {user_id}, Escalated: {state.is_escalated}",
+                    output_summary=f"Ticket {ticket.ticket_id} {'created' if is_new_ticket else 'continued'}",
+                    decision="Ticket persisted to Postgres",
+                    duration_ms=(time.time() - start) * 1000,
+                )
+
                 trace_json = json.dumps(
                     [step.model_dump(mode="json") for step in state.agent_trace],
                     default=str,
@@ -850,7 +960,7 @@ class VoiceCarePipeline:
                 # One resolution row per ticket — update it in place on reuse so
                 # the admin always sees the latest turn's recommendation/trace.
                 resolution = None if is_new_ticket else (await self.db.execute(
-                    select(SupportResolution).where(SupportResolution.ticket_id == ticket.ticket_id)
+                    select(SupportResolution).where(SupportResolution.ticket_id == ticket.ticket_id).options(noload("*"))
                 )).scalar_one_or_none()
                 if resolution is None:
                     self.db.add(SupportResolution(
@@ -879,17 +989,6 @@ class VoiceCarePipeline:
                 await self.db.flush()
                 state.ticket_created = True
 
-                state.add_trace(
-                    agent_name="Ticket Creation",
-                    stage_number=9,
-                    input_summary=f"User: {user_id}, Escalated: {state.is_escalated}",
-                    output_summary=f"Ticket {state.ticket_id} {'created' if is_new_ticket else 'continued'}",
-                    decision="Ticket persisted to Postgres",
-                    duration_ms=(time.time() - start) * 1000,
-                )
-
-            await self._notify_stage(9, "Done!", is_complete=True)
-
         except Exception as e:
             logger.error("ticket_creation_failed", error=str(e), exc_info=True)
             # Savepoint already rolled back — outer transaction is clean.
@@ -905,78 +1004,139 @@ class VoiceCarePipeline:
     # ================================================================
     # Pipeline Executor
     # ================================================================
-    async def run(self, state: PipelineState) -> PipelineState:
-        """Execute the full 9-agent pipeline."""
-        # Part B: Hydrate identity from prior turns so customers don't re-identify
-        memory = await get_memory_service()
-        if state.session_id:
-            try:
-                ctx = await memory.get_session_context(state.session_id)
-                if ctx:
-                    if not state.phone and ctx.get("phone"):
-                        state.phone = ctx["phone"]
-                    if not state.input_order_id and ctx.get("order_id"):
-                        state.input_order_id = ctx["order_id"]
-                    # Once a session has corroborated identity, don't challenge again.
-                    if ctx.get("identity_verified"):
-                        state.identity_verified = True
-            except Exception as ctx_err:
-                logger.warning("session_context_load_failed", error=str(ctx_err))
+    async def _hydrate_session_context(self, state: PipelineState) -> None:
+        """Carry identity forward from prior turns so customers don't re-identify.
+
+        Idempotent: the WebSocket handler calls this early so it can overlap with
+        the conversation-history read, and run_critical calls it unconditionally
+        for every other caller. Whoever gets there first pays for it.
+        """
+        if self._session_context_loaded or not state.session_id:
+            return
+        self._session_context_loaded = True
+        try:
+            memory = await get_memory_service()
+            ctx = await memory.get_session_context(state.session_id)
+            if ctx:
+                if not state.phone and ctx.get("phone"):
+                    state.phone = ctx["phone"]
+                if not state.input_order_id and ctx.get("order_id"):
+                    state.input_order_id = ctx["order_id"]
+                # Once a session has corroborated identity, don't challenge again.
+                if ctx.get("identity_verified"):
+                    state.identity_verified = True
+        except Exception as ctx_err:
+            logger.warning("session_context_load_failed", error=str(ctx_err))
+
+    async def _persist_session_context(self, state: PipelineState) -> None:
+        """Save identity context so the next turn can reuse phone/order_id."""
+        if state.has_error or not state.session_id:
+            return
+        try:
+            phone = (state.user_data or {}).get("phone") or state.extracted_phone
+            order_id = (state.order_data or {}).get("order_id") or state.extracted_order_id
+            if phone or order_id:
+                memory = await get_memory_service()
+                await memory.set_session_context(state.session_id, {
+                    "phone": phone,
+                    "user_id": (state.user_data or {}).get("user_id"),
+                    "order_id": order_id,
+                    "intent": state.intent,
+                    "last_summary": state.summary_english,
+                    "identity_verified": state.identity_verified,
+                })
+        except Exception as ctx_save_err:
+            logger.warning("session_context_save_failed", error=str(ctx_save_err))
+
+    async def run_critical(self, state: PipelineState) -> PipelineState:
+        """Agents 1-7 — everything the customer must wait for.
+
+        Returns the moment the answer text exists. Speech synthesis and ticket
+        persistence are not needed to show the answer, so they live in
+        run_deferred() and a WebSocket caller can send the reply before them.
+        """
+        await self._hydrate_session_context(state)
 
         if state.has_error:
             return state
-        state = await self.agent_voice_intake(state)
+        state = await self._staged(1, STAGE_MESSAGES[1], self.agent_voice_intake, state)
 
         if state.has_error:
             return state
-        state = await self.agent_intent_analysis(state)
+        state = await self._staged(2, STAGE_MESSAGES[2], self.agent_intent_analysis, state)
 
         if state.has_error:
             return state
-        # Run Order Lookup and Policy RAG in parallel
+        # Order lookup and policy RAG have no data dependency on each other.
+        # Both stages emit their own start/done frames, so the UI shows them
+        # running side by side rather than flickering between them.
         await asyncio.gather(
-            self.agent_order_lookup(state),
-            self.agent_policy_rag(state)
+            self._staged(3, STAGE_MESSAGES[3], self.agent_order_lookup, state),
+            self._staged(4, STAGE_MESSAGES[4], self.agent_policy_rag, state),
         )
 
         if state.has_error:
             return state
-        state = await self.agent_resolution(state)
+        state = await self._staged(5, STAGE_MESSAGES[5], self.agent_resolution, state)
 
         if state.has_error:
             return state
-        state = await self.agent_escalation_check(state)
+        state = await self._staged(6, STAGE_MESSAGES[6], self.agent_escalation_check, state)
 
         if state.has_error:
             return state
-        state = await self.agent_response_generation(state)
+        return await self._staged(
+            7, STAGE_MESSAGES[7], self.agent_response_generation, state
+        )
 
-        if state.has_error:
-            return state
-        state = await self.agent_tts(state)
+    async def run_deferred(self, state: PipelineState) -> PipelineState:
+        """Agents 8-9 — speech synthesis and ticket persistence.
 
-        if state.has_error:
-            return state
-        state = await self.agent_ticket_creation(state)
+        Emits the audio as its own frame the moment it exists, then a terminal
+        `done` frame carrying the completed agent trace.
+        """
+        # Identity context for the next turn. Deliberately here rather than in
+        # run_critical: it is a network round trip to the memory backend, and
+        # the next turn cannot begin until the customer speaks again — seconds
+        # after this task will have finished.
+        await self._persist_session_context(state)
 
-        # Part B: Persist identity context so the next turn can reuse phone/order_id
-        if not state.has_error and state.session_id:
-            try:
-                phone = (state.user_data or {}).get("phone") or state.extracted_phone
-                order_id = (state.order_data or {}).get("order_id") or state.extracted_order_id
-                if phone or order_id:
-                    await memory.set_session_context(state.session_id, {
-                        "phone": phone,
-                        "user_id": (state.user_data or {}).get("user_id"),
-                        "order_id": order_id,
-                        "intent": state.intent,
-                        "last_summary": state.summary_english,
-                        "identity_verified": state.identity_verified,
-                    })
-            except Exception as ctx_save_err:
-                logger.warning("session_context_save_failed", error=str(ctx_save_err))
+        if not state.has_error:
+            state = await self._staged(8, STAGE_MESSAGES[8], self.agent_tts, state)
+            if state.response_audio_base64:
+                await self._emit({
+                    "type": "audio",
+                    "response_audio_base64": state.response_audio_base64,
+                    "language": state.language_detected,
+                })
 
+        if not state.has_error:
+            state = await self._staged(9, STAGE_MESSAGES[9], self.agent_ticket_creation, state)
+
+        await self._emit({
+            "type": "done",
+            "is_complete": True,
+            "stage_number": TOTAL_STAGES,
+            "total_stages": TOTAL_STAGES,
+            "ticket_id": state.ticket_id or "",
+            "ticket_number": state.ticket_number,
+            "ticket_created": state.ticket_created,
+            "agent_trace": [step.model_dump(mode="json") for step in state.agent_trace],
+            "total_duration_ms": state.elapsed_ms(),
+        })
         return state
+
+    async def run(self, state: PipelineState) -> PipelineState:
+        """Execute the full 9-agent pipeline, blocking until every stage is done.
+
+        This is what the HTTP endpoint and the tests use. The WebSocket handler
+        calls run_critical() and run_deferred() separately so it can deliver the
+        answer without waiting on TTS and ticket creation.
+        """
+        state = await self.run_critical(state)
+        if state.has_error:
+            return state
+        return await self.run_deferred(state)
 
     @staticmethod
     def _name_matches(claimed: Optional[str], actual: Optional[str]) -> bool:

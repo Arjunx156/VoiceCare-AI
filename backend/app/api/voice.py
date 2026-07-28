@@ -3,6 +3,7 @@ CommerceMind VoiceCare AI — Voice Query API Routes
 Handles text/voice queries and WebSocket streaming.
 """
 
+import asyncio
 import json
 import re
 import uuid
@@ -11,6 +12,7 @@ import structlog
 from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError, OperationalError
+from starlette.websockets import WebSocketState
 
 from app.core.database import get_db
 from app.core.config import get_settings
@@ -38,6 +40,11 @@ _VERCEL_ORIGIN_RE = re.compile(r"^https://[a-z0-9.-]+\.vercel\.app$", re.IGNOREC
 # Live voice WebSocket connections per client IP (per-worker; enough to stop
 # a single host from opening unbounded pipeline connections).
 _ws_connections: dict[str, int] = {}
+
+# Strong references to in-flight deferred-stage tasks. asyncio only keeps a weak
+# reference to a bare create_task result, so without this set a ticket write can
+# be garbage-collected mid-flight. main.py's lifespan drains this on shutdown.
+_deferred_tasks: set[asyncio.Task] = set()
 
 # ================================================================
 # Rate-Limiting Dependency
@@ -86,7 +93,58 @@ def _build_voice_response(state: PipelineState) -> dict:
         "is_escalated": state.is_escalated,
         "escalation_reason": state.escalation_reason,
         "agent_trace": [step.model_dump(mode="json") for step in state.agent_trace],
+        # Wall-clock at the moment this payload is built. Over HTTP that is the
+        # whole pipeline; over WebSocket the response frame is built after agent
+        # 7, so it reads as time-to-answer and the later `done` frame carries
+        # the full figure.
+        "total_duration_ms": state.elapsed_ms(),
     }
+
+
+async def _run_deferred_stages(state: PipelineState, send, turn_id: str) -> None:
+    """Run agents 8-9 after the answer has already been delivered.
+
+    Opens its own DB session: the WebSocket's session was committed and closed
+    before this task started, and reusing it would be a use-after-close.
+    """
+    from app.core.database import async_session
+
+    try:
+        async with async_session() as bg_db:
+            bg_pipeline = VoiceCarePipeline(
+                db=bg_db, on_stage_update=send, turn_id=turn_id
+            )
+            await bg_pipeline.run_deferred(state)
+            await bg_db.commit()
+    except Exception as exc:
+        logger.error(
+            "deferred_stages_failed",
+            session_id=state.session_id,
+            turn_id=turn_id,
+            error=str(exc),
+            exc_info=True,
+        )
+        # The customer already has their answer; all that is left is to release
+        # the client from its waiting state so the UI does not hang.
+        try:
+            await send({
+                "type": "done",
+                "is_complete": True,
+                "turn_id": turn_id,
+                "ticket_id": "",
+                "ticket_created": False,
+                "agent_trace": [s.model_dump(mode="json") for s in state.agent_trace],
+                "total_duration_ms": state.elapsed_ms(),
+            })
+        except Exception:
+            pass
+
+
+def _spawn_deferred_stages(state: PipelineState, send, turn_id: str) -> None:
+    """Fire agents 8-9 into the background, keeping a strong task reference."""
+    task = asyncio.create_task(_run_deferred_stages(state, send, turn_id))
+    _deferred_tasks.add(task)
+    task.add_done_callback(_deferred_tasks.discard)
 
 
 # ================================================================
@@ -117,7 +175,12 @@ async def process_voice_query(
         history = await memory.get_conversation_history(body.session_id)
         state.conversation_history = history
 
-    # Run the pipeline
+    # Run the pipeline. Deliberately the full blocking run(), unlike the
+    # WebSocket path: response_audio_base64 and ticket_created are documented
+    # fields of this response, so deferring the stages that populate them would
+    # make every reply report ticket_created=false. The get_db dependency also
+    # closes the session at response time, leaving nothing for a background task
+    # to write through. This path still gains every service-level speedup.
     pipeline = VoiceCarePipeline(db=db)
     state = await pipeline.run(state)
 
@@ -182,8 +245,17 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
 
     await websocket.accept()
 
-    async def on_stage_update(update: dict):
-        await websocket.send_json(update)
+    async def safe_send(payload: dict) -> None:
+        """Send if the socket is still open, swallow if it isn't.
+
+        Deferred stages keep emitting after the customer may have navigated
+        away, and a raise here would surface as a pipeline error.
+        """
+        try:
+            if websocket.client_state == WebSocketState.CONNECTED:
+                await websocket.send_json(payload)
+        except Exception:
+            pass
 
     # Keep-alive: send a server-side ping every 20 s so the connection is never
     # idle long enough for Render / load balancers to tear it down mid-pipeline.
@@ -258,6 +330,8 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
                 })
                 continue
 
+            turn_id = str(uuid.uuid4())
+
             # Get a fresh DB session for WebSocket
             from app.core.database import async_session
             async with async_session() as db:
@@ -271,20 +345,38 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
                     input_order_id=ws_request.order_id,
                 )
 
-                # Load history
+                # Bound unconditionally — used further down regardless of how
+                # this turn arrived.
+                memory = await get_memory_service()
+
+                pipeline = VoiceCarePipeline(
+                    db=db, on_stage_update=safe_send, turn_id=turn_id
+                )
+
+                # Conversation history and identity context are two independent
+                # reads from the memory backend, each a network round trip when
+                # Upstash is configured. Issued together they cost one.
                 if session_id:
-                    memory = await get_memory_service()
-                    history = await memory.get_conversation_history(session_id)
+                    history, _ = await asyncio.gather(
+                        memory.get_conversation_history(session_id),
+                        pipeline._hydrate_session_context(state),
+                    )
                     state.conversation_history = history
+                # Agents 1-7 only. The answer goes out before speech synthesis
+                # and ticket persistence, which the customer does not need to
+                # wait for and which together cost 2-6 seconds.
+                state = await pipeline.run_critical(state)
 
-                pipeline = VoiceCarePipeline(db=db, on_stage_update=on_stage_update)
-                state = await pipeline.run(state)
-
-                # Send final response — all VoiceQueryResponse fields plus the
-                # WS framing keys, built from the shared response builder.
-                await websocket.send_json({
+                # Send the answer — all VoiceQueryResponse fields plus the WS
+                # framing keys, built from the shared response builder.
+                # response_audio_base64 is null and ticket_created is false at
+                # this point; `pending` tells the client to keep listening, and
+                # is_complete now rides on the terminal `done` frame.
+                await safe_send({
                     "type": "response",
-                    "is_complete": True,
+                    "turn_id": turn_id,
+                    "is_complete": False,
+                    "pending": ["tts", "ticket"],
                     **_build_voice_response(state),
                 })
 
@@ -319,6 +411,11 @@ async def voice_websocket(websocket: WebSocket, session_id: str):
                         error=str(db_exc),
                         exc_info=True,
                     )
+
+            # The WS session is committed and closed. Agents 8-9 run on their
+            # own session, off the customer's critical path.
+            if not state.has_error:
+                _spawn_deferred_stages(state, safe_send, turn_id)
 
     except WebSocketDisconnect:
         logger.info("websocket_disconnected", session_id=session_id)
