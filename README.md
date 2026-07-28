@@ -248,12 +248,58 @@ VoiceCare-AI/
 
 ## Running Tests
 
+324 automated tests across 8 categories. Browse them all — including what each
+one asserts — at **[/tests](http://localhost:3000/tests)**, a public page in the
+app itself.
+
 ```bash
 cd backend
-pytest                          # all 57 tests
-pytest -m unit                  # unit only (no DB, no external calls)
-pytest tests/unit/test_auth.py  # specific file
+pytest                              # everything (282 backend tests)
+pytest --cov                        # with coverage; floor is set in .coveragerc
+pytest tests/security/test_auth.py  # a single file
 ```
+
+Tests are grouped by **what they prove**, not by where the file lives. The
+category is applied automatically from the directory, so `-m <category>` works
+without hand-marking anything:
+
+| Marker | Directory | Covers |
+|---|---|---|
+| `unit` | `tests/unit/` | Services and helpers in isolation |
+| `integration` | `tests/integration/` | The 9-agent pipeline and dashboard API against a real DB |
+| `contract` | `tests/contract/` | WebSocket frame shapes and backend↔frontend payload parity |
+| `performance` | `tests/performance/` | Latency budgets, stage concurrency, query-count ceilings |
+| `security` | `tests/security/` | Auth, rate limits, input caps, identity, information leaks |
+| `multilingual` | `tests/multilingual/` | All 9 languages, native-script round trips |
+| `resilience` | `tests/resilience/` | Behaviour when Gemini/Chroma/Bhashini/the DB fails |
+
+```bash
+pytest -m performance               # just the latency guards
+pytest -m "security or resilience"  # combine categories
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm run test          # Vitest unit tests
+npm run e2e           # Playwright browser tests
+```
+
+### Refreshing the /tests page
+
+The page renders a committed JSON artefact, so it works on a deployed build with
+no test run. Regenerate it after adding or changing tests:
+
+```bash
+cd backend  && pytest -q            # writes backend/test-report.json
+cd frontend && npm run test:json    # writes frontend/test-reports/vitest.json
+npm run e2e                         # writes frontend/test-reports/playwright.json
+npm run test:report                 # merges into src/data/test-report.json
+```
+
+Each test's description on that page comes from its own docstring, so the page
+cannot drift from the suite.
 
 ---
 
