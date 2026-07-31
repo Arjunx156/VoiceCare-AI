@@ -149,10 +149,7 @@ export default function TestRunsPage() {
         <span className="eyebrow">QA TEST RUNS</span>
         <h1 className="page-title">Test Runs</h1>
         <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 6 }}>
-          Runs canned scenarios through the live pipeline (agents 1-7 only — no ticket is
-          created, no TTS is invoked). Real Gemini calls are capped per run; once the budget
-          is spent, remaining scenarios fall back to a mocked response so the run always
-          finishes.
+          Run QA scenarios against the live pipeline, isolated from real tickets.
         </p>
       </motion.div>
 
