@@ -375,6 +375,67 @@ export async function getSessionHistory(sessionId: string): Promise<SessionHisto
   return data.turns;
 }
 
+// ---- Test Runs (QA scenario runner — fully separate from tickets/escalations) ----
+
+export interface TestScenarioSummary {
+  id: string;
+  label: string;
+  language: string;
+  expected_intent?: string;
+}
+
+export interface TestCaseResultItem {
+  result_id: string;
+  scenario_id: string;
+  scenario_label: string;
+  status: "passed" | "failed" | "observed" | "skipped";
+  used_live_api: boolean;
+  intent?: string;
+  sentiment?: string;
+  priority?: string;
+  is_escalated: boolean;
+  confidence_score?: number;
+  response_text?: string;
+  latency_ms?: number;
+  error_detail?: string;
+}
+
+export interface TestRunItem {
+  run_id: string;
+  status: "running" | "completed" | "cancelled";
+  total_scenarios: number;
+  completed_scenarios: number;
+  live_call_count: number;
+  mock_fallback_count: number;
+  started_at: string;
+  completed_at?: string;
+  created_by: string;
+  results: TestCaseResultItem[];
+}
+
+export async function listTestRunScenarios(): Promise<TestScenarioSummary[]> {
+  return apiFetch<TestScenarioSummary[]>("/api/test-runs/scenarios");
+}
+
+export async function startTestRun(scenarioIds?: string[]): Promise<TestRunItem> {
+  return apiFetch<TestRunItem>("/api/test-runs/", {
+    method: "POST",
+    body: JSON.stringify({ scenario_ids: scenarioIds ?? null }),
+  });
+}
+
+export async function getTestRun(runId: string, signal?: AbortSignal): Promise<TestRunItem> {
+  return apiFetch<TestRunItem>(`/api/test-runs/${runId}`, { signal });
+}
+
+export async function listTestRuns(): Promise<TestRunItem[]> {
+  return apiFetch<TestRunItem[]>("/api/test-runs/");
+}
+
+export async function cancelTestRun(runId: string): Promise<{ run_id: string; status: string }> {
+  return apiFetch(`/api/test-runs/${runId}/cancel`, { method: "POST" });
+}
+
 export function createWebSocket(sessionId: string): WebSocket {
   // WebSocket connections MUST go directly to the backend URL — Vercel's
   // serverless edge cannot proxy the HTTP→WS upgrade that rewrites() handles

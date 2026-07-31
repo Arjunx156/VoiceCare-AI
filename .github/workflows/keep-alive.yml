@@ -1,0 +1,24 @@
+name: Keep Render backend warm
+
+# Render's free plan spins the backend down after ~15 min idle regardless of
+# any app-level config. Pinging /health every 10 min keeps it under that
+# threshold during active hours; /health also runs a DB SELECT 1 (main.py),
+# so this incidentally keeps the Neon Postgres connection warm too.
+#
+# This does NOT replace the reactive cold-start handling already in the
+# frontend (BackendWarmup.tsx, login page's "waking up" message) — those stay
+# as the fallback for deploys/maintenance windows this can't prevent, and for
+# the gap between two cron ticks (GitHub's scheduler can run a few minutes
+# late under load; exact timing isn't the goal here).
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health endpoint
+        run: curl -sf --max-time 20 https://voicecare-backend.onrender.com/health

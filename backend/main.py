@@ -21,6 +21,7 @@ from app.core.http import close_http_client
 from app.api.voice import router as voice_router
 from app.api.tickets import router as tickets_router
 from app.api.customers import router as customers_router
+from app.api.test_runner import router as test_runner_router
 from app.api.auth import router as auth_router
 from app.api.auth import require_admin
 
@@ -242,6 +243,7 @@ app.include_router(auth_router)
 app.include_router(voice_router)
 app.include_router(tickets_router)
 app.include_router(customers_router)
+app.include_router(test_runner_router)
 
 
 @app.get("/health")

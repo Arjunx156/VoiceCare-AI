@@ -471,6 +471,75 @@ class EscalationRule(Base):
     )
 
 
+class TestRun(Base):
+    """A QA test-scenario run against the live pipeline (Test Runs tab).
+
+    Deliberately has no foreign key to SupportTicket/SupportResolution — this
+    table exists precisely so scenario runs can never surface in the
+    customer-facing Tickets/Escalations/Analytics views.
+    """
+    __test__ = False  # not a pytest test class — name collides with "Test*"
+    __tablename__ = "test_runs"
+
+    run_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), default="running", nullable=False
+        # running / completed / cancelled
+    )
+    total_scenarios: Mapped[int] = mapped_column(Integer, nullable=False)
+    completed_scenarios: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    live_call_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    mock_fallback_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_by: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    results: Mapped[List["TestCaseResult"]] = relationship(
+        back_populates="run", lazy="selectin"
+    )
+
+
+class TestCaseResult(Base):
+    """Per-scenario outcome for a TestRun."""
+    __test__ = False  # not a pytest test class — name collides with "Test*"
+    __tablename__ = "test_case_results"
+
+    result_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    run_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("test_runs.run_id"), nullable=False
+    )
+    scenario_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    scenario_label: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False
+        # passed / failed / observed / skipped
+    )
+    used_live_api: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    intent: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    sentiment: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    priority: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    is_escalated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    response_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    latency_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    error_detail: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    run: Mapped["TestRun"] = relationship(back_populates="results")
+
+    __table_args__ = (
+        Index("idx_test_case_results_run_id", "run_id"),
+    )
+
+
 class CustomerSentiment(Base):
     """Sentiment tracking per ticket interaction."""
     __tablename__ = "customer_sentiment"

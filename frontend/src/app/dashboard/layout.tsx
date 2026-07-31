@@ -57,6 +57,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/customers",   label: "Customers",   icon: "customers" },
   { href: "/dashboard/escalations", label: "Escalations", icon: "escalations" },
   { href: "/dashboard/analytics",   label: "Analytics",   icon: "analytics" },
+  { href: "/dashboard/test-runs",   label: "Test Runs",   icon: "testruns" },
 ];
 
 // Minimal SVG icons (no emojis — editorial clean)
@@ -70,8 +71,10 @@ function NavIcon({ name, active }: { name: string; active: boolean }) {
     return <svg aria-hidden="true" width="16" height="16" fill="none" viewBox="0 0 16 16"><circle cx="8" cy="5" r="2.5" stroke={color} strokeWidth="1.5"/><path d="M3 13c0-2.5 2.2-4 5-4s5 1.5 5 4" stroke={color} strokeWidth="1.5" strokeLinecap="round"/></svg>;
   if (name === "escalations")
     return <svg aria-hidden="true" width="16" height="16" fill="none" viewBox="0 0 16 16"><path d="M8 2L14 13H2L8 2Z" stroke={color} strokeWidth="1.5" strokeLinejoin="round"/><line x1="8" y1="7" x2="8" y2="10" stroke={color} strokeWidth="1.5" strokeLinecap="round"/><circle cx="8" cy="12" r="0.75" fill={color}/></svg>;
-  // analytics
-  return <svg aria-hidden="true" width="16" height="16" fill="none" viewBox="0 0 16 16"><rect x="2" y="9" width="3" height="5" rx="1" fill={color} opacity=".5"/><rect x="6.5" y="6" width="3" height="8" rx="1" fill={color} opacity=".7"/><rect x="11" y="3" width="3" height="11" rx="1" fill={color}/></svg>;
+  if (name === "analytics")
+    return <svg aria-hidden="true" width="16" height="16" fill="none" viewBox="0 0 16 16"><rect x="2" y="9" width="3" height="5" rx="1" fill={color} opacity=".5"/><rect x="6.5" y="6" width="3" height="8" rx="1" fill={color} opacity=".7"/><rect x="11" y="3" width="3" height="11" rx="1" fill={color}/></svg>;
+  // testruns
+  return <svg aria-hidden="true" width="16" height="16" fill="none" viewBox="0 0 16 16"><path d="M6 1.5v3l-4 7a1.5 1.5 0 0 0 1.3 2.25h9.4A1.5 1.5 0 0 0 14 11.5l-4-7v-3" stroke={color} strokeWidth="1.5" strokeLinejoin="round"/><line x1="5" y1="4.5" x2="11" y2="4.5" stroke={color} strokeWidth="1.5"/><circle cx="8" cy="10" r="1" fill={color}/></svg>;
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
