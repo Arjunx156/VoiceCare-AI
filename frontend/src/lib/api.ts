@@ -3,9 +3,17 @@
  * Handles all communication with the FastAPI backend.
  */
 
-// When running in the browser, default to empty string to use relative paths (proxied by Next.js).
-// On the server, default to localhost:8000.
-const BACKEND_URL = typeof window !== "undefined" ? (process.env.NEXT_PUBLIC_BACKEND_URL || "") : (process.env.BACKEND_URL || "http://localhost:8000");
+// Defaults to the direct Render URL in production (same fallback next.config.ts's
+// rewrites() already uses) rather than an empty string. An empty string would route
+// every call through Vercel's own rewrite proxy, which imposes its own timeout
+// independent of this file's timeoutMs — a request that needs to wait out a Render
+// cold start (50-90s) can get killed by that proxy layer well before any client-side
+// timeout here has a chance to matter. Calling Render directly removes that variable.
+const _IS_PROD_BUILD = process.env.NODE_ENV === "production";
+const _DEFAULT_BACKEND_URL = _IS_PROD_BUILD ? "https://voicecare-backend.onrender.com" : "http://localhost:8000";
+const BACKEND_URL = typeof window !== "undefined"
+  ? (process.env.NEXT_PUBLIC_BACKEND_URL || _DEFAULT_BACKEND_URL)
+  : (process.env.BACKEND_URL || _DEFAULT_BACKEND_URL);
 
 // ---- Auth token helpers (stored in localStorage + cookie for middleware) ----
 
