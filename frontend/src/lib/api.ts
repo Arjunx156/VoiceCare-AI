@@ -413,27 +413,42 @@ export interface TestRunItem {
   results: TestCaseResultItem[];
 }
 
+// Test Runs calls get a Render-cold-start-tolerant timeout (same 90s
+// reasoning as adminLogin's 65s below — a fully asleep free-tier instance can
+// take 50-90s to respond) rather than apiFetch's normal 20s default, which was
+// aborting these specific calls before a cold backend finished waking up.
+const _COLD_START_TIMEOUT_MS = 90_000;
+
 export async function listTestRunScenarios(): Promise<TestScenarioSummary[]> {
-  return apiFetch<TestScenarioSummary[]>("/api/test-runs/scenarios");
+  return apiFetch<TestScenarioSummary[]>("/api/test-runs/scenarios", {
+    timeoutMs: _COLD_START_TIMEOUT_MS,
+  });
 }
 
 export async function startTestRun(scenarioIds?: string[]): Promise<TestRunItem> {
   return apiFetch<TestRunItem>("/api/test-runs/", {
     method: "POST",
     body: JSON.stringify({ scenario_ids: scenarioIds ?? null }),
+    timeoutMs: _COLD_START_TIMEOUT_MS,
   });
 }
 
 export async function getTestRun(runId: string, signal?: AbortSignal): Promise<TestRunItem> {
-  return apiFetch<TestRunItem>(`/api/test-runs/${runId}`, { signal });
+  return apiFetch<TestRunItem>(`/api/test-runs/${runId}`, {
+    signal,
+    timeoutMs: _COLD_START_TIMEOUT_MS,
+  });
 }
 
 export async function listTestRuns(): Promise<TestRunItem[]> {
-  return apiFetch<TestRunItem[]>("/api/test-runs/");
+  return apiFetch<TestRunItem[]>("/api/test-runs/", { timeoutMs: _COLD_START_TIMEOUT_MS });
 }
 
 export async function cancelTestRun(runId: string): Promise<{ run_id: string; status: string }> {
-  return apiFetch(`/api/test-runs/${runId}/cancel`, { method: "POST" });
+  return apiFetch(`/api/test-runs/${runId}/cancel`, {
+    method: "POST",
+    timeoutMs: _COLD_START_TIMEOUT_MS,
+  });
 }
 
 export function createWebSocket(sessionId: string): WebSocket {
