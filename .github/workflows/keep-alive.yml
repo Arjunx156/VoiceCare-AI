@@ -5,13 +5,13 @@ name: Keep Render backend warm
 # threshold during active hours; /health also runs a DB SELECT 1 (main.py),
 # so this incidentally keeps the Neon Postgres connection warm too.
 #
-# --max-time is 100s, not the curl default: a full cold start (container was
+# --max-time is 180s, not the curl default: a full cold start (container was
 # already asleep when this fires — e.g. the very first run, or after a gap
 # wide enough for Render to spin down anyway) can take 50-90s to respond, per
 # the same reasoning behind adminLogin's 65s abort timeout in api.ts. A short
 # --max-time here made the wake-up ping itself time out (curl exit 28) before
-# the backend finished waking, so the workflow could never complete the one
-# thing it exists to do.
+# the backend finished waking. We also retry transient failures so a single
+# network blip doesn't fail the warmup run.
 #
 # This does NOT replace the reactive cold-start handling already in the
 # frontend (BackendWarmup.tsx, login page's "waking up" message) — those stay
@@ -29,4 +29,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping backend health endpoint
-        run: curl -sf --max-time 100 https://voicecare-backend.onrender.com/health
+        run: curl -sf --max-time 180 --retry 2 --retry-delay 5 --retry-all-errors https://voicecare-backend.onrender.com/health
