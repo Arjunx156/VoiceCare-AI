@@ -5,13 +5,17 @@ name: Keep Render backend warm
 # threshold during active hours; /health also runs a DB SELECT 1 (main.py),
 # so this incidentally keeps the Neon Postgres connection warm too.
 #
-# --max-time is 100s, not the curl default: a full cold start (container was
-# already asleep when this fires — e.g. the very first run, or after a gap
-# wide enough for Render to spin down anyway) can take 50-90s to respond, per
-# the same reasoning behind adminLogin's 65s abort timeout in api.ts. A short
-# --max-time here made the wake-up ping itself time out (curl exit 28) before
-# the backend finished waking, so the workflow could never complete the one
+# The per-attempt budget is 240s. That number is measured, not guessed: a cold
+# free-tier instance answers /health in ~130s (container boot + `alembic
+# upgrade head` from the Dockerfile CMD + the DB/Chroma checks inside the
+# handler), and ~2s once warm. Do NOT lower it. An earlier 100s budget aborted
+# every ping mid-wake, which left the instance cold for the next tick too — a
+# self-sustaining failure loop in which this workflow never once did the one
 # thing it exists to do.
+#
+# Two attempts, not one: a single transient 5xx during a Render deploy
+# shouldn't red-X the run. Two attempts plus the gap stay under the 10-minute
+# cron interval, so runs can't stack.
 #
 # This does NOT replace the reactive cold-start handling already in the
 # frontend (BackendWarmup.tsx, login page's "waking up" message) — those stay
@@ -24,9 +28,39 @@ on:
     - cron: "*/10 * * * *"
   workflow_dispatch:
 
+# A run still in flight when the next tick fires is superseded rather than
+# queued behind it — a stuck ping is worthless, the fresh one is not.
+concurrency:
+  group: keep-alive
+  cancel-in-progress: true
+
 jobs:
   ping:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Ping backend health endpoint
-        run: curl -sf --max-time 240 https://voicecare-backend.onrender.com/health
+        env:
+          HEALTH_URL: https://voicecare-backend.onrender.com/health
+        run: |
+          for attempt in 1 2; do
+            start=$(date +%s)
+            # `|| status=$?` captures curl's own exit code; reading $? after an
+            # `if` block would report the compound statement's status instead.
+            status=0
+            curl -sf --max-time 240 -o /dev/null "$HEALTH_URL" || status=$?
+            elapsed=$(( $(date +%s) - start ))
+
+            if [ "$status" -eq 0 ]; then
+              echo "healthy on attempt $attempt after ${elapsed}s"
+              exit 0
+            fi
+
+            echo "attempt $attempt failed after ${elapsed}s (curl exit $status)"
+            if [ "$attempt" -lt 2 ]; then
+              echo "retrying in 20s"
+              sleep 20
+            fi
+          done
+          echo "backend did not respond healthy after 2 attempts"
+          exit 1
