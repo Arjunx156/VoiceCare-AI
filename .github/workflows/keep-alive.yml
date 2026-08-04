@@ -1,5 +1,13 @@
 name: Keep Render backend warm
 
+# SECONDARY MECHANISM — pending removal. An external uptime monitor now pings
+# /health every 5 min and is the primary keep-warm (see "Keeping the free-tier
+# backend warm" in README.md). This workflow stays until that is proven to hold
+# the backend up on its own, then it either goes away or gets cut back to a
+# low-frequency one-shot backstop — worth keeping in that role only because it
+# can wait out a full 130s cold start, which a 30s-capped external monitor
+# structurally cannot.
+#
 # Render's free plan spins the backend down after ~15 min idle regardless of
 # any app-level config. Pinging /health every 10 min keeps it under that
 # threshold around the clock; /health also runs a DB SELECT 1 (main.py), so

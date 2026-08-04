@@ -317,6 +317,42 @@ Both sides no-op gracefully without a DSN — safe to leave unset in local dev.
 
 ---
 
+## Keeping the free-tier backend warm
+
+Render's free plan spins the backend down after ~15 min idle. Waking it costs
+about **130 s** — container boot, `alembic upgrade head` from the Dockerfile
+`CMD`, then the Chroma embedder and memory-backend warmup in `main.py`'s
+lifespan. Warm, `/health` answers in ~2 s.
+
+An external uptime monitor keeps it above that idle threshold:
+
+| Setting | Value |
+|---------|-------|
+| URL | `https://voicecare-backend.onrender.com/health` |
+| Interval | every 5 min (3× margin under the ~15 min window) |
+| Expected status | `200` |
+| Alert after | 3 consecutive failures |
+
+`/health` also runs a DB `SELECT 1`, so this keeps the Neon connection warm too.
+
+Expect the **first check after any spin-down or deploy to be logged as a
+failure** — these services cap request timeouts around 30 s and a cold start
+needs ~130 s. It still hands Render the request that starts the boot, and the
+next check succeeds. That is why the alert threshold is 3 rather than 1.
+
+Don't rely on a GitHub Actions `schedule:` for this. `.github/workflows/keep-alive.yml`
+does the same ping and is kept only as a secondary; measured on this repo, a
+`*/10 * * * *` cron actually fired 68–211 minutes apart, because GitHub runs
+scheduled workflows on a best-effort basis and drops ticks under load. Every gap
+over ~15 min is a spin-down. The workflow compensates by pinging on its own
+timer inside the job rather than trusting the schedule.
+
+Neither mechanism replaces the reactive handling in the frontend
+(`BackendWarmup.tsx`, the login page's "waking up" message) — those still cover
+deploys and the window before the first ping.
+
+---
+
 ## License
 
 MIT — build on it, learn from it, ship it.
