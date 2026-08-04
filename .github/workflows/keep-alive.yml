@@ -29,4 +29,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping backend health endpoint
-        run: curl -sf --max-time 100 https://voicecare-backend.onrender.com/health
+        run: curl -sf --max-time 240 https://voicecare-backend.onrender.com/health
