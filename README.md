@@ -11,7 +11,7 @@ Get resolved instantly. No forms. No hold music. No English-only walls.
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org)
 [![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-4285F4?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.4-1C3C3C?style=flat-square&logo=langchain&logoColor=white)](https://langchain-ai.github.io/langgraph)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-324_passing-4CAF73?style=flat-square)](#running-tests)
 
 </div>
 
@@ -21,25 +21,30 @@ Get resolved instantly. No forms. No hold music. No English-only walls.
 
 VoiceCare AI is a production-grade voice support platform for Indian e-commerce. A customer taps one button, speaks their problem in their native language, and receives a voice response — in the same language — in under 10 seconds.
 
-Behind that button: a **9-agent LangGraph pipeline** that transcribes speech, detects intent, queries a live database, retrieves grounded policy context, generates a resolution, checks six deterministic escalation rules, synthesises a response, converts it back to speech, and creates a support ticket — all in a single WebSocket stream.
+Behind that button: a **9-agent pipeline** that transcribes speech, detects intent, queries a live database, retrieves grounded policy context, generates a resolution, checks six deterministic escalation rules, synthesises a response, converts it back to speech, and creates a support ticket — all in a single WebSocket stream.
+
+Every one of those nine steps is recorded, and every ticket can be replayed step by step in the admin dashboard.
 
 ---
 
 ## Demo
 
-| Voice Interface | Pipeline Stream | Admin Dashboard |
-|:-:|:-:|:-:|
-| 3D audio-reactive orb | 9 stages animate in real time | Tickets, analytics, escalation queue |
-| Tap → speak → hear the answer | WebSocket streaming progress | JWT-protected, operator-facing |
+<!-- TODO: add the demo video link and the deployed frontend URL once published -->
 
-**Try these demo queries after seeding:**
+| | |
+|---|---|
+| **Video** | _(3-minute walkthrough — link to be added)_ |
+| **Live app** | _(Vercel URL — to be added)_ |
+| **Backend health** | [`/health`](https://voicecare-backend.onrender.com/health) — first request after idle takes ~130 s, see [Deployment notes](#deployment-notes) |
+
+**Try these after seeding.** Say your **name or order number** as well as the problem — a phone number alone is treated as a claim, not proof, so the AI will otherwise ask you to confirm your identity first.
 
 | Language | Customer | Say… | Outcome |
 |----------|----------|-------|---------|
-| 🇮🇳 Hindi | Rajesh Kumar | "मेरा ऑर्डर 5 दिन देर से आया" | ₹50 shipping credit |
-| 🇮🇳 Malayalam | Priya Nair | Refund pending 12 days | Auto-escalate — SLA breach |
+| 🇮🇳 Hindi | Rajesh Kumar | "मेरा ऑर्डर ORD-RK24 पाँच दिन देर से आया है" | Delayed-shipment resolution |
+| 🇮🇳 Malayalam | Priya Nair | Refund still pending | Auto-escalate — pending refund |
 | 🇮🇳 Tamil | Muthu Selvam | Damaged product received | Replacement or refund |
-| 🇮🇳 Telugu | Ananya Reddy | Payment deducted, order cancelled | Auto-escalate — critical |
+| 🇮🇳 Telugu | Ananya Reddy | Payment deducted, order cancelled | Auto-escalate — payment anomaly |
 | 🇮🇳 Hinglish | Amit Sharma | Wrong product — very angry | Auto-escalate — sentiment |
 
 ---
@@ -73,6 +78,8 @@ Browser (WebSocket)
 
 Only **3 of the 9 agents** make LLM calls. The rest are deterministic — fast, auditable, and cheap.
 
+Agents 3 and 4 run concurrently (neither depends on the other), and the reply is sent to the browser as soon as agent 7 finishes — speech synthesis and ticket persistence continue in the background so the customer isn't waiting on them.
+
 ---
 
 ## Features
@@ -80,16 +87,16 @@ Only **3 of the 9 agents** make LLM calls. The rest are deterministic — fast, 
 ### Customer Voice Interface
 - **3D Audio-Reactive Orb** — GLSL shader + react-three-fiber; pulses with your voice
 - **9 Indian Languages** — Hindi, Tamil, Telugu, Malayalam, Kannada, Bengali, Marathi, English, Hinglish
-- **Multilingual UI** — the interface itself switches language when you pick a language pill
-- **Real-Time Stage Stream** — watch each of the 9 pipeline stages animate over WebSocket
+- **Multilingual UI** — the interface itself switches language when you pick a language pill, pipeline stage names included
+- **Real-Time Stage Stream** — watch each of the 9 pipeline stages animate over WebSocket, with per-stage timings
 - **Voice + Text Input** — MediaRecorder API or keyboard
-- **TTS Playback** — hear the response in your chosen language (Bhashini; falls back to browser TTS)
+- **TTS Playback** — hear the response in your chosen language (Bhashini; falls back to browser TTS after 1.2 s)
 - **WS Reconnection** — 3× retry with 1s / 2s / 4s backoff on dropped connections
 
 ### AI Pipeline
 - Gemini 2.5 Flash — intent classification, resolution generation, response synthesis
 - Policy RAG — top-3 Chroma results for every query; 1-hour result cache
-- Deterministic escalation — 6 hard rules (sentiment, order value, refund SLA, payment anomalies, AI confidence)
+- Deterministic escalation — 6 hard rules, no LLM in the decision
 - Groq Whisper fallback if Bhashini STT is unavailable
 - Tenacity retry (3×) on every external call
 
@@ -97,8 +104,9 @@ Only **3 of the 9 agents** make LLM calls. The rest are deterministic — fast, 
 - **Overview** — 6 KPI cards, language volume bars, ticket-type breakdown, live escalation queue
 - **Tickets** — filterable list with priority/status badges
 - **Ticket Detail** — 3 tabs: Details, Agent Replay Timeline (full `agent_trace`), Handoff Note
-- **Escalations** — priority queue with Claim / Release workflow
-- **Analytics** — Recharts bar/pie/line charts
+- **Customers** — Customer 360: orders, line items, shipments, payments, sentiment timeline, ticket history
+- **Escalations** — priority queue with Claim / Release workflow, auto-refreshing
+- **Analytics** — Recharts bar/pie/area charts
 - **JWT Auth** — 8-hour tokens, route-guarded with Next.js middleware
 
 ### Observability
@@ -122,10 +130,10 @@ Only **3 of the 9 agents** make LLM calls. The rest are deterministic — fast, 
 | STT / TTS | Bhashini API (primary) · Groq Whisper (STT fallback) |
 | Vector Store | Chroma (embedded, persistent to disk) |
 | Database | PostgreSQL (Neon) via SQLAlchemy Async + asyncpg |
-| Session Cache | In-process Python dict (TTL-based, 50-turn history cap) |
+| Session Cache | Upstash Redis (multi-turn memory, rate limits, token revocation); degrades to an in-process per-worker store if unreachable |
 | Migrations | Alembic |
 | Error Tracking | Sentry (optional) |
-| Hosting | Vercel (frontend) · Render / Railway (backend) |
+| Hosting | Vercel (frontend) · Render (backend) |
 
 ---
 
@@ -137,6 +145,7 @@ Only **3 of the 9 agents** make LLM calls. The rest are deterministic — fast, 
 - [Gemini API key](https://ai.google.dev)
 - [Groq API key](https://console.groq.com) (free tier)
 - Bhashini credentials (optional — voice falls back to browser TTS without them)
+- Upstash Redis (optional — rate limiting and multi-turn memory degrade to per-worker without it)
 
 ### 1. Clone & configure
 
@@ -157,9 +166,11 @@ venv\Scripts\activate          # Windows
 
 pip install -r requirements.txt
 alembic upgrade head           # run migrations
-python -m app.utils.seed_db    # seed demo users, orders, tickets
+python -m app.utils.seed_db    # seed demo users, orders, shipments, payments
 uvicorn main:app --reload --port 8000
 ```
+
+> Seeding creates 8 customers with orders — but **no tickets**. Tickets are created by the pipeline, so run a query or two before expecting anything in the dashboard.
 
 ### 3. Frontend
 
@@ -176,6 +187,7 @@ npm run dev
 | http://localhost:3000 | Customer voice interface |
 | http://localhost:3000/login | Admin login (`ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`) |
 | http://localhost:3000/dashboard | Admin dashboard (requires login) |
+| http://localhost:3000/tests | The test suite, browsable |
 | http://localhost:8000/docs | FastAPI interactive docs |
 | http://localhost:8000/health | Health check (DB + Chroma) |
 | http://localhost:8000/metrics | Latency percentiles (P50/P95/P99) |
@@ -198,18 +210,18 @@ npm run dev
 
 ## Escalation Rules
 
-Six hard-coded triggers — no LLM involved:
+Six hard-coded triggers in `agent_escalation_check` — **no LLM makes the escalation decision**. If any rule fires, the ticket is escalated and the triggered rule names are written into the agent trace, so the reason survives into the handoff note.
 
-| # | Trigger | Threshold |
+| # | Trigger | Condition |
 |---|---------|-----------|
 | 1 | Angry / Very Angry sentiment | always |
-| 2 | High-value order with complaint | > ₹5,000 |
-| 3 | Refund pending beyond SLA | > 10 days |
-| 4 | Payment deducted, no order | always |
-| 5 | AI confidence too low | < 0.60 |
-| 6 | Repeated contact on same issue | 3+ tickets |
+| 2 | High-value order with negative sentiment | order > ₹5,000 |
+| 3 | Refund still pending | refund status is `Pending` |
+| 4 | Payment deducted but order failed or cancelled | always |
+| 5 | AI confidence too low | < 0.40 |
+| 6 | The resolution agent asked for a human | `recommended_action == "Escalate"` |
 
-Escalated tickets appear in the admin **Escalations** queue, where agents can Claim (lock) or Release them.
+Rule 6 is the one place a model influences the outcome — and even then it only *requests* escalation through a value the deterministic check reads. Escalated tickets appear in the admin **Escalations** queue, where agents can Claim (lock) or Release them.
 
 ---
 
@@ -220,37 +232,37 @@ VoiceCare-AI/
 ├── backend/
 │   ├── app/
 │   │   ├── agents/          # pipeline.py (9 agents) + state.py
-│   │   ├── api/             # voice.py, tickets.py, auth.py
-│   │   ├── core/            # config, database, errors, constants
+│   │   ├── api/             # voice.py, tickets.py, customers.py, auth.py
+│   │   ├── core/            # config, database, errors, constants, rate_limit
 │   │   ├── db/models.py     # 15 SQLAlchemy models
 │   │   ├── schemas/         # Pydantic request/response shapes
 │   │   └── services/        # gemini, bhashini, chroma, memory
 │   ├── data/policies/       # 12 grounded policy documents (Chroma source)
+│   ├── data/seed/           # demo customers, orders, shipments, payments
 │   ├── migrations/          # Alembic versions
-│   ├── tests/               # 57 unit tests (pytest + aiosqlite)
+│   ├── tests/               # 282 backend tests across 7 categories
 │   └── main.py              # FastAPI entry point
 ├── frontend/
 │   ├── src/
-│   │   ├── app/             # Next.js App Router pages
+│   │   ├── app/             # Next.js App Router pages (incl. /tests)
 │   │   ├── components/      # VoiceOrb, StatusStream, VoiceView, Footer, …
 │   │   ├── hooks/           # useVoiceInteraction (all voice state + WS)
 │   │   └── lib/
 │   │       ├── api.ts       # typed API client
 │   │       ├── constants.ts # LANGUAGES, LANG_TO_BCP47, LANG_TO_LOCALE
 │   │       └── i18n/        # I18nProvider + 8 language catalogs
-│   ├── sentry.client.config.ts
+│   ├── e2e/                 # Playwright specs
 │   └── next.config.ts
-├── .env.example
-└── CLAUDE.md                # AI assistant context file
+├── .github/workflows/       # CI + keep-alive ping
+├── render.yaml              # Render backend deploy config
+└── .env.example
 ```
 
 ---
 
 ## Running Tests
 
-324 automated tests across 8 categories. Browse them all — including what each
-one asserts — at **[/tests](http://localhost:3000/tests)**, a public page in the
-app itself.
+**324 automated tests, all passing** — 282 backend (pytest), plus frontend unit (Vitest) and end-to-end (Playwright). Browse every one of them, including what each asserts, at **[/tests](http://localhost:3000/tests)** — a public page in the app itself.
 
 ```bash
 cd backend
@@ -259,9 +271,7 @@ pytest --cov                        # with coverage; floor is set in .coveragerc
 pytest tests/security/test_auth.py  # a single file
 ```
 
-Tests are grouped by **what they prove**, not by where the file lives. The
-category is applied automatically from the directory, so `-m <category>` works
-without hand-marking anything:
+Tests are grouped by **what they prove**, not by where the file lives. The category is applied automatically from the directory, so `-m <category>` works without hand-marking anything:
 
 | Marker | Directory | Covers |
 |---|---|---|
@@ -278,7 +288,7 @@ pytest -m performance               # just the latency guards
 pytest -m "security or resilience"  # combine categories
 ```
 
-Frontend:
+Frontend — the eighth category, end-to-end, lives here:
 
 ```bash
 cd frontend
@@ -288,8 +298,7 @@ npm run e2e           # Playwright browser tests
 
 ### Refreshing the /tests page
 
-The page renders a committed JSON artefact, so it works on a deployed build with
-no test run. Regenerate it after adding or changing tests:
+The page renders a committed JSON artefact, so it works on a deployed build with no test run. Regenerate it after adding or changing tests:
 
 ```bash
 cd backend  && pytest -q            # writes backend/test-report.json
@@ -298,8 +307,7 @@ npm run e2e                         # writes frontend/test-reports/playwright.js
 npm run test:report                 # merges into src/data/test-report.json
 ```
 
-Each test's description on that page comes from its own docstring, so the page
-cannot drift from the suite.
+Each test's description on that page comes from its own docstring, so the page cannot drift from the suite.
 
 ---
 
@@ -317,42 +325,14 @@ Both sides no-op gracefully without a DSN — safe to leave unset in local dev.
 
 ---
 
-## Keeping the free-tier backend warm
+## Deployment notes
 
-Render's free plan spins the backend down after ~15 min idle. Waking it costs
-about **130 s** — container boot, `alembic upgrade head` from the Dockerfile
-`CMD`, then the Chroma embedder and memory-backend warmup in `main.py`'s
-lifespan. Warm, `/health` answers in ~2 s.
+Frontend deploys to Vercel; the backend runs on Render from `backend/Dockerfile`, which runs `alembic upgrade head` on every boot.
 
-An external uptime monitor keeps it above that idle threshold:
+**Free-tier cold starts.** Render spins the backend down after ~15 min idle, and waking it costs about **130 s** (container boot, migrations, then the Chroma embedder and memory-backend warmup in `main.py`'s lifespan). Warm, `/health` answers in ~2 s.
 
-| Setting | Value |
-|---------|-------|
-| URL | `https://voicecare-backend.onrender.com/health` |
-| Interval | every 5 min (3× margin under the ~15 min window) |
-| Expected status | `200` |
-| Alert after | 3 consecutive failures |
+An external uptime monitor pings `https://voicecare-backend.onrender.com/health` every 5 minutes to stay under that idle window — with the alert threshold set to 3 consecutive failures, because the first check after any spin-down is *expected* to fail (monitors cap timeouts near 30 s; a cold start needs ~130 s). It still hands Render the request that starts the boot, and the next check succeeds.
 
-`/health` also runs a DB `SELECT 1`, so this keeps the Neon connection warm too.
+`.github/workflows/keep-alive.yml` does the same ping as a secondary. Don't rely on a GitHub Actions `schedule:` alone for this — measured on this repo, a `*/10 * * * *` cron actually fired 68–211 minutes apart, so the workflow pings on its own timer inside the job rather than trusting the schedule. The full rationale is in that file's header comment.
 
-Expect the **first check after any spin-down or deploy to be logged as a
-failure** — these services cap request timeouts around 30 s and a cold start
-needs ~130 s. It still hands Render the request that starts the boot, and the
-next check succeeds. That is why the alert threshold is 3 rather than 1.
-
-Don't rely on a GitHub Actions `schedule:` for this. `.github/workflows/keep-alive.yml`
-does the same ping and is kept only as a secondary; measured on this repo, a
-`*/10 * * * *` cron actually fired 68–211 minutes apart, because GitHub runs
-scheduled workflows on a best-effort basis and drops ticks under load. Every gap
-over ~15 min is a spin-down. The workflow compensates by pinging on its own
-timer inside the job rather than trusting the schedule.
-
-Neither mechanism replaces the reactive handling in the frontend
-(`BackendWarmup.tsx`, the login page's "waking up" message) — those still cover
-deploys and the window before the first ping.
-
----
-
-## License
-
-MIT — build on it, learn from it, ship it.
+Neither mechanism replaces the reactive handling in the frontend (`BackendWarmup.tsx`, the login page's "waking up" message) — those still cover deploys and the window before the first ping.

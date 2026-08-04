@@ -2,8 +2,16 @@
 
 /* ============================================================
    CommerceMind VoiceCare AI — Design System v2
-   Dark, editorial, single warm accent.
-   Ref: 04_UI_UX_Design_Brief.md
+
+   Dark, editorial, single warm accent. The rules this file holds
+   itself to, so new components stay consistent with it:
+     - One brand accent (--accent coral) and nothing else decorative.
+       Status colors below are semantic and never used for branding.
+     - Depth comes from 1px borders and contrast, not shadows.
+     - Status is never signalled by color alone — always a word or
+       glyph alongside it.
+     - Tabular numerals globally so live figures don't jitter.
+     - Every animation is gated on prefers-reduced-motion.
    ============================================================ */
 
 :root {

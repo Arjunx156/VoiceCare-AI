@@ -96,9 +96,7 @@ audio_responses/
 
 # ---------- Local-only working docs (kept on disk, not in repo) ----------
 CLAUDE.md
-prompt.md
-prompt1.md
-IMPLEMENTATION_STATUS.md
+DEMO_SCRIPT.md
 .agents/
 
 # ---------- Misc ----------
