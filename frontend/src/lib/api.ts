@@ -31,15 +31,65 @@ type CacheEntry<T> = {
 
 const dashboardReadCache = new Map<string, CacheEntry<unknown>>();
 
+// Mirrored into sessionStorage so a hard reload, a 401 bounce or a login
+// redirect doesn't drop every tab back to a cold spinner. sessionStorage (not
+// local) so the cache dies with the tab and can't outlive the session.
+const CACHE_STORAGE_KEY = "vc_dashboard_cache_v1";
+
+function tokenFingerprint(): string {
+  const token = getAuthToken();
+  if (!token) return "anonymous";
+  // We only need to notice that the token *changed* (logout/login), not to
+  // recover it — so hash rather than copying the JWT into a second store.
+  let h = 0;
+  for (let i = 0; i < token.length; i++) h = (Math.imul(31, h) + token.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
 function dashboardCacheKey(path: string): string {
   // Keep cache entries scoped to the current admin session. A logout/login swap
   // must never show data fetched under an older token.
-  return `${getAuthToken() ?? "anonymous"}:${path}`;
+  return `${tokenFingerprint()}:${path}`;
+}
+
+let cacheHydrated = false;
+
+function hydrateDashboardCache(): void {
+  if (cacheHydrated || typeof window === "undefined") return;
+  cacheHydrated = true;
+  try {
+    const raw = sessionStorage.getItem(CACHE_STORAGE_KEY);
+    if (!raw) return;
+    const stored = JSON.parse(raw) as Record<string, { data: unknown; expiresAt: number }>;
+    for (const [key, entry] of Object.entries(stored)) {
+      dashboardReadCache.set(key, { data: entry.data, expiresAt: entry.expiresAt });
+    }
+  } catch {
+    // Corrupt or unavailable storage must never break a page load.
+    try {
+      sessionStorage.removeItem(CACHE_STORAGE_KEY);
+    } catch {}
+  }
+}
+
+function persistDashboardCache(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const stored: Record<string, { data: unknown; expiresAt: number }> = {};
+    for (const [key, entry] of dashboardReadCache.entries()) {
+      // In-flight promises aren't serialisable and aren't worth persisting.
+      if (entry.data !== undefined) stored[key] = { data: entry.data, expiresAt: entry.expiresAt };
+    }
+    sessionStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(stored));
+  } catch {
+    // Quota exceeded or private mode — the in-memory cache still works.
+  }
 }
 
 function clearDashboardReadCache(matcher?: (path: string) => boolean): void {
   if (!matcher) {
     dashboardReadCache.clear();
+    persistDashboardCache();
     return;
   }
 
@@ -47,6 +97,7 @@ function clearDashboardReadCache(matcher?: (path: string) => boolean): void {
     const path = key.slice(key.indexOf(":") + 1);
     if (matcher(path)) dashboardReadCache.delete(key);
   }
+  persistDashboardCache();
 }
 
 export function getAuthToken(): string | null {
@@ -185,13 +236,24 @@ async function apiFetch<T>(path: string, options?: RequestInit & { timeoutMs?: n
   const timeoutMs = options?.timeoutMs ?? 20_000;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+  // Chain a caller-supplied signal onto our own rather than replacing it.
+  // Passing `options.signal` straight to fetch() detaches the timeout — the
+  // timer still fires but nothing listens, so the request can hang forever.
+  // That is what happened to the escalations poll during a backend cold start.
+  // (Listener rather than AbortSignal.any() for older-browser support.)
+  const callerSignal = options?.signal;
+  if (callerSignal) {
+    if (callerSignal.aborted) controller.abort();
+    else callerSignal.addEventListener("abort", () => controller.abort(), { once: true });
+  }
+
   try {
     // Strip our custom option so it never reaches fetch()
     const fetchOptions = { ...(options ?? {}) };
     delete fetchOptions.timeoutMs;
     const res = await fetch(`${BACKEND_URL}${path}`, {
       ...fetchOptions,
-      signal: options?.signal ?? controller.signal,
+      signal: controller.signal,
       headers: { ...headers, ...(options?.headers as Record<string, string> | undefined) },
     });
 
@@ -219,37 +281,73 @@ async function apiFetch<T>(path: string, options?: RequestInit & { timeoutMs?: n
   }
 }
 
+/**
+ * Stale-while-revalidate read cache.
+ *
+ * A hard TTL miss used to mean a blank spinner on every tab, which is what made
+ * the dashboard feel slow even when data was seconds old. Now an expired entry
+ * is served immediately and refreshed behind the screen.
+ */
 async function cachedDashboardFetch<T>(
   path: string,
   options?: RequestInit & { timeoutMs?: number; ttlMs?: number },
 ): Promise<T> {
-  // Abortable requests are usually live polling. Do not satisfy those from a
-  // shared promise/cache because one caller's abort would affect another caller.
-  if (options?.signal) return apiFetch<T>(path, options);
+  hydrateDashboardCache();
 
   const ttlMs = options?.ttlMs ?? 60_000;
   const key = dashboardCacheKey(path);
   const now = Date.now();
   const cached = dashboardReadCache.get(key) as CacheEntry<T> | undefined;
 
-  if (cached?.data !== undefined && cached.expiresAt > now) {
-    return cached.data;
-  }
-  if (cached?.promise && cached.expiresAt > now) {
-    return cached.promise;
-  }
-
   const fetchOptions = { ...(options ?? {}) };
   delete fetchOptions.ttlMs;
 
-  const promise = apiFetch<T>(path, fetchOptions).then((data) => {
-    dashboardReadCache.set(key, { data, expiresAt: Date.now() + ttlMs });
-    return data;
-  }).catch((err) => {
-    dashboardReadCache.delete(key);
-    throw err;
-  });
+  const revalidate = (): Promise<T> =>
+    apiFetch<T>(path, fetchOptions)
+      .then((data) => {
+        dashboardReadCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+        persistDashboardCache();
+        return data;
+      })
+      .catch((err) => {
+        // Keep whatever we already hold — a failed refresh should not blank a
+        // working screen. Just mark it stale so the next read tries again.
+        const entry = dashboardReadCache.get(key) as CacheEntry<T> | undefined;
+        if (entry?.data !== undefined) {
+          dashboardReadCache.set(key, { data: entry.data, expiresAt: 0 });
+        } else {
+          dashboardReadCache.delete(key);
+        }
+        throw err;
+      });
 
+  // A polling caller (identified by passing its own AbortSignal) always goes to
+  // the network — that is the point of polling — but its result is written
+  // through to the cache so the next cold mount of that tab paints instantly.
+  // It also stays out of the shared promise below: one caller's abort must
+  // never cancel another caller's request.
+  if (options?.signal) return revalidate();
+
+  // Fresh.
+  if (cached?.data !== undefined && cached.expiresAt > now) return cached.data;
+
+  // Already in flight — join it instead of opening a second request.
+  if (cached?.promise && cached.expiresAt > now) return cached.promise;
+
+  // Stale but present: hand back the stale copy now, refresh behind it.
+  if (cached?.data !== undefined) {
+    const refresh = revalidate();
+    // Park the in-flight refresh alongside the stale data so concurrent callers
+    // reuse it rather than each firing their own.
+    dashboardReadCache.set(key, { data: cached.data, promise: refresh, expiresAt: now + ttlMs });
+    // Background refresh: the caller already has its answer, so a rejection
+    // here must not surface as an unhandled promise.
+    void refresh.catch(() => {});
+    return cached.data;
+  }
+
+  // Cold — nothing to show, so this one has to wait.
+  const promise = revalidate();
   dashboardReadCache.set(key, { promise, expiresAt: now + ttlMs });
   return promise;
 }
@@ -270,7 +368,10 @@ export async function getTickets(params?: {
 }
 
 export async function getEscalations(signal?: AbortSignal): Promise<TicketSummary[]> {
-  return cachedDashboardFetch<TicketSummary[]>("/api/tickets/escalations", { signal, ttlMs: signal ? 0 : 15_000 });
+  // One TTL for both call shapes: a polled result is written through to the
+  // cache with the same freshness as a plain read, so entering the tab shows
+  // the last polled value instantly instead of starting from a spinner.
+  return cachedDashboardFetch<TicketSummary[]>("/api/tickets/escalations", { signal, ttlMs: 15_000 });
 }
 
 export async function getTicketDetail(ticketId: string): Promise<TicketDetail> {

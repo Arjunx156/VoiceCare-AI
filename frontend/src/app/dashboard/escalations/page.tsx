@@ -3,7 +3,7 @@
 /**
  * Escalation queue — outlined panels for Low/Medium, raised card with a
  * corner badge for Critical/High. Semantic colors only (never --accent for
- * urgency). Polls every 5s with exponential backoff to 60s on errors.
+ * urgency). Polls on an interval with exponential backoff to 60s on errors.
  */
 
 import { useEffect, useState, useCallback } from "react";
@@ -15,6 +15,8 @@ import { formatDate } from "@/lib/format";
 import { useMotionSafe } from "@/lib/motion";
 import { priorityMeta, sentimentMeta } from "@/lib/theme";
 import { Badge, Button, EmptyState, LanguageLabel, LoadingBlock, Panel, PriorityBadge } from "@/components/ui";
+
+const POLL_INTERVAL_MS = 20_000;
 
 // "Raised" means Critical or High — needs attention now
 function isRaised(priority: string) {
@@ -45,7 +47,9 @@ export default function EscalationsPage() {
   useEffect(() => {
     let mounted = true;
     let controller = new AbortController();
-    let pollDelay = 5_000;       // start at 5 s, back off to 60 s on errors
+    // 20 s baseline. At 5 s this queue was the heaviest continuous load on a
+    // single-worker backend and slowed down every other tab the admin opened.
+    let pollDelay = POLL_INTERVAL_MS; // backs off to 60 s on errors
     let timeoutId: ReturnType<typeof setTimeout>;
     let hasLoadedOnce = false;
 
@@ -57,7 +61,7 @@ export default function EscalationsPage() {
         if (mounted) {
           setEscalations(data);
           setError(null);
-          pollDelay = 5_000; // reset backoff on success
+          pollDelay = POLL_INTERVAL_MS; // reset backoff on success
           hasLoadedOnce = true;
         }
       } catch (err: unknown) {
