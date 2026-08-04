@@ -1,66 +1,66 @@
 {
-  "generatedAt": "2026-07-28T20:13:00.619Z",
+  "generatedAt": "2026-08-04T05:08:46.704Z",
   "total": 324,
   "passed": 324,
   "failed": 0,
   "skipped": 0,
-  "durationMs": 20011.09,
+  "durationMs": 13169.44,
   "categories": [
     {
       "id": "unit",
       "total": 123,
       "passed": 123,
       "failed": 0,
-      "durationMs": 2904.01
+      "durationMs": 2032.55
     },
     {
       "id": "integration",
       "total": 49,
       "passed": 49,
       "failed": 0,
-      "durationMs": 1823.21
+      "durationMs": 1047.8
     },
     {
       "id": "contract",
       "total": 13,
       "passed": 13,
       "failed": 0,
-      "durationMs": 327.62
+      "durationMs": 143.19
     },
     {
       "id": "performance",
       "total": 8,
       "passed": 8,
       "failed": 0,
-      "durationMs": 674.23
+      "durationMs": 617.56
     },
     {
       "id": "security",
       "total": 65,
       "passed": 65,
       "failed": 0,
-      "durationMs": 7006.92
+      "durationMs": 4455.22
     },
     {
       "id": "multilingual",
       "total": 49,
       "passed": 49,
       "failed": 0,
-      "durationMs": 237.5
+      "durationMs": 348.34
     },
     {
       "id": "resilience",
       "total": 9,
       "passed": 9,
       "failed": 0,
-      "durationMs": 2536.6
+      "durationMs": 525.78
     },
     {
       "id": "e2e",
       "total": 8,
       "passed": 8,
       "failed": 0,
-      "durationMs": 4501
+      "durationMs": 3999
     }
   ],
   "tests": [
@@ -73,7 +73,7 @@
       "name": "Builder covers every rest field",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 1.52
+      "duration_ms": 0.31
     },
     {
       "id": "tests/contract/test_response_parity.py::test_rest_response_constructible_from_builder",
@@ -84,7 +84,7 @@
       "name": "Rest response constructible from builder",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.49
+      "duration_ms": 0.24
     },
     {
       "id": "tests/contract/test_wire_format.py::TestStageFrames::test_a_stage_that_short_circuits_still_reports_done",
@@ -95,7 +95,7 @@
       "name": "A stage that short circuits still reports done",
       "purpose": "Agent 5 can return early; the client must not be left waiting.",
       "outcome": "passed",
-      "duration_ms": 8.2
+      "duration_ms": 2.7
     },
     {
       "id": "tests/contract/test_wire_format.py::TestDeferredFrames::test_audio_frame_shape",
@@ -106,7 +106,7 @@
       "name": "Audio frame shape",
       "purpose": "The client reads response_audio_base64 off a frame typed \"audio\".",
       "outcome": "passed",
-      "duration_ms": 220.67
+      "duration_ms": 109.46
     },
     {
       "id": "tests/contract/test_wire_format.py::TestResponsePayloadParity::test_builder_supplies_every_documented_response_field",
@@ -117,7 +117,7 @@
       "name": "Builder supplies every documented response field",
       "purpose": "The WS answer frame carries the full REST response shape.",
       "outcome": "passed",
-      "duration_ms": 0.87
+      "duration_ms": 0.22
     },
     {
       "id": "tests/contract/test_wire_format.py::TestDeferredFrames::test_done_arrives_after_audio",
@@ -128,7 +128,7 @@
       "name": "Done arrives after audio",
       "purpose": "Ordering matters: audio must land before the client stops listening.",
       "outcome": "passed",
-      "duration_ms": 16.74
+      "duration_ms": 7.84
     },
     {
       "id": "tests/contract/test_wire_format.py::TestDeferredFrames::test_done_frame_is_terminal_and_complete",
@@ -139,7 +139,7 @@
       "name": "Done frame is terminal and complete",
       "purpose": "The terminal frame carries is_complete plus the settled ticket + trace.",
       "outcome": "passed",
-      "duration_ms": 13.49
+      "duration_ms": 4.28
     },
     {
       "id": "tests/contract/test_wire_format.py::TestStageFrames::test_each_stage_emits_a_start_then_a_timed_done",
@@ -150,7 +150,7 @@
       "name": "Each stage emits a start then a timed done",
       "purpose": "Every stage is bracketed, and only the done frame carries a duration.",
       "outcome": "passed",
-      "duration_ms": 23.3
+      "duration_ms": 6.24
     },
     {
       "id": "tests/contract/test_wire_format.py::TestAgentTraceShape::test_persisted_trace_includes_the_final_stage",
@@ -161,7 +161,7 @@
       "name": "Persisted trace includes the final stage",
       "purpose": "All 9 stages reach the stored ticket, including ticket creation itself.",
       "outcome": "passed",
-      "duration_ms": 19.76
+      "duration_ms": 3.69
     },
     {
       "id": "tests/contract/test_wire_format.py::TestResponsePayloadParity::test_response_is_constructible_from_the_builder",
@@ -172,7 +172,7 @@
       "name": "Response is constructible from the builder",
       "purpose": "Every builder value satisfies the schema's types.",
       "outcome": "passed",
-      "duration_ms": 0.89
+      "duration_ms": 0.19
     },
     {
       "id": "tests/contract/test_wire_format.py::TestStageFrames::test_stage_frames_carry_the_fields_the_client_narrows_on",
@@ -183,7 +183,7 @@
       "name": "Stage frames carry the fields the client narrows on",
       "purpose": "parseWsMessage keys off stage_number; StatusStream needs the rest.",
       "outcome": "passed",
-      "duration_ms": 20.28
+      "duration_ms": 7.7
     },
     {
       "id": "tests/contract/test_wire_format.py::TestResponsePayloadParity::test_total_duration_is_reported",
@@ -194,7 +194,7 @@
       "name": "Total duration is reported",
       "purpose": "The client renders this figure; it must never be absent.",
       "outcome": "passed",
-      "duration_ms": 0.63
+      "duration_ms": 0.16
     },
     {
       "id": "tests/contract/test_wire_format.py::TestAgentTraceShape::test_trace_steps_match_the_frontend_interface",
@@ -205,7 +205,7 @@
       "name": "Trace steps match the frontend interface",
       "purpose": "AgentTraceStep in api.ts mirrors these keys exactly.",
       "outcome": "passed",
-      "duration_ms": 0.78
+      "duration_ms": 0.16
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestCustomerProfile::test_a_malformed_id_is_a_client_error",
@@ -216,7 +216,7 @@
       "name": "A malformed id is a client error",
       "purpose": "Neither a UUID nor a CUST- code — reject cleanly, never 500.",
       "outcome": "passed",
-      "duration_ms": 8.87
+      "duration_ms": 4.55
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestCustomerProfile::test_an_unknown_customer_404s",
@@ -227,7 +227,7 @@
       "name": "An unknown customer 404s",
       "purpose": "A well-formed id for someone who does not exist.",
       "outcome": "passed",
-      "duration_ms": 15.3
+      "duration_ms": 6.71
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestAnalytics::test_analytics_returns_the_dashboard_header_figures",
@@ -238,7 +238,7 @@
       "name": "Analytics returns the dashboard header figures",
       "purpose": "Every KPI the overview renders is present and numeric.",
       "outcome": "passed",
-      "duration_ms": 37.27
+      "duration_ms": 10.38
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestAnalytics::test_analytics_survives_an_empty_database",
@@ -249,7 +249,7 @@
       "name": "Analytics survives an empty database",
       "purpose": "Zero tickets must not divide by zero in the resolution rate.",
       "outcome": "passed",
-      "duration_ms": 26.69
+      "duration_ms": 6.97
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestClaimAndRelease::test_claiming_an_unknown_ticket_404s",
@@ -260,7 +260,7 @@
       "name": "Claiming an unknown ticket 404s",
       "purpose": "No silent success on a ticket that isn't there.",
       "outcome": "passed",
-      "duration_ms": 11.25
+      "duration_ms": 4.75
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestClaimAndRelease::test_claiming_assigns_the_ticket_to_the_agent",
@@ -271,7 +271,7 @@
       "name": "Claiming assigns the ticket to the agent",
       "purpose": "Claiming records who owns the ticket, so two agents don't collide.",
       "outcome": "passed",
-      "duration_ms": 64.81
+      "duration_ms": 20.67
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestTicketDetail::test_detail_404s_for_an_unknown_ticket",
@@ -282,7 +282,7 @@
       "name": "Detail 404s for an unknown ticket",
       "purpose": "A well-formed id that does not exist is a clean 404.",
       "outcome": "passed",
-      "duration_ms": 15.73
+      "duration_ms": 3.45
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestTicketDetail::test_detail_includes_the_customer_and_agent_trace",
@@ -293,7 +293,7 @@
       "name": "Detail includes the customer and agent trace",
       "purpose": "Detail carries the trace the replay tab renders.",
       "outcome": "passed",
-      "duration_ms": 57.47
+      "duration_ms": 16.98
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestTicketDetail::test_detail_rejects_a_malformed_id",
@@ -304,7 +304,7 @@
       "name": "Detail rejects a malformed id",
       "purpose": "A non-UUID path segment is a client error, never a 500.",
       "outcome": "passed",
-      "duration_ms": 12.16
+      "duration_ms": 2.7
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestEscalationQueue::test_escalations_lists_only_escalated_tickets",
@@ -315,7 +315,7 @@
       "name": "Escalations lists only escalated tickets",
       "purpose": "The escalation queue is the human-attention list — nothing else.",
       "outcome": "passed",
-      "duration_ms": 39.48
+      "duration_ms": 13.3
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestHandoffNote::test_handoff_404s_for_an_unknown_ticket",
@@ -326,7 +326,7 @@
       "name": "Handoff 404s for an unknown ticket",
       "purpose": "Same clean 404 as the detail route.",
       "outcome": "passed",
-      "duration_ms": 13.29
+      "duration_ms": 4.7
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestHandoffNote::test_handoff_summarises_the_ticket_for_a_human",
@@ -337,7 +337,7 @@
       "name": "Handoff summarises the ticket for a human",
       "purpose": "The handoff note is what an agent reads before picking up the call.",
       "outcome": "passed",
-      "duration_ms": 54.4
+      "duration_ms": 24.4
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestCustomerProfile::test_profile_includes_the_ticket_history",
@@ -348,7 +348,7 @@
       "name": "Profile includes the ticket history",
       "purpose": "The agent needs to see prior contacts, not just this one.",
       "outcome": "passed",
-      "duration_ms": 44.25
+      "duration_ms": 31.72
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestCustomerProfile::test_profile_resolves_by_internal_uuid",
@@ -359,7 +359,7 @@
       "name": "Profile resolves by internal uuid",
       "purpose": "Bookmarked links use the UUID and must keep working.",
       "outcome": "passed",
-      "duration_ms": 63.64
+      "duration_ms": 40.37
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestCustomerProfile::test_profile_resolves_by_short_customer_code",
@@ -370,7 +370,7 @@
       "name": "Profile resolves by short customer code",
       "purpose": "Agents read the short CUST- code aloud; it has to resolve.",
       "outcome": "passed",
-      "duration_ms": 64.15
+      "duration_ms": 53.01
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestTicketQueue::test_queue_filters_by_priority",
@@ -381,7 +381,7 @@
       "name": "Queue filters by priority",
       "purpose": "Priority filtering lets an agent work the critical queue first.",
       "outcome": "passed",
-      "duration_ms": 34.08
+      "duration_ms": 20
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestTicketQueue::test_queue_filters_by_status",
@@ -392,7 +392,7 @@
       "name": "Queue filters by status",
       "purpose": "A status filter excludes tickets in other states.",
       "outcome": "passed",
-      "duration_ms": 43.24
+      "duration_ms": 13.54
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestTicketQueue::test_queue_respects_the_limit",
@@ -403,7 +403,7 @@
       "name": "Queue respects the limit",
       "purpose": "An unbounded queue would be a denial-of-service on the dashboard.",
       "outcome": "passed",
-      "duration_ms": 47.44
+      "duration_ms": 21.72
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestTicketQueue::test_queue_returns_the_seeded_ticket",
@@ -414,7 +414,7 @@
       "name": "Queue returns the seeded ticket",
       "purpose": "The list endpoint returns tickets with their summary fields.",
       "outcome": "passed",
-      "duration_ms": 126.68
+      "duration_ms": 39.11
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestClaimAndRelease::test_releasing_clears_the_assignment",
@@ -425,7 +425,7 @@
       "name": "Releasing clears the assignment",
       "purpose": "Releasing returns the ticket to the shared queue.",
       "outcome": "passed",
-      "duration_ms": 83.56
+      "duration_ms": 22.38
     },
     {
       "id": "tests/integration/test_dashboard_api.py::TestCustomerProfile::test_the_code_lookup_is_case_insensitive",
@@ -436,7 +436,7 @@
       "name": "The code lookup is case insensitive",
       "purpose": "A code typed in lower case still finds the customer.",
       "outcome": "passed",
-      "duration_ms": 69.76
+      "duration_ms": 47.13
     },
     {
       "id": "tests/integration/test_identity_verification.py::TestChallengeResponseLeakage::test_challenge_reveals_no_order_number_or_account_name",
@@ -447,7 +447,7 @@
       "name": "Challenge reveals no order number or account name",
       "purpose": "The RequestIdentity short-circuit must not speak account details.",
       "outcome": "passed",
-      "duration_ms": 6.94
+      "duration_ms": 2.91
     },
     {
       "id": "tests/integration/test_identity_verification.py::TestNameMatching::test_exact_and_first_name_matches",
@@ -458,7 +458,7 @@
       "name": "Exact and first name matches",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.8
+      "duration_ms": 0.31
     },
     {
       "id": "tests/integration/test_identity_verification.py::TestSessionVerificationPersistence::test_hydrated_verified_session_gets_full_data_without_name",
@@ -469,7 +469,7 @@
       "name": "Hydrated verified session gets full data without name",
       "purpose": "A later turn in a verified session gets data with no new corroboration.",
       "outcome": "passed",
-      "duration_ms": 38.99
+      "duration_ms": 135.28
     },
     {
       "id": "tests/integration/test_identity_verification.py::TestChallengeResponseLeakage::test_name_only_lookup_hides_candidate_order",
@@ -480,7 +480,7 @@
       "name": "Name only lookup hides candidate order",
       "purpose": "Name-only match stashes the order as candidate, never as order_data.",
       "outcome": "passed",
-      "duration_ms": 8.68
+      "duration_ms": 3.95
     },
     {
       "id": "tests/integration/test_identity_verification.py::TestNameMatching::test_non_matches",
@@ -491,7 +491,7 @@
       "name": "Non matches",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.53
+      "duration_ms": 0.28
     },
     {
       "id": "tests/integration/test_identity_verification.py::TestPhoneLookupCorroboration::test_phone_only_lookup_is_challenged",
@@ -502,7 +502,7 @@
       "name": "Phone only lookup is challenged",
       "purpose": "Phone alone: user is found but no sensitive data is populated.",
       "outcome": "passed",
-      "duration_ms": 279.63
+      "duration_ms": 104.61
     },
     {
       "id": "tests/integration/test_identity_verification.py::TestPhoneLookupCorroboration::test_phone_with_matching_name_is_verified",
@@ -513,7 +513,7 @@
       "name": "Phone with matching name is verified",
       "purpose": "Phone + first name matching the account verifies the caller.",
       "outcome": "passed",
-      "duration_ms": 11.56
+      "duration_ms": 6.41
     },
     {
       "id": "tests/integration/test_identity_verification.py::TestPhoneLookupCorroboration::test_phone_with_owned_order_id_is_verified",
@@ -524,7 +524,7 @@
       "name": "Phone with owned order id is verified",
       "purpose": "Phone + an order ID belonging to the account unlocks full data.",
       "outcome": "passed",
-      "duration_ms": 24.13
+      "duration_ms": 11.08
     },
     {
       "id": "tests/integration/test_identity_verification.py::TestPhoneLookupCorroboration::test_phone_with_wrong_name_is_challenged",
@@ -535,7 +535,7 @@
       "name": "Phone with wrong name is challenged",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 6
+      "duration_ms": 2.69
     },
     {
       "id": "tests/integration/test_identity_verification.py::TestSessionVerificationPersistence::test_unverified_turn_persists_unverified",
@@ -546,7 +546,7 @@
       "name": "Unverified turn persists unverified",
       "purpose": "A challenged turn must not mark the session as verified.",
       "outcome": "passed",
-      "duration_ms": 32.66
+      "duration_ms": 68.75
     },
     {
       "id": "tests/integration/test_identity_verification.py::TestPhoneLookupCorroboration::test_verified_session_skips_challenge",
@@ -557,7 +557,7 @@
       "name": "Verified session skips challenge",
       "purpose": "A session already verified (hydrated from context) is not re-challenged.",
       "outcome": "passed",
-      "duration_ms": 10.37
+      "duration_ms": 6.43
     },
     {
       "id": "tests/integration/test_identity_verification.py::TestSessionVerificationPersistence::test_verified_turn_persists_identity_to_session_context",
@@ -568,7 +568,7 @@
       "name": "Verified turn persists identity to session context",
       "purpose": "After a corroborated turn, identity_verified=True is stored for the session.",
       "outcome": "passed",
-      "duration_ms": 49.41
+      "duration_ms": 30.51
     },
     {
       "id": "tests/integration/test_pipeline.py::TestAgent9TicketReuse::test_distinct_sessions_create_distinct_tickets",
@@ -579,7 +579,7 @@
       "name": "Distinct sessions create distinct tickets",
       "purpose": "Different session_ids (e.g. after 'New conversation') get new tickets.",
       "outcome": "passed",
-      "duration_ms": 70.56
+      "duration_ms": 78.62
     },
     {
       "id": "tests/integration/test_pipeline.py::TestAgent9TicketReuse::test_followup_reuses_same_ticket",
@@ -590,7 +590,7 @@
       "name": "Followup reuses same ticket",
       "purpose": "A follow-up turn with the same session_id continues ONE ticket.",
       "outcome": "passed",
-      "duration_ms": 76.15
+      "duration_ms": 73.92
     },
     {
       "id": "tests/integration/test_pipeline.py::TestFullPipeline::test_full_pipeline_graceful_on_llm_failure",
@@ -601,7 +601,7 @@
       "name": "Full pipeline graceful on llm failure",
       "purpose": "Pipeline returns fallback response when Gemini is completely down.",
       "outcome": "passed",
-      "duration_ms": 21.14
+      "duration_ms": 10.9
     },
     {
       "id": "tests/integration/test_pipeline.py::TestFullPipeline::test_full_pipeline_records_agent_trace",
@@ -612,7 +612,7 @@
       "name": "Full pipeline records agent trace",
       "purpose": "Pipeline builds agent_trace with records for each completed stage.",
       "outcome": "passed",
-      "duration_ms": 21.75
+      "duration_ms": 12.53
     },
     {
       "id": "tests/integration/test_pipeline.py::TestFullPipeline::test_full_pipeline_text_input_english",
@@ -623,7 +623,7 @@
       "name": "Full pipeline text input english",
       "purpose": "Full 9-agent pipeline completes without error for English text input.",
       "outcome": "passed",
-      "duration_ms": 140.41
+      "duration_ms": 13.78
     },
     {
       "id": "tests/integration/test_pipeline.py::TestAgent3IntentClassification::test_intent_fallback_on_gemini_failure",
@@ -634,7 +634,7 @@
       "name": "Intent fallback on gemini failure",
       "purpose": "Falls back to general_inquiry when Gemini fails.",
       "outcome": "passed",
-      "duration_ms": 8.14
+      "duration_ms": 6.59
     },
     {
       "id": "tests/integration/test_pipeline.py::TestAgent3IntentClassification::test_intent_set_from_gemini",
@@ -645,7 +645,7 @@
       "name": "Intent set from gemini",
       "purpose": "Intent, sentiment, and priority derived from Gemini response.",
       "outcome": "passed",
-      "duration_ms": 3.94
+      "duration_ms": 5.1
     },
     {
       "id": "tests/integration/test_pipeline.py::TestAgent9SessionPersistence::test_invalid_session_id_does_not_crash",
@@ -656,7 +656,7 @@
       "name": "Invalid session id does not crash",
       "purpose": "Invalid session_id string → error set gracefully, no crash.",
       "outcome": "passed",
-      "duration_ms": 14.62
+      "duration_ms": 11.01
     },
     {
       "id": "tests/integration/test_pipeline.py::TestAgent9SessionPersistence::test_missing_session_id_uses_default",
@@ -667,7 +667,7 @@
       "name": "Missing session id uses default",
       "purpose": "PipelineState always has a valid session_id via default_factory; agent_ticket_creation must not crash.",
       "outcome": "passed",
-      "duration_ms": 12.57
+      "duration_ms": 8.02
     },
     {
       "id": "tests/integration/test_pipeline.py::TestAgent1VoiceIntake::test_no_input_sets_error",
@@ -678,7 +678,7 @@
       "name": "No input sets error",
       "purpose": "Missing audio AND text → error state set.",
       "outcome": "passed",
-      "duration_ms": 7.36
+      "duration_ms": 3.52
     },
     {
       "id": "tests/integration/test_pipeline.py::TestAgent2CustomerIdentification::test_phone_lookup_populates_user_data",
@@ -689,7 +689,7 @@
       "name": "Phone lookup populates user data",
       "purpose": "DB lookup by phone populates user_data dict.",
       "outcome": "passed",
-      "duration_ms": 9.83
+      "duration_ms": 4.69
     },
     {
       "id": "tests/integration/test_pipeline.py::TestAgent4PolicyRAG::test_policy_context_set_from_chroma",
@@ -700,7 +700,7 @@
       "name": "Policy context set from chroma",
       "purpose": "Policy context string is populated from ChromaDB.",
       "outcome": "passed",
-      "duration_ms": 6.47
+      "duration_ms": 8.63
     },
     {
       "id": "tests/integration/test_pipeline.py::TestAgent4PolicyRAG::test_policy_rag_fallback_on_chroma_failure",
@@ -711,7 +711,7 @@
       "name": "Policy rag fallback on chroma failure",
       "purpose": "Sets empty/fallback context when ChromaDB fails.",
       "outcome": "passed",
-      "duration_ms": 6.74
+      "duration_ms": 9.99
     },
     {
       "id": "tests/integration/test_pipeline.py::TestAgent1VoiceIntake::test_text_input_sets_transcript",
@@ -722,7 +722,7 @@
       "name": "Text input sets transcript",
       "purpose": "Text-only input: transcript fields populated, no Bhashini call.",
       "outcome": "passed",
-      "duration_ms": 4.21
+      "duration_ms": 3.6
     },
     {
       "id": "tests/integration/test_pipeline.py::TestAgent2CustomerIdentification::test_unknown_phone_returns_no_user_data",
@@ -733,7 +733,7 @@
       "name": "Unknown phone returns no user data",
       "purpose": "Unknown phone number: user_data stays None, no error.",
       "outcome": "passed",
-      "duration_ms": 4.73
+      "duration_ms": 5.8
     },
     {
       "id": "tests/integration/test_pipeline.py::TestAgent9SessionPersistence::test_valid_session_id_persisted",
@@ -744,7 +744,7 @@
       "name": "Valid session id persisted",
       "purpose": "Valid UUID session_id is stored without error.",
       "outcome": "passed",
-      "duration_ms": 11.37
+      "duration_ms": 9.35
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestLanguageCodeMapping::test_every_language_maps_to_its_bcp47_code[Bengali-bn-\\u0986\\u09ae\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0995\\u09cb\\u09a5\\u09be\\u09af\\u09bc?-\\u0986\\u09aa\\u09a8\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0986\\u0997\\u09be\\u09ae\\u09c0\\u0995\\u09be\\u09b2 \\u0986\\u09b8\\u09ac\\u09c7\\u0964]",
@@ -755,7 +755,7 @@
       "name": "Every language maps to its bcp47 code [Bengali-bn-\\u0986\\u09ae\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0995\\u09cb\\u09a5\\u09be\\u09af\\u09bc?-\\u0986\\u09aa\\u09a8\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0986\\u0997\\u09be\\u09ae\\u09c0\\u0995\\u09be\\u09b2 \\u0986\\u09b8\\u09ac\\u09c7\\u0964]",
       "purpose": "The display name the UI sends resolves to the code services expect.",
       "outcome": "passed",
-      "duration_ms": 0.39
+      "duration_ms": 0.28
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestLanguageCodeMapping::test_every_language_maps_to_its_bcp47_code[English-en-Where is my order?-Your order arrives tomorrow.]",
@@ -766,7 +766,7 @@
       "name": "Every language maps to its bcp47 code [English-en-Where is my order?-Your order arrives tomorrow.]",
       "purpose": "The display name the UI sends resolves to the code services expect.",
       "outcome": "passed",
-      "duration_ms": 0.36
+      "duration_ms": 0.24
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestLanguageCodeMapping::test_every_language_maps_to_its_bcp47_code[Hindi-hi-\\u092e\\u0947\\u0930\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0939\\u093e\\u0901 \\u0939\\u0948?-\\u0906\\u092a\\u0915\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0932 \\u092a\\u0939\\u0941\\u0901\\u091a\\u0947\\u0917\\u093e\\u0964]",
@@ -777,7 +777,7 @@
       "name": "Every language maps to its bcp47 code [Hindi-hi-\\u092e\\u0947\\u0930\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0939\\u093e\\u0901 \\u0939\\u0948?-\\u0906\\u092a\\u0915\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0932 \\u092a\\u0939\\u0941\\u0901\\u091a\\u0947\\u0917\\u093e\\u0964]",
       "purpose": "The display name the UI sends resolves to the code services expect.",
       "outcome": "passed",
-      "duration_ms": 0.44
+      "duration_ms": 0.29
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestLanguageCodeMapping::test_every_language_maps_to_its_bcp47_code[Hinglish-hi-Mera order kahan hai?-Aapka order kal aayega.]",
@@ -788,7 +788,7 @@
       "name": "Every language maps to its bcp47 code [Hinglish-hi-Mera order kahan hai?-Aapka order kal aayega.]",
       "purpose": "The display name the UI sends resolves to the code services expect.",
       "outcome": "passed",
-      "duration_ms": 0.34
+      "duration_ms": 0.22
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestLanguageCodeMapping::test_every_language_maps_to_its_bcp47_code[Kannada-kn-\\u0ca8\\u0ca8\\u0ccd\\u0ca8 \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0c8e\\u0cb2\\u0ccd\\u0cb2\\u0cbf\\u0ca6\\u0cc6?-\\u0ca8\\u0cbf\\u0cae\\u0ccd\\u0cae \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0ca8\\u0cbe\\u0cb3\\u0cc6 \\u0cac\\u0cb0\\u0cc1\\u0ca4\\u0ccd\\u0ca4\\u0ca6\\u0cc6.]",
@@ -799,7 +799,7 @@
       "name": "Every language maps to its bcp47 code [Kannada-kn-\\u0ca8\\u0ca8\\u0ccd\\u0ca8 \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0c8e\\u0cb2\\u0ccd\\u0cb2\\u0cbf\\u0ca6\\u0cc6?-\\u0ca8\\u0cbf\\u0cae\\u0ccd\\u0cae \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0ca8\\u0cbe\\u0cb3\\u0cc6 \\u0cac\\u0cb0\\u0cc1\\u0ca4\\u0ccd\\u0ca4\\u0ca6\\u0cc6.]",
       "purpose": "The display name the UI sends resolves to the code services expect.",
       "outcome": "passed",
-      "duration_ms": 0.34
+      "duration_ms": 0.38
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestLanguageCodeMapping::test_every_language_maps_to_its_bcp47_code[Malayalam-ml-\\u0d0e\\u0d28\\u0d4d\\u0d31\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d0e\\u0d35\\u0d3f\\u0d1f\\u0d46\\u0d2f\\u0d3e\\u0d23\\u0d4d?-\\u0d28\\u0d3f\\u0d19\\u0d4d\\u0d19\\u0d33\\u0d41\\u0d1f\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d28\\u0d3e\\u0d33\\u0d46 \\u0d0e\\u0d24\\u0d4d\\u0d24\\u0d41\\u0d02.]",
@@ -810,7 +810,7 @@
       "name": "Every language maps to its bcp47 code [Malayalam-ml-\\u0d0e\\u0d28\\u0d4d\\u0d31\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d0e\\u0d35\\u0d3f\\u0d1f\\u0d46\\u0d2f\\u0d3e\\u0d23\\u0d4d?-\\u0d28\\u0d3f\\u0d19\\u0d4d\\u0d19\\u0d33\\u0d41\\u0d1f\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d28\\u0d3e\\u0d33\\u0d46 \\u0d0e\\u0d24\\u0d4d\\u0d24\\u0d41\\u0d02.]",
       "purpose": "The display name the UI sends resolves to the code services expect.",
       "outcome": "passed",
-      "duration_ms": 0.41
+      "duration_ms": 0.22
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestLanguageCodeMapping::test_every_language_maps_to_its_bcp47_code[Marathi-mr-\\u092e\\u093e\\u091d\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0941\\u0920\\u0947 \\u0906\\u0939\\u0947?-\\u0924\\u0941\\u092e\\u091a\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0909\\u0926\\u094d\\u092f\\u093e \\u092f\\u0947\\u0908\\u0932.]",
@@ -821,7 +821,7 @@
       "name": "Every language maps to its bcp47 code [Marathi-mr-\\u092e\\u093e\\u091d\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0941\\u0920\\u0947 \\u0906\\u0939\\u0947?-\\u0924\\u0941\\u092e\\u091a\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0909\\u0926\\u094d\\u092f\\u093e \\u092f\\u0947\\u0908\\u0932.]",
       "purpose": "The display name the UI sends resolves to the code services expect.",
       "outcome": "passed",
-      "duration_ms": 0.37
+      "duration_ms": 0.25
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestLanguageCodeMapping::test_every_language_maps_to_its_bcp47_code[Tamil-ta-\\u0b8e\\u0ba9\\u0ba4\\u0bc1 \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0b8e\\u0b99\\u0bcd\\u0b95\\u0bc7?-\\u0b89\\u0b99\\u0bcd\\u0b95\\u0bb3\\u0bcd \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0ba8\\u0bbe\\u0bb3\\u0bc8 \\u0bb5\\u0bb0\\u0bc1\\u0bae\\u0bcd.]",
@@ -832,7 +832,7 @@
       "name": "Every language maps to its bcp47 code [Tamil-ta-\\u0b8e\\u0ba9\\u0ba4\\u0bc1 \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0b8e\\u0b99\\u0bcd\\u0b95\\u0bc7?-\\u0b89\\u0b99\\u0bcd\\u0b95\\u0bb3\\u0bcd \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0ba8\\u0bbe\\u0bb3\\u0bc8 \\u0bb5\\u0bb0\\u0bc1\\u0bae\\u0bcd.]",
       "purpose": "The display name the UI sends resolves to the code services expect.",
       "outcome": "passed",
-      "duration_ms": 0.42
+      "duration_ms": 0.33
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestLanguageCodeMapping::test_every_language_maps_to_its_bcp47_code[Telugu-te-\\u0c28\\u0c3e \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c0e\\u0c15\\u0c4d\\u0c15\\u0c21 \\u0c09\\u0c02\\u0c26\\u0c3f?-\\u0c2e\\u0c40 \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c30\\u0c47\\u0c2a\\u0c41 \\u0c35\\u0c38\\u0c4d\\u0c24\\u0c41\\u0c02\\u0c26\\u0c3f.]",
@@ -843,7 +843,7 @@
       "name": "Every language maps to its bcp47 code [Telugu-te-\\u0c28\\u0c3e \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c0e\\u0c15\\u0c4d\\u0c15\\u0c21 \\u0c09\\u0c02\\u0c26\\u0c3f?-\\u0c2e\\u0c40 \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c30\\u0c47\\u0c2a\\u0c41 \\u0c35\\u0c38\\u0c4d\\u0c24\\u0c41\\u0c02\\u0c26\\u0c3f.]",
       "purpose": "The display name the UI sends resolves to the code services expect.",
       "outcome": "passed",
-      "duration_ms": 0.34
+      "duration_ms": 0.25
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestLanguageCodeMapping::test_frontend_and_backend_language_lists_agree",
@@ -854,7 +854,7 @@
       "name": "Frontend and backend language lists agree",
       "purpose": "The two hardcoded language lists have not drifted apart.",
       "outcome": "passed",
-      "duration_ms": 3.57
+      "duration_ms": 0.96
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestLanguageCodeMapping::test_hinglish_is_served_by_the_hindi_voice",
@@ -865,7 +865,7 @@
       "name": "Hinglish is served by the hindi voice",
       "purpose": "Hinglish has no speech model of its own — Hindi is the deliberate choice.",
       "outcome": "passed",
-      "duration_ms": 0.39
+      "duration_ms": 0.53
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_intake_preserves_the_original_utterance[Bengali-bn-\\u0986\\u09ae\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0995\\u09cb\\u09a5\\u09be\\u09af\\u09bc?-\\u0986\\u09aa\\u09a8\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0986\\u0997\\u09be\\u09ae\\u09c0\\u0995\\u09be\\u09b2 \\u0986\\u09b8\\u09ac\\u09c7\\u0964]",
@@ -876,7 +876,7 @@
       "name": "Intake preserves the original utterance [Bengali-bn-\\u0986\\u09ae\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0995\\u09cb\\u09a5\\u09be\\u09af\\u09bc?-\\u0986\\u09aa\\u09a8\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0986\\u0997\\u09be\\u09ae\\u09c0\\u0995\\u09be\\u09b2 \\u0986\\u09b8\\u09ac\\u09c7\\u0964]",
       "purpose": "The customer's own words are kept alongside the English translation.",
       "outcome": "passed",
-      "duration_ms": 9.53
+      "duration_ms": 4.12
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_intake_preserves_the_original_utterance[English-en-Where is my order?-Your order arrives tomorrow.]",
@@ -887,7 +887,7 @@
       "name": "Intake preserves the original utterance [English-en-Where is my order?-Your order arrives tomorrow.]",
       "purpose": "The customer's own words are kept alongside the English translation.",
       "outcome": "passed",
-      "duration_ms": 8.09
+      "duration_ms": 4.59
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_intake_preserves_the_original_utterance[Hindi-hi-\\u092e\\u0947\\u0930\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0939\\u093e\\u0901 \\u0939\\u0948?-\\u0906\\u092a\\u0915\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0932 \\u092a\\u0939\\u0941\\u0901\\u091a\\u0947\\u0917\\u093e\\u0964]",
@@ -898,7 +898,7 @@
       "name": "Intake preserves the original utterance [Hindi-hi-\\u092e\\u0947\\u0930\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0939\\u093e\\u0901 \\u0939\\u0948?-\\u0906\\u092a\\u0915\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0932 \\u092a\\u0939\\u0941\\u0901\\u091a\\u0947\\u0917\\u093e\\u0964]",
       "purpose": "The customer's own words are kept alongside the English translation.",
       "outcome": "passed",
-      "duration_ms": 7.78
+      "duration_ms": 6.26
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_intake_preserves_the_original_utterance[Hinglish-hi-Mera order kahan hai?-Aapka order kal aayega.]",
@@ -909,7 +909,7 @@
       "name": "Intake preserves the original utterance [Hinglish-hi-Mera order kahan hai?-Aapka order kal aayega.]",
       "purpose": "The customer's own words are kept alongside the English translation.",
       "outcome": "passed",
-      "duration_ms": 7.98
+      "duration_ms": 7.09
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_intake_preserves_the_original_utterance[Kannada-kn-\\u0ca8\\u0ca8\\u0ccd\\u0ca8 \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0c8e\\u0cb2\\u0ccd\\u0cb2\\u0cbf\\u0ca6\\u0cc6?-\\u0ca8\\u0cbf\\u0cae\\u0ccd\\u0cae \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0ca8\\u0cbe\\u0cb3\\u0cc6 \\u0cac\\u0cb0\\u0cc1\\u0ca4\\u0ccd\\u0ca4\\u0ca6\\u0cc6.]",
@@ -920,7 +920,7 @@
       "name": "Intake preserves the original utterance [Kannada-kn-\\u0ca8\\u0ca8\\u0ccd\\u0ca8 \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0c8e\\u0cb2\\u0ccd\\u0cb2\\u0cbf\\u0ca6\\u0cc6?-\\u0ca8\\u0cbf\\u0cae\\u0ccd\\u0cae \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0ca8\\u0cbe\\u0cb3\\u0cc6 \\u0cac\\u0cb0\\u0cc1\\u0ca4\\u0ccd\\u0ca4\\u0ca6\\u0cc6.]",
       "purpose": "The customer's own words are kept alongside the English translation.",
       "outcome": "passed",
-      "duration_ms": 6.41
+      "duration_ms": 8.27
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_intake_preserves_the_original_utterance[Malayalam-ml-\\u0d0e\\u0d28\\u0d4d\\u0d31\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d0e\\u0d35\\u0d3f\\u0d1f\\u0d46\\u0d2f\\u0d3e\\u0d23\\u0d4d?-\\u0d28\\u0d3f\\u0d19\\u0d4d\\u0d19\\u0d33\\u0d41\\u0d1f\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d28\\u0d3e\\u0d33\\u0d46 \\u0d0e\\u0d24\\u0d4d\\u0d24\\u0d41\\u0d02.]",
@@ -931,7 +931,7 @@
       "name": "Intake preserves the original utterance [Malayalam-ml-\\u0d0e\\u0d28\\u0d4d\\u0d31\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d0e\\u0d35\\u0d3f\\u0d1f\\u0d46\\u0d2f\\u0d3e\\u0d23\\u0d4d?-\\u0d28\\u0d3f\\u0d19\\u0d4d\\u0d19\\u0d33\\u0d41\\u0d1f\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d28\\u0d3e\\u0d33\\u0d46 \\u0d0e\\u0d24\\u0d4d\\u0d24\\u0d41\\u0d02.]",
       "purpose": "The customer's own words are kept alongside the English translation.",
       "outcome": "passed",
-      "duration_ms": 9.23
+      "duration_ms": 150.75
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_intake_preserves_the_original_utterance[Marathi-mr-\\u092e\\u093e\\u091d\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0941\\u0920\\u0947 \\u0906\\u0939\\u0947?-\\u0924\\u0941\\u092e\\u091a\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0909\\u0926\\u094d\\u092f\\u093e \\u092f\\u0947\\u0908\\u0932.]",
@@ -942,7 +942,7 @@
       "name": "Intake preserves the original utterance [Marathi-mr-\\u092e\\u093e\\u091d\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0941\\u0920\\u0947 \\u0906\\u0939\\u0947?-\\u0924\\u0941\\u092e\\u091a\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0909\\u0926\\u094d\\u092f\\u093e \\u092f\\u0947\\u0908\\u0932.]",
       "purpose": "The customer's own words are kept alongside the English translation.",
       "outcome": "passed",
-      "duration_ms": 10.01
+      "duration_ms": 5.12
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_intake_preserves_the_original_utterance[Tamil-ta-\\u0b8e\\u0ba9\\u0ba4\\u0bc1 \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0b8e\\u0b99\\u0bcd\\u0b95\\u0bc7?-\\u0b89\\u0b99\\u0bcd\\u0b95\\u0bb3\\u0bcd \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0ba8\\u0bbe\\u0bb3\\u0bc8 \\u0bb5\\u0bb0\\u0bc1\\u0bae\\u0bcd.]",
@@ -953,7 +953,7 @@
       "name": "Intake preserves the original utterance [Tamil-ta-\\u0b8e\\u0ba9\\u0ba4\\u0bc1 \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0b8e\\u0b99\\u0bcd\\u0b95\\u0bc7?-\\u0b89\\u0b99\\u0bcd\\u0b95\\u0bb3\\u0bcd \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0ba8\\u0bbe\\u0bb3\\u0bc8 \\u0bb5\\u0bb0\\u0bc1\\u0bae\\u0bcd.]",
       "purpose": "The customer's own words are kept alongside the English translation.",
       "outcome": "passed",
-      "duration_ms": 6.95
+      "duration_ms": 4.47
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_intake_preserves_the_original_utterance[Telugu-te-\\u0c28\\u0c3e \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c0e\\u0c15\\u0c4d\\u0c15\\u0c21 \\u0c09\\u0c02\\u0c26\\u0c3f?-\\u0c2e\\u0c40 \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c30\\u0c47\\u0c2a\\u0c41 \\u0c35\\u0c38\\u0c4d\\u0c24\\u0c41\\u0c02\\u0c26\\u0c3f.]",
@@ -964,7 +964,7 @@
       "name": "Intake preserves the original utterance [Telugu-te-\\u0c28\\u0c3e \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c0e\\u0c15\\u0c4d\\u0c15\\u0c21 \\u0c09\\u0c02\\u0c26\\u0c3f?-\\u0c2e\\u0c40 \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c30\\u0c47\\u0c2a\\u0c41 \\u0c35\\u0c38\\u0c4d\\u0c24\\u0c41\\u0c02\\u0c26\\u0c3f.]",
       "purpose": "The customer's own words are kept alongside the English translation.",
       "outcome": "passed",
-      "duration_ms": 6.89
+      "duration_ms": 7.62
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestBrowserTranscriptAcrossScripts::test_native_script_utterances_clear_the_trust_threshold[Bengali-bn-\\u0986\\u09ae\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0995\\u09cb\\u09a5\\u09be\\u09af\\u09bc?-\\u0986\\u09aa\\u09a8\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0986\\u0997\\u09be\\u09ae\\u09c0\\u0995\\u09be\\u09b2 \\u0986\\u09b8\\u09ac\\u09c7\\u0964]",
@@ -975,7 +975,7 @@
       "name": "Native script utterances clear the trust threshold [Bengali-bn-\\u0986\\u09ae\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0995\\u09cb\\u09a5\\u09be\\u09af\\u09bc?-\\u0986\\u09aa\\u09a8\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0986\\u0997\\u09be\\u09ae\\u09c0\\u0995\\u09be\\u09b2 \\u0986\\u09b8\\u09ac\\u09c7\\u0964]",
       "purpose": "The Whisper-skip length guard does not disadvantage dense scripts.",
       "outcome": "passed",
-      "duration_ms": 0.38
+      "duration_ms": 0.22
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestBrowserTranscriptAcrossScripts::test_native_script_utterances_clear_the_trust_threshold[English-en-Where is my order?-Your order arrives tomorrow.]",
@@ -986,7 +986,7 @@
       "name": "Native script utterances clear the trust threshold [English-en-Where is my order?-Your order arrives tomorrow.]",
       "purpose": "The Whisper-skip length guard does not disadvantage dense scripts.",
       "outcome": "passed",
-      "duration_ms": 0.46
+      "duration_ms": 0.33
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestBrowserTranscriptAcrossScripts::test_native_script_utterances_clear_the_trust_threshold[Hindi-hi-\\u092e\\u0947\\u0930\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0939\\u093e\\u0901 \\u0939\\u0948?-\\u0906\\u092a\\u0915\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0932 \\u092a\\u0939\\u0941\\u0901\\u091a\\u0947\\u0917\\u093e\\u0964]",
@@ -997,7 +997,7 @@
       "name": "Native script utterances clear the trust threshold [Hindi-hi-\\u092e\\u0947\\u0930\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0939\\u093e\\u0901 \\u0939\\u0948?-\\u0906\\u092a\\u0915\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0932 \\u092a\\u0939\\u0941\\u0901\\u091a\\u0947\\u0917\\u093e\\u0964]",
       "purpose": "The Whisper-skip length guard does not disadvantage dense scripts.",
       "outcome": "passed",
-      "duration_ms": 0.43
+      "duration_ms": 0.3
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestBrowserTranscriptAcrossScripts::test_native_script_utterances_clear_the_trust_threshold[Hinglish-hi-Mera order kahan hai?-Aapka order kal aayega.]",
@@ -1008,7 +1008,7 @@
       "name": "Native script utterances clear the trust threshold [Hinglish-hi-Mera order kahan hai?-Aapka order kal aayega.]",
       "purpose": "The Whisper-skip length guard does not disadvantage dense scripts.",
       "outcome": "passed",
-      "duration_ms": 0.38
+      "duration_ms": 0.28
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestBrowserTranscriptAcrossScripts::test_native_script_utterances_clear_the_trust_threshold[Kannada-kn-\\u0ca8\\u0ca8\\u0ccd\\u0ca8 \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0c8e\\u0cb2\\u0ccd\\u0cb2\\u0cbf\\u0ca6\\u0cc6?-\\u0ca8\\u0cbf\\u0cae\\u0ccd\\u0cae \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0ca8\\u0cbe\\u0cb3\\u0cc6 \\u0cac\\u0cb0\\u0cc1\\u0ca4\\u0ccd\\u0ca4\\u0ca6\\u0cc6.]",
@@ -1019,7 +1019,7 @@
       "name": "Native script utterances clear the trust threshold [Kannada-kn-\\u0ca8\\u0ca8\\u0ccd\\u0ca8 \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0c8e\\u0cb2\\u0ccd\\u0cb2\\u0cbf\\u0ca6\\u0cc6?-\\u0ca8\\u0cbf\\u0cae\\u0ccd\\u0cae \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0ca8\\u0cbe\\u0cb3\\u0cc6 \\u0cac\\u0cb0\\u0cc1\\u0ca4\\u0ccd\\u0ca4\\u0ca6\\u0cc6.]",
       "purpose": "The Whisper-skip length guard does not disadvantage dense scripts.",
       "outcome": "passed",
-      "duration_ms": 0.45
+      "duration_ms": 0.23
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestBrowserTranscriptAcrossScripts::test_native_script_utterances_clear_the_trust_threshold[Malayalam-ml-\\u0d0e\\u0d28\\u0d4d\\u0d31\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d0e\\u0d35\\u0d3f\\u0d1f\\u0d46\\u0d2f\\u0d3e\\u0d23\\u0d4d?-\\u0d28\\u0d3f\\u0d19\\u0d4d\\u0d19\\u0d33\\u0d41\\u0d1f\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d28\\u0d3e\\u0d33\\u0d46 \\u0d0e\\u0d24\\u0d4d\\u0d24\\u0d41\\u0d02.]",
@@ -1030,7 +1030,7 @@
       "name": "Native script utterances clear the trust threshold [Malayalam-ml-\\u0d0e\\u0d28\\u0d4d\\u0d31\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d0e\\u0d35\\u0d3f\\u0d1f\\u0d46\\u0d2f\\u0d3e\\u0d23\\u0d4d?-\\u0d28\\u0d3f\\u0d19\\u0d4d\\u0d19\\u0d33\\u0d41\\u0d1f\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d28\\u0d3e\\u0d33\\u0d46 \\u0d0e\\u0d24\\u0d4d\\u0d24\\u0d41\\u0d02.]",
       "purpose": "The Whisper-skip length guard does not disadvantage dense scripts.",
       "outcome": "passed",
-      "duration_ms": 0.35
+      "duration_ms": 0.65
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestBrowserTranscriptAcrossScripts::test_native_script_utterances_clear_the_trust_threshold[Marathi-mr-\\u092e\\u093e\\u091d\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0941\\u0920\\u0947 \\u0906\\u0939\\u0947?-\\u0924\\u0941\\u092e\\u091a\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0909\\u0926\\u094d\\u092f\\u093e \\u092f\\u0947\\u0908\\u0932.]",
@@ -1041,7 +1041,7 @@
       "name": "Native script utterances clear the trust threshold [Marathi-mr-\\u092e\\u093e\\u091d\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0941\\u0920\\u0947 \\u0906\\u0939\\u0947?-\\u0924\\u0941\\u092e\\u091a\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0909\\u0926\\u094d\\u092f\\u093e \\u092f\\u0947\\u0908\\u0932.]",
       "purpose": "The Whisper-skip length guard does not disadvantage dense scripts.",
       "outcome": "passed",
-      "duration_ms": 0.34
+      "duration_ms": 0.28
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestBrowserTranscriptAcrossScripts::test_native_script_utterances_clear_the_trust_threshold[Tamil-ta-\\u0b8e\\u0ba9\\u0ba4\\u0bc1 \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0b8e\\u0b99\\u0bcd\\u0b95\\u0bc7?-\\u0b89\\u0b99\\u0bcd\\u0b95\\u0bb3\\u0bcd \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0ba8\\u0bbe\\u0bb3\\u0bc8 \\u0bb5\\u0bb0\\u0bc1\\u0bae\\u0bcd.]",
@@ -1052,7 +1052,7 @@
       "name": "Native script utterances clear the trust threshold [Tamil-ta-\\u0b8e\\u0ba9\\u0ba4\\u0bc1 \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0b8e\\u0b99\\u0bcd\\u0b95\\u0bc7?-\\u0b89\\u0b99\\u0bcd\\u0b95\\u0bb3\\u0bcd \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0ba8\\u0bbe\\u0bb3\\u0bc8 \\u0bb5\\u0bb0\\u0bc1\\u0bae\\u0bcd.]",
       "purpose": "The Whisper-skip length guard does not disadvantage dense scripts.",
       "outcome": "passed",
-      "duration_ms": 0.38
+      "duration_ms": 0.28
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestBrowserTranscriptAcrossScripts::test_native_script_utterances_clear_the_trust_threshold[Telugu-te-\\u0c28\\u0c3e \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c0e\\u0c15\\u0c4d\\u0c15\\u0c21 \\u0c09\\u0c02\\u0c26\\u0c3f?-\\u0c2e\\u0c40 \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c30\\u0c47\\u0c2a\\u0c41 \\u0c35\\u0c38\\u0c4d\\u0c24\\u0c41\\u0c02\\u0c26\\u0c3f.]",
@@ -1063,7 +1063,7 @@
       "name": "Native script utterances clear the trust threshold [Telugu-te-\\u0c28\\u0c3e \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c0e\\u0c15\\u0c4d\\u0c15\\u0c21 \\u0c09\\u0c02\\u0c26\\u0c3f?-\\u0c2e\\u0c40 \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c30\\u0c47\\u0c2a\\u0c41 \\u0c35\\u0c38\\u0c4d\\u0c24\\u0c41\\u0c02\\u0c26\\u0c3f.]",
       "purpose": "The Whisper-skip length guard does not disadvantage dense scripts.",
       "outcome": "passed",
-      "duration_ms": 0.52
+      "duration_ms": 0.25
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestBrowserTranscriptAcrossScripts::test_noise_fragments_are_still_rejected",
@@ -1074,7 +1074,7 @@
       "name": "Noise fragments are still rejected",
       "purpose": "The floor exists to reject mis-heard noise, and still does.",
       "outcome": "passed",
-      "duration_ms": 0.5
+      "duration_ms": 0.37
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_reply_reaches_the_customer_in_their_own_script[Bengali-bn-\\u0986\\u09ae\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0995\\u09cb\\u09a5\\u09be\\u09af\\u09bc?-\\u0986\\u09aa\\u09a8\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0986\\u0997\\u09be\\u09ae\\u09c0\\u0995\\u09be\\u09b2 \\u0986\\u09b8\\u09ac\\u09c7\\u0964]",
@@ -1085,7 +1085,7 @@
       "name": "Reply reaches the customer in their own script [Bengali-bn-\\u0986\\u09ae\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0995\\u09cb\\u09a5\\u09be\\u09af\\u09bc?-\\u0986\\u09aa\\u09a8\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0986\\u0997\\u09be\\u09ae\\u09c0\\u0995\\u09be\\u09b2 \\u0986\\u09b8\\u09ac\\u09c7\\u0964]",
       "purpose": "The native-script reply survives the pipeline byte for byte.",
       "outcome": "passed",
-      "duration_ms": 7.7
+      "duration_ms": 4.48
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_reply_reaches_the_customer_in_their_own_script[English-en-Where is my order?-Your order arrives tomorrow.]",
@@ -1096,7 +1096,7 @@
       "name": "Reply reaches the customer in their own script [English-en-Where is my order?-Your order arrives tomorrow.]",
       "purpose": "The native-script reply survives the pipeline byte for byte.",
       "outcome": "passed",
-      "duration_ms": 7.17
+      "duration_ms": 10.49
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_reply_reaches_the_customer_in_their_own_script[Hindi-hi-\\u092e\\u0947\\u0930\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0939\\u093e\\u0901 \\u0939\\u0948?-\\u0906\\u092a\\u0915\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0932 \\u092a\\u0939\\u0941\\u0901\\u091a\\u0947\\u0917\\u093e\\u0964]",
@@ -1107,7 +1107,7 @@
       "name": "Reply reaches the customer in their own script [Hindi-hi-\\u092e\\u0947\\u0930\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0939\\u093e\\u0901 \\u0939\\u0948?-\\u0906\\u092a\\u0915\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0932 \\u092a\\u0939\\u0941\\u0901\\u091a\\u0947\\u0917\\u093e\\u0964]",
       "purpose": "The native-script reply survives the pipeline byte for byte.",
       "outcome": "passed",
-      "duration_ms": 9.38
+      "duration_ms": 4.78
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_reply_reaches_the_customer_in_their_own_script[Hinglish-hi-Mera order kahan hai?-Aapka order kal aayega.]",
@@ -1118,7 +1118,7 @@
       "name": "Reply reaches the customer in their own script [Hinglish-hi-Mera order kahan hai?-Aapka order kal aayega.]",
       "purpose": "The native-script reply survives the pipeline byte for byte.",
       "outcome": "passed",
-      "duration_ms": 12.5
+      "duration_ms": 5.05
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_reply_reaches_the_customer_in_their_own_script[Kannada-kn-\\u0ca8\\u0ca8\\u0ccd\\u0ca8 \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0c8e\\u0cb2\\u0ccd\\u0cb2\\u0cbf\\u0ca6\\u0cc6?-\\u0ca8\\u0cbf\\u0cae\\u0ccd\\u0cae \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0ca8\\u0cbe\\u0cb3\\u0cc6 \\u0cac\\u0cb0\\u0cc1\\u0ca4\\u0ccd\\u0ca4\\u0ca6\\u0cc6.]",
@@ -1129,7 +1129,7 @@
       "name": "Reply reaches the customer in their own script [Kannada-kn-\\u0ca8\\u0ca8\\u0ccd\\u0ca8 \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0c8e\\u0cb2\\u0ccd\\u0cb2\\u0cbf\\u0ca6\\u0cc6?-\\u0ca8\\u0cbf\\u0cae\\u0ccd\\u0cae \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0ca8\\u0cbe\\u0cb3\\u0cc6 \\u0cac\\u0cb0\\u0cc1\\u0ca4\\u0ccd\\u0ca4\\u0ca6\\u0cc6.]",
       "purpose": "The native-script reply survives the pipeline byte for byte.",
       "outcome": "passed",
-      "duration_ms": 8.93
+      "duration_ms": 4.46
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_reply_reaches_the_customer_in_their_own_script[Malayalam-ml-\\u0d0e\\u0d28\\u0d4d\\u0d31\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d0e\\u0d35\\u0d3f\\u0d1f\\u0d46\\u0d2f\\u0d3e\\u0d23\\u0d4d?-\\u0d28\\u0d3f\\u0d19\\u0d4d\\u0d19\\u0d33\\u0d41\\u0d1f\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d28\\u0d3e\\u0d33\\u0d46 \\u0d0e\\u0d24\\u0d4d\\u0d24\\u0d41\\u0d02.]",
@@ -1140,7 +1140,7 @@
       "name": "Reply reaches the customer in their own script [Malayalam-ml-\\u0d0e\\u0d28\\u0d4d\\u0d31\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d0e\\u0d35\\u0d3f\\u0d1f\\u0d46\\u0d2f\\u0d3e\\u0d23\\u0d4d?-\\u0d28\\u0d3f\\u0d19\\u0d4d\\u0d19\\u0d33\\u0d41\\u0d1f\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d28\\u0d3e\\u0d33\\u0d46 \\u0d0e\\u0d24\\u0d4d\\u0d24\\u0d41\\u0d02.]",
       "purpose": "The native-script reply survives the pipeline byte for byte.",
       "outcome": "passed",
-      "duration_ms": 9.68
+      "duration_ms": 6.61
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_reply_reaches_the_customer_in_their_own_script[Marathi-mr-\\u092e\\u093e\\u091d\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0941\\u0920\\u0947 \\u0906\\u0939\\u0947?-\\u0924\\u0941\\u092e\\u091a\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0909\\u0926\\u094d\\u092f\\u093e \\u092f\\u0947\\u0908\\u0932.]",
@@ -1151,7 +1151,7 @@
       "name": "Reply reaches the customer in their own script [Marathi-mr-\\u092e\\u093e\\u091d\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0941\\u0920\\u0947 \\u0906\\u0939\\u0947?-\\u0924\\u0941\\u092e\\u091a\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0909\\u0926\\u094d\\u092f\\u093e \\u092f\\u0947\\u0908\\u0932.]",
       "purpose": "The native-script reply survives the pipeline byte for byte.",
       "outcome": "passed",
-      "duration_ms": 7.89
+      "duration_ms": 6.86
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_reply_reaches_the_customer_in_their_own_script[Tamil-ta-\\u0b8e\\u0ba9\\u0ba4\\u0bc1 \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0b8e\\u0b99\\u0bcd\\u0b95\\u0bc7?-\\u0b89\\u0b99\\u0bcd\\u0b95\\u0bb3\\u0bcd \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0ba8\\u0bbe\\u0bb3\\u0bc8 \\u0bb5\\u0bb0\\u0bc1\\u0bae\\u0bcd.]",
@@ -1162,7 +1162,7 @@
       "name": "Reply reaches the customer in their own script [Tamil-ta-\\u0b8e\\u0ba9\\u0ba4\\u0bc1 \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0b8e\\u0b99\\u0bcd\\u0b95\\u0bc7?-\\u0b89\\u0b99\\u0bcd\\u0b95\\u0bb3\\u0bcd \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0ba8\\u0bbe\\u0bb3\\u0bc8 \\u0bb5\\u0bb0\\u0bc1\\u0bae\\u0bcd.]",
       "purpose": "The native-script reply survives the pipeline byte for byte.",
       "outcome": "passed",
-      "duration_ms": 6.06
+      "duration_ms": 4.75
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestNativeScriptRoundTrip::test_reply_reaches_the_customer_in_their_own_script[Telugu-te-\\u0c28\\u0c3e \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c0e\\u0c15\\u0c4d\\u0c15\\u0c21 \\u0c09\\u0c02\\u0c26\\u0c3f?-\\u0c2e\\u0c40 \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c30\\u0c47\\u0c2a\\u0c41 \\u0c35\\u0c38\\u0c4d\\u0c24\\u0c41\\u0c02\\u0c26\\u0c3f.]",
@@ -1173,7 +1173,7 @@
       "name": "Reply reaches the customer in their own script [Telugu-te-\\u0c28\\u0c3e \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c0e\\u0c15\\u0c4d\\u0c15\\u0c21 \\u0c09\\u0c02\\u0c26\\u0c3f?-\\u0c2e\\u0c40 \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c30\\u0c47\\u0c2a\\u0c41 \\u0c35\\u0c38\\u0c4d\\u0c24\\u0c41\\u0c02\\u0c26\\u0c3f.]",
       "purpose": "The native-script reply survives the pipeline byte for byte.",
       "outcome": "passed",
-      "duration_ms": 6.57
+      "duration_ms": 6.81
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestLanguageCodeMapping::test_reverse_lookup_resolves_every_code",
@@ -1184,7 +1184,7 @@
       "name": "Reverse lookup resolves every code",
       "purpose": "Every code maps back to a display name for the UI and the ticket record.",
       "outcome": "passed",
-      "duration_ms": 0.35
+      "duration_ms": 0.32
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestSpeechSynthesisRouting::test_tts_is_asked_for_the_customers_language[Bengali-bn-\\u0986\\u09ae\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0995\\u09cb\\u09a5\\u09be\\u09af\\u09bc?-\\u0986\\u09aa\\u09a8\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0986\\u0997\\u09be\\u09ae\\u09c0\\u0995\\u09be\\u09b2 \\u0986\\u09b8\\u09ac\\u09c7\\u0964]",
@@ -1195,7 +1195,7 @@
       "name": "Tts is asked for the customers language [Bengali-bn-\\u0986\\u09ae\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0995\\u09cb\\u09a5\\u09be\\u09af\\u09bc?-\\u0986\\u09aa\\u09a8\\u09be\\u09b0 \\u0985\\u09b0\\u09cd\\u09a1\\u09be\\u09b0 \\u0986\\u0997\\u09be\\u09ae\\u09c0\\u0995\\u09be\\u09b2 \\u0986\\u09b8\\u09ac\\u09c7\\u0964]",
       "purpose": "Agent 8 requests speech in the detected language, never a default.",
       "outcome": "passed",
-      "duration_ms": 10.36
+      "duration_ms": 11.57
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestSpeechSynthesisRouting::test_tts_is_asked_for_the_customers_language[English-en-Where is my order?-Your order arrives tomorrow.]",
@@ -1206,7 +1206,7 @@
       "name": "Tts is asked for the customers language [English-en-Where is my order?-Your order arrives tomorrow.]",
       "purpose": "Agent 8 requests speech in the detected language, never a default.",
       "outcome": "passed",
-      "duration_ms": 9.03
+      "duration_ms": 7.73
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestSpeechSynthesisRouting::test_tts_is_asked_for_the_customers_language[Hindi-hi-\\u092e\\u0947\\u0930\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0939\\u093e\\u0901 \\u0939\\u0948?-\\u0906\\u092a\\u0915\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0932 \\u092a\\u0939\\u0941\\u0901\\u091a\\u0947\\u0917\\u093e\\u0964]",
@@ -1217,7 +1217,7 @@
       "name": "Tts is asked for the customers language [Hindi-hi-\\u092e\\u0947\\u0930\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0939\\u093e\\u0901 \\u0939\\u0948?-\\u0906\\u092a\\u0915\\u093e \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0932 \\u092a\\u0939\\u0941\\u0901\\u091a\\u0947\\u0917\\u093e\\u0964]",
       "purpose": "Agent 8 requests speech in the detected language, never a default.",
       "outcome": "passed",
-      "duration_ms": 11.23
+      "duration_ms": 6.04
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestSpeechSynthesisRouting::test_tts_is_asked_for_the_customers_language[Hinglish-hi-Mera order kahan hai?-Aapka order kal aayega.]",
@@ -1228,7 +1228,7 @@
       "name": "Tts is asked for the customers language [Hinglish-hi-Mera order kahan hai?-Aapka order kal aayega.]",
       "purpose": "Agent 8 requests speech in the detected language, never a default.",
       "outcome": "passed",
-      "duration_ms": 8.79
+      "duration_ms": 5.68
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestSpeechSynthesisRouting::test_tts_is_asked_for_the_customers_language[Kannada-kn-\\u0ca8\\u0ca8\\u0ccd\\u0ca8 \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0c8e\\u0cb2\\u0ccd\\u0cb2\\u0cbf\\u0ca6\\u0cc6?-\\u0ca8\\u0cbf\\u0cae\\u0ccd\\u0cae \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0ca8\\u0cbe\\u0cb3\\u0cc6 \\u0cac\\u0cb0\\u0cc1\\u0ca4\\u0ccd\\u0ca4\\u0ca6\\u0cc6.]",
@@ -1239,7 +1239,7 @@
       "name": "Tts is asked for the customers language [Kannada-kn-\\u0ca8\\u0ca8\\u0ccd\\u0ca8 \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0c8e\\u0cb2\\u0ccd\\u0cb2\\u0cbf\\u0ca6\\u0cc6?-\\u0ca8\\u0cbf\\u0cae\\u0ccd\\u0cae \\u0c86\\u0cb0\\u0ccd\\u0ca1\\u0cb0\\u0ccd \\u0ca8\\u0cbe\\u0cb3\\u0cc6 \\u0cac\\u0cb0\\u0cc1\\u0ca4\\u0ccd\\u0ca4\\u0ca6\\u0cc6.]",
       "purpose": "Agent 8 requests speech in the detected language, never a default.",
       "outcome": "passed",
-      "duration_ms": 6.53
+      "duration_ms": 5.64
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestSpeechSynthesisRouting::test_tts_is_asked_for_the_customers_language[Malayalam-ml-\\u0d0e\\u0d28\\u0d4d\\u0d31\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d0e\\u0d35\\u0d3f\\u0d1f\\u0d46\\u0d2f\\u0d3e\\u0d23\\u0d4d?-\\u0d28\\u0d3f\\u0d19\\u0d4d\\u0d19\\u0d33\\u0d41\\u0d1f\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d28\\u0d3e\\u0d33\\u0d46 \\u0d0e\\u0d24\\u0d4d\\u0d24\\u0d41\\u0d02.]",
@@ -1250,7 +1250,7 @@
       "name": "Tts is asked for the customers language [Malayalam-ml-\\u0d0e\\u0d28\\u0d4d\\u0d31\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d0e\\u0d35\\u0d3f\\u0d1f\\u0d46\\u0d2f\\u0d3e\\u0d23\\u0d4d?-\\u0d28\\u0d3f\\u0d19\\u0d4d\\u0d19\\u0d33\\u0d41\\u0d1f\\u0d46 \\u0d13\\u0d7c\\u0d21\\u0d7c \\u0d28\\u0d3e\\u0d33\\u0d46 \\u0d0e\\u0d24\\u0d4d\\u0d24\\u0d41\\u0d02.]",
       "purpose": "Agent 8 requests speech in the detected language, never a default.",
       "outcome": "passed",
-      "duration_ms": 7.63
+      "duration_ms": 9.63
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestSpeechSynthesisRouting::test_tts_is_asked_for_the_customers_language[Marathi-mr-\\u092e\\u093e\\u091d\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0941\\u0920\\u0947 \\u0906\\u0939\\u0947?-\\u0924\\u0941\\u092e\\u091a\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0909\\u0926\\u094d\\u092f\\u093e \\u092f\\u0947\\u0908\\u0932.]",
@@ -1261,7 +1261,7 @@
       "name": "Tts is asked for the customers language [Marathi-mr-\\u092e\\u093e\\u091d\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0915\\u0941\\u0920\\u0947 \\u0906\\u0939\\u0947?-\\u0924\\u0941\\u092e\\u091a\\u0940 \\u0911\\u0930\\u094d\\u0921\\u0930 \\u0909\\u0926\\u094d\\u092f\\u093e \\u092f\\u0947\\u0908\\u0932.]",
       "purpose": "Agent 8 requests speech in the detected language, never a default.",
       "outcome": "passed",
-      "duration_ms": 8.12
+      "duration_ms": 11.18
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestSpeechSynthesisRouting::test_tts_is_asked_for_the_customers_language[Tamil-ta-\\u0b8e\\u0ba9\\u0ba4\\u0bc1 \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0b8e\\u0b99\\u0bcd\\u0b95\\u0bc7?-\\u0b89\\u0b99\\u0bcd\\u0b95\\u0bb3\\u0bcd \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0ba8\\u0bbe\\u0bb3\\u0bc8 \\u0bb5\\u0bb0\\u0bc1\\u0bae\\u0bcd.]",
@@ -1272,7 +1272,7 @@
       "name": "Tts is asked for the customers language [Tamil-ta-\\u0b8e\\u0ba9\\u0ba4\\u0bc1 \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0b8e\\u0b99\\u0bcd\\u0b95\\u0bc7?-\\u0b89\\u0b99\\u0bcd\\u0b95\\u0bb3\\u0bcd \\u0b86\\u0bb0\\u0bcd\\u0b9f\\u0bb0\\u0bcd \\u0ba8\\u0bbe\\u0bb3\\u0bc8 \\u0bb5\\u0bb0\\u0bc1\\u0bae\\u0bcd.]",
       "purpose": "Agent 8 requests speech in the detected language, never a default.",
       "outcome": "passed",
-      "duration_ms": 8.74
+      "duration_ms": 20.59
     },
     {
       "id": "tests/multilingual/test_language_support.py::TestSpeechSynthesisRouting::test_tts_is_asked_for_the_customers_language[Telugu-te-\\u0c28\\u0c3e \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c0e\\u0c15\\u0c4d\\u0c15\\u0c21 \\u0c09\\u0c02\\u0c26\\u0c3f?-\\u0c2e\\u0c40 \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c30\\u0c47\\u0c2a\\u0c41 \\u0c35\\u0c38\\u0c4d\\u0c24\\u0c41\\u0c02\\u0c26\\u0c3f.]",
@@ -1283,7 +1283,7 @@
       "name": "Tts is asked for the customers language [Telugu-te-\\u0c28\\u0c3e \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c0e\\u0c15\\u0c4d\\u0c15\\u0c21 \\u0c09\\u0c02\\u0c26\\u0c3f?-\\u0c2e\\u0c40 \\u0c06\\u0c30\\u0c4d\\u0c21\\u0c30\\u0c4d \\u0c30\\u0c47\\u0c2a\\u0c41 \\u0c35\\u0c38\\u0c4d\\u0c24\\u0c41\\u0c02\\u0c26\\u0c3f.]",
       "purpose": "Agent 8 requests speech in the detected language, never a default.",
       "outcome": "passed",
-      "duration_ms": 6.41
+      "duration_ms": 10.24
     },
     {
       "id": "tests/performance/test_pipeline_latency.py::TestAnswerLatencyBudget::test_answer_does_not_wait_for_tts_or_ticket",
@@ -1294,7 +1294,7 @@
       "name": "Answer does not wait for tts or ticket",
       "purpose": "run_critical returns before speech synthesis and ticket persistence.",
       "outcome": "passed",
-      "duration_ms": 234.17
+      "duration_ms": 213.53
     },
     {
       "id": "tests/performance/test_pipeline_latency.py::TestPromptSize::test_conversation_history_in_prompts_is_bounded",
@@ -1305,7 +1305,7 @@
       "name": "Conversation history in prompts is bounded",
       "purpose": "A long session cannot grow the prompt without limit.",
       "outcome": "passed",
-      "duration_ms": 1.04
+      "duration_ms": 0.2
     },
     {
       "id": "tests/performance/test_pipeline_latency.py::TestPromptSize::test_history_serialisation_is_empty_when_there_is_none",
@@ -1316,7 +1316,7 @@
       "name": "History serialisation is empty when there is none",
       "purpose": "No history means no prompt overhead at all.",
       "outcome": "passed",
-      "duration_ms": 0.61
+      "duration_ms": 0.15
     },
     {
       "id": "tests/performance/test_pipeline_latency.py::TestConcurrency::test_order_lookup_and_policy_rag_actually_overlap",
@@ -1327,7 +1327,7 @@
       "name": "Order lookup and policy rag actually overlap",
       "purpose": "Stages 3 and 4 run concurrently, not back to back.",
       "outcome": "passed",
-      "duration_ms": 125.11
+      "duration_ms": 109.04
     },
     {
       "id": "tests/performance/test_pipeline_latency.py::TestQueryEfficiency::test_order_lookup_issues_a_bounded_number_of_queries",
@@ -1338,7 +1338,7 @@
       "name": "Order lookup issues a bounded number of queries",
       "purpose": "Agent 3 stays within a small, fixed query budget.",
       "outcome": "passed",
-      "duration_ms": 10.76
+      "duration_ms": 5.08
     },
     {
       "id": "tests/performance/test_pipeline_latency.py::TestQueryEfficiency::test_policy_retrieval_embeds_the_query_once",
@@ -1349,7 +1349,7 @@
       "name": "Policy retrieval embeds the query once",
       "purpose": "One embed + one vector search per turn, not two.",
       "outcome": "passed",
-      "duration_ms": 12.98
+      "duration_ms": 4.02
     },
     {
       "id": "tests/performance/test_pipeline_latency.py::TestAnswerLatencyBudget::test_run_critical_stays_within_the_answer_budget",
@@ -1360,7 +1360,7 @@
       "name": "Run critical stays within the answer budget",
       "purpose": "Agents 1-7 deliver an answer inside the 10s product budget.",
       "outcome": "passed",
-      "duration_ms": 231.66
+      "duration_ms": 224.74
     },
     {
       "id": "tests/performance/test_pipeline_latency.py::TestAnswerLatencyBudget::test_total_duration_is_reported_and_monotonic",
@@ -1371,7 +1371,7 @@
       "name": "Total duration is reported and monotonic",
       "purpose": "elapsed_ms() grows with real time and is exposed to the client.",
       "outcome": "passed",
-      "duration_ms": 57.9
+      "duration_ms": 60.8
     },
     {
       "id": "tests/resilience/test_dependency_failures.py::TestTransportFailures::test_a_dead_socket_does_not_fail_the_pipeline",
@@ -1382,7 +1382,7 @@
       "name": "A dead socket does not fail the pipeline",
       "purpose": "Send failures are swallowed, not reported as pipeline errors.",
       "outcome": "passed",
-      "duration_ms": 7.81
+      "duration_ms": 2.63
     },
     {
       "id": "tests/resilience/test_dependency_failures.py::TestPolicyRetrievalOutage::test_chroma_failure_leaves_a_usable_fallback_context",
@@ -1393,7 +1393,7 @@
       "name": "Chroma failure leaves a usable fallback context",
       "purpose": "A vector-store outage does not fail the turn.",
       "outcome": "passed",
-      "duration_ms": 12.47
+      "duration_ms": 6.04
     },
     {
       "id": "tests/resilience/test_dependency_failures.py::TestPersistenceOutage::test_deferred_stage_failure_still_releases_the_client",
@@ -1404,7 +1404,7 @@
       "name": "Deferred stage failure still releases the client",
       "purpose": "A crash in the background stages must not hang the UI.",
       "outcome": "passed",
-      "duration_ms": 930.21
+      "duration_ms": 262.61
     },
     {
       "id": "tests/resilience/test_dependency_failures.py::TestLLMOutage::test_intent_analysis_falls_back_without_failing_the_turn",
@@ -1415,7 +1415,7 @@
       "name": "Intent analysis falls back without failing the turn",
       "purpose": "A Gemini outage yields a safe default intent, not an error state.",
       "outcome": "passed",
-      "duration_ms": 8.93
+      "duration_ms": 3.91
     },
     {
       "id": "tests/resilience/test_dependency_failures.py::TestPolicyRetrievalOutage::test_no_retrieved_policy_caps_confidence",
@@ -1426,7 +1426,7 @@
       "name": "No retrieved policy caps confidence",
       "purpose": "An answer with no policy behind it cannot claim high confidence.",
       "outcome": "passed",
-      "duration_ms": 11.16
+      "duration_ms": 6.97
     },
     {
       "id": "tests/resilience/test_dependency_failures.py::TestLLMOutage::test_resolution_outage_escalates_rather_than_guessing",
@@ -1437,7 +1437,7 @@
       "name": "Resolution outage escalates rather than guessing",
       "purpose": "When the resolution LLM is down, a human gets the ticket.",
       "outcome": "passed",
-      "duration_ms": 8.46
+      "duration_ms": 4.25
     },
     {
       "id": "tests/resilience/test_dependency_failures.py::TestPersistenceOutage::test_ticket_write_failure_is_reported_not_hidden",
@@ -1448,7 +1448,7 @@
       "name": "Ticket write failure is reported not hidden",
       "purpose": "A failed ticket write surfaces as ticket_created=False.",
       "outcome": "passed",
-      "duration_ms": 1536.21
+      "duration_ms": 231.39
     },
     {
       "id": "tests/resilience/test_dependency_failures.py::TestSpeechSynthesisOutage::test_tts_failure_keeps_the_text_answer",
@@ -1459,7 +1459,7 @@
       "name": "Tts failure keeps the text answer",
       "purpose": "No audio is a degraded turn, not a failed one.",
       "outcome": "passed",
-      "duration_ms": 8.68
+      "duration_ms": 3.4
     },
     {
       "id": "tests/resilience/test_dependency_failures.py::TestSpeechSynthesisOutage::test_tts_returning_none_emits_no_audio_frame",
@@ -1470,7 +1470,7 @@
       "name": "Tts returning none emits no audio frame",
       "purpose": "A silent TTS must not push an empty audio frame to the client.",
       "outcome": "passed",
-      "duration_ms": 12.67
+      "duration_ms": 4.58
     },
     {
       "id": "tests/security/test_auth.py::TestDefaultCredentialGuard::test_default_jwt_secret_alone_blocks_login",
@@ -1481,7 +1481,7 @@
       "name": "Default jwt secret alone blocks login",
       "purpose": "A changed password but default JWT secret still blocks (forgeable tokens).",
       "outcome": "passed",
-      "duration_ms": 8.84
+      "duration_ms": 3.21
     },
     {
       "id": "tests/security/test_auth.py::TestDefaultCredentialGuard::test_login_allowed_with_defaults_in_development",
@@ -1492,7 +1492,7 @@
       "name": "Login allowed with defaults in development",
       "purpose": "Local dev keeps working with the shipped defaults.",
       "outcome": "passed",
-      "duration_ms": 795.98
+      "duration_ms": 563.12
     },
     {
       "id": "tests/security/test_auth.py::TestDefaultCredentialGuard::test_login_blocked_with_defaults_outside_development",
@@ -1503,7 +1503,7 @@
       "name": "Login blocked with defaults outside development",
       "purpose": "403 when default secrets are configured in a production-like env.",
       "outcome": "passed",
-      "duration_ms": 12.18
+      "duration_ms": 2.78
     },
     {
       "id": "tests/security/test_auth.py::TestAdminLogin::test_login_missing_fields",
@@ -1514,7 +1514,7 @@
       "name": "Login missing fields",
       "purpose": "Missing email/password returns 422 validation error.",
       "outcome": "passed",
-      "duration_ms": 9.55
+      "duration_ms": 2.66
     },
     {
       "id": "tests/security/test_auth.py::TestLoginRateLimit::test_login_rate_limited_after_repeated_attempts",
@@ -1525,7 +1525,7 @@
       "name": "Login rate limited after repeated attempts",
       "purpose": "The attempt after the per-IP limit returns 429 with Retry-After.",
       "outcome": "passed",
-      "duration_ms": 2442.27
+      "duration_ms": 1678.36
     },
     {
       "id": "tests/security/test_auth.py::TestAdminLogin::test_login_success",
@@ -1536,7 +1536,7 @@
       "name": "Login success",
       "purpose": "Valid credentials return a JWT access_token.",
       "outcome": "passed",
-      "duration_ms": 806.91
+      "duration_ms": 598.77
     },
     {
       "id": "tests/security/test_auth.py::TestAdminLogin::test_login_wrong_email",
@@ -1547,7 +1547,7 @@
       "name": "Login wrong email",
       "purpose": "Wrong email returns 401.",
       "outcome": "passed",
-      "duration_ms": 399.94
+      "duration_ms": 319.81
     },
     {
       "id": "tests/security/test_auth.py::TestAdminLogin::test_login_wrong_password",
@@ -1558,7 +1558,7 @@
       "name": "Login wrong password",
       "purpose": "Wrong password returns 401.",
       "outcome": "passed",
-      "duration_ms": 796.44
+      "duration_ms": 574.28
     },
     {
       "id": "tests/security/test_auth.py::TestLogoutRevocation::test_logout_does_not_revoke_other_tokens",
@@ -1569,7 +1569,7 @@
       "name": "Logout does not revoke other tokens",
       "purpose": "Revocation targets one jti — a fresh login still works.",
       "outcome": "passed",
-      "duration_ms": 19.8
+      "duration_ms": 3.29
     },
     {
       "id": "tests/security/test_auth.py::TestLogoutRevocation::test_logout_is_idempotent",
@@ -1580,7 +1580,7 @@
       "name": "Logout is idempotent",
       "purpose": "Logging out twice with the same token succeeds both times.",
       "outcome": "passed",
-      "duration_ms": 13.26
+      "duration_ms": 3.18
     },
     {
       "id": "tests/security/test_auth.py::TestLogoutRevocation::test_logout_revokes_token",
@@ -1591,7 +1591,7 @@
       "name": "Logout revokes token",
       "purpose": "A token stops working the moment it is logged out.",
       "outcome": "passed",
-      "duration_ms": 23.84
+      "duration_ms": 5.24
     },
     {
       "id": "tests/security/test_auth.py::TestLogoutRevocation::test_logout_with_garbage_token_401",
@@ -1602,7 +1602,7 @@
       "name": "Logout with garbage token 401",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 4.67
+      "duration_ms": 1.45
     },
     {
       "id": "tests/security/test_auth.py::TestLogoutRevocation::test_logout_without_token_401",
@@ -1613,7 +1613,7 @@
       "name": "Logout without token 401",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 5.52
+      "duration_ms": 1.38
     },
     {
       "id": "tests/security/test_auth.py::TestRequireAdminDependency::test_require_admin_invalid_token",
@@ -1624,7 +1624,7 @@
       "name": "Require admin invalid token",
       "purpose": "require_admin raises 401 for an expired or bad token.",
       "outcome": "passed",
-      "duration_ms": 1.78
+      "duration_ms": 0.62
     },
     {
       "id": "tests/security/test_auth.py::TestRequireAdminDependency::test_require_admin_missing_token",
@@ -1635,7 +1635,7 @@
       "name": "Require admin missing token",
       "purpose": "require_admin raises 401 when no credentials provided.",
       "outcome": "passed",
-      "duration_ms": 1.26
+      "duration_ms": 0.34
     },
     {
       "id": "tests/security/test_auth.py::TestRequireAdminDependency::test_require_admin_valid_token",
@@ -1646,7 +1646,7 @@
       "name": "Require admin valid token",
       "purpose": "require_admin returns the subject for a valid token.",
       "outcome": "passed",
-      "duration_ms": 3.69
+      "duration_ms": 0.84
     },
     {
       "id": "tests/security/test_auth.py::TestTokenExpiry::test_token_expires_in_eight_hours",
@@ -1657,7 +1657,7 @@
       "name": "Token expires in eight hours",
       "purpose": "Access tokens carry an 8-hour expiry claim.",
       "outcome": "passed",
-      "duration_ms": 2.55
+      "duration_ms": 0.58
     },
     {
       "id": "tests/security/test_auth.py::TestLogoutRevocation::test_tokens_carry_unique_jti",
@@ -1668,7 +1668,7 @@
       "name": "Tokens carry unique jti",
       "purpose": "Every issued token gets its own jti claim.",
       "outcome": "passed",
-      "duration_ms": 1.58
+      "duration_ms": 0.53
     },
     {
       "id": "tests/security/test_auth.py::TestTokenVerification::test_verify_invalid_token",
@@ -1679,7 +1679,7 @@
       "name": "Verify invalid token",
       "purpose": "Garbage token returns None.",
       "outcome": "passed",
-      "duration_ms": 0.82
+      "duration_ms": 0.3
     },
     {
       "id": "tests/security/test_auth.py::TestTokenVerification::test_verify_valid_token",
@@ -1690,7 +1690,7 @@
       "name": "Verify valid token",
       "purpose": "A token created by _create_token can be decoded by _verify_token.",
       "outcome": "passed",
-      "duration_ms": 1.49
+      "duration_ms": 0.59
     },
     {
       "id": "tests/security/test_auth.py::TestTokenVerification::test_verify_wrong_secret",
@@ -1701,7 +1701,7 @@
       "name": "Verify wrong secret",
       "purpose": "Token signed with different secret returns None.",
       "outcome": "passed",
-      "duration_ms": 1.45
+      "duration_ms": 1.01
     },
     {
       "id": "tests/security/test_auth.py::TestWhoamiEndpoint::test_whoami_with_valid_token",
@@ -1712,7 +1712,7 @@
       "name": "Whoami with valid token",
       "purpose": "GET /api/auth/me returns admin email when authenticated.",
       "outcome": "passed",
-      "duration_ms": 9.55
+      "duration_ms": 1.97
     },
     {
       "id": "tests/security/test_auth.py::TestWhoamiEndpoint::test_whoami_without_token",
@@ -1723,7 +1723,7 @@
       "name": "Whoami without token",
       "purpose": "GET /api/auth/me returns 401 without Authorization header.",
       "outcome": "passed",
-      "duration_ms": 5.66
+      "duration_ms": 1.33
     },
     {
       "id": "tests/security/test_data_exposure.py::TestTurnIsolation::test_frames_are_stamped_with_their_turn",
@@ -1734,7 +1734,7 @@
       "name": "Frames are stamped with their turn",
       "purpose": "Every frame identifies its turn.",
       "outcome": "passed",
-      "duration_ms": 8.46
+      "duration_ms": 2.89
     },
     {
       "id": "tests/security/test_data_exposure.py::TestIdentityCorroboration::test_name_matching_rejects_a_different_person",
@@ -1745,7 +1745,7 @@
       "name": "Name matching rejects a different person",
       "purpose": "Corroboration by name does not accept an unrelated name.",
       "outcome": "passed",
-      "duration_ms": 0.62
+      "duration_ms": 0.12
     },
     {
       "id": "tests/security/test_data_exposure.py::TestIdentityCorroboration::test_phone_alone_does_not_unlock_order_data",
@@ -1756,7 +1756,7 @@
       "name": "Phone alone does not unlock order data",
       "purpose": "An uncorroborated phone lookup is challenged, not answered.",
       "outcome": "passed",
-      "duration_ms": 19.01
+      "duration_ms": 4.83
     },
     {
       "id": "tests/security/test_data_exposure.py::TestStageFrameHygiene::test_progress_frames_leak_no_customer_data",
@@ -1767,7 +1767,7 @@
       "name": "Progress frames leak no customer data",
       "purpose": "Stage frames are status only — no transcript, no order details.",
       "outcome": "passed",
-      "duration_ms": 8.54
+      "duration_ms": 3.4
     },
     {
       "id": "tests/security/test_data_exposure.py::TestSecretHygiene::test_response_payload_carries_no_internal_identifiers",
@@ -1778,7 +1778,7 @@
       "name": "Response payload carries no internal identifiers",
       "purpose": "Nothing in the customer payload exposes credentials or internals.",
       "outcome": "passed",
-      "duration_ms": 0.72
+      "duration_ms": 0.17
     },
     {
       "id": "tests/security/test_data_exposure.py::TestSecretHygiene::test_settings_are_not_serialisable_into_a_response",
@@ -1789,7 +1789,7 @@
       "name": "Settings are not serialisable into a response",
       "purpose": "Config values never travel in a pipeline payload.",
       "outcome": "passed",
-      "duration_ms": 0.75
+      "duration_ms": 0.18
     },
     {
       "id": "tests/security/test_error_hygiene.py::TestVoiceQueryErrorLeakage::test_500_does_not_echo_internal_error",
@@ -1800,7 +1800,7 @@
       "name": "500 does not echo internal error",
       "purpose": "state.error (raw exception text) stays server-side.",
       "outcome": "passed",
-      "duration_ms": 16.98
+      "duration_ms": 3.85
     },
     {
       "id": "tests/security/test_error_hygiene.py::TestSessionHistoryEndpoint::test_cleared_session_has_no_history",
@@ -1811,7 +1811,7 @@
       "name": "Cleared session has no history",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 12.39
+      "duration_ms": 2.4
     },
     {
       "id": "tests/security/test_error_hygiene.py::TestHealthEndpointLeakage::test_health_hides_dependency_error_details",
@@ -1822,7 +1822,7 @@
       "name": "Health hides dependency error details",
       "purpose": "A failing dependency reports a generic 'error', not the exception.",
       "outcome": "passed",
-      "duration_ms": 12.14
+      "duration_ms": 2.51
     },
     {
       "id": "tests/security/test_error_hygiene.py::TestSessionHistoryEndpoint::test_history_prefers_customer_language_display_text",
@@ -1833,7 +1833,7 @@
       "name": "History prefers customer language display text",
       "purpose": "AI turns restore in the customer's language, not the English LLM copy.",
       "outcome": "passed",
-      "duration_ms": 6.94
+      "duration_ms": 1.27
     },
     {
       "id": "tests/security/test_error_hygiene.py::TestSessionClearEndpoint::test_invalid_session_id_rejected",
@@ -1844,7 +1844,7 @@
       "name": "Invalid session id rejected",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 11.82
+      "duration_ms": 1.73
     },
     {
       "id": "tests/security/test_error_hygiene.py::TestSessionHistoryEndpoint::test_invalid_session_id_rejected",
@@ -1855,7 +1855,7 @@
       "name": "Invalid session id rejected",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 7.66
+      "duration_ms": 1.74
     },
     {
       "id": "tests/security/test_error_hygiene.py::TestTicketPersistFailure::test_response_reports_ticket_created_false",
@@ -1866,7 +1866,7 @@
       "name": "Response reports ticket created false",
       "purpose": "The API response carries ticket_created so the client stays truthful.",
       "outcome": "passed",
-      "duration_ms": 13.55
+      "duration_ms": 3.79
     },
     {
       "id": "tests/security/test_error_hygiene.py::TestSessionHistoryEndpoint::test_returns_stored_turns_in_order",
@@ -1877,7 +1877,7 @@
       "name": "Returns stored turns in order",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 8.5
+      "duration_ms": 1.5
     },
     {
       "id": "tests/security/test_error_hygiene.py::TestTicketPersistFailure::test_ticket_write_failure_is_non_fatal",
@@ -1888,7 +1888,7 @@
       "name": "Ticket write failure is non fatal",
       "purpose": "A failed ticket write leaves the state error-free with ticket_created=False.",
       "outcome": "passed",
-      "duration_ms": 1006.15
+      "duration_ms": 399.08
     },
     {
       "id": "tests/security/test_error_hygiene.py::TestSessionHistoryEndpoint::test_unknown_session_returns_empty_turns",
@@ -1899,7 +1899,7 @@
       "name": "Unknown session returns empty turns",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 8.31
+      "duration_ms": 1.4
     },
     {
       "id": "tests/security/test_error_hygiene.py::TestSessionClearEndpoint::test_valid_session_id_cleared",
@@ -1910,7 +1910,7 @@
       "name": "Valid session id cleared",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 7.16
+      "duration_ms": 1.7
     },
     {
       "id": "tests/security/test_error_hygiene.py::TestWebSocketValidationErrors::test_validation_error_returns_field_messages_only",
@@ -1921,7 +1921,7 @@
       "name": "Validation error returns field messages only",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 23.41
+      "duration_ms": 6.23
     },
     {
       "id": "tests/security/test_input_limits.py::TestVoiceQueryFieldLimits::test_audio_limit_matches_ten_megabytes",
@@ -1932,7 +1932,7 @@
       "name": "Audio limit matches ten megabytes",
       "purpose": "The base64 cap corresponds to ~10 MB of raw audio and fits the body cap.",
       "outcome": "passed",
-      "duration_ms": 1.16
+      "duration_ms": 0.55
     },
     {
       "id": "tests/security/test_input_limits.py::TestBodySizeMiddleware::test_huge_body_rejected_with_413",
@@ -1943,7 +1943,7 @@
       "name": "Huge body rejected with 413",
       "purpose": "A body above MAX_BODY_BYTES is refused from its Content-Length.",
       "outcome": "passed",
-      "duration_ms": 19.3
+      "duration_ms": 13.12
     },
     {
       "id": "tests/security/test_input_limits.py::TestBodySizeMiddleware::test_normal_body_passes_middleware",
@@ -1954,7 +1954,7 @@
       "name": "Normal body passes middleware",
       "purpose": "Small bodies are unaffected (422 here proves it reached validation).",
       "outcome": "passed",
-      "duration_ms": 17.18
+      "duration_ms": 10.72
     },
     {
       "id": "tests/security/test_input_limits.py::TestVoiceQueryFieldLimits::test_oversized_phone_rejected",
@@ -1965,7 +1965,7 @@
       "name": "Oversized phone rejected",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 16.51
+      "duration_ms": 3.14
     },
     {
       "id": "tests/security/test_input_limits.py::TestVoiceQueryFieldLimits::test_oversized_session_id_rejected",
@@ -1976,7 +1976,7 @@
       "name": "Oversized session id rejected",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 12.49
+      "duration_ms": 3.79
     },
     {
       "id": "tests/security/test_input_limits.py::TestVoiceQueryFieldLimits::test_oversized_text_rejected",
@@ -1987,7 +1987,7 @@
       "name": "Oversized text rejected",
       "purpose": "Text beyond MAX_TEXT_LEN returns 422 before any pipeline work.",
       "outcome": "passed",
-      "duration_ms": 16.02
+      "duration_ms": 3.8
     },
     {
       "id": "tests/security/test_input_limits.py::TestVoiceQueryFieldLimits::test_valid_payload_reaches_pipeline",
@@ -1998,7 +1998,7 @@
       "name": "Valid payload reaches pipeline",
       "purpose": "A well-formed payload passes validation and runs the pipeline.",
       "outcome": "passed",
-      "duration_ms": 15.03
+      "duration_ms": 4.78
     },
     {
       "id": "tests/security/test_rate_limit.py::TestVoiceEndpointRateLimit::test_anonymous_requests_are_rate_limited",
@@ -2009,7 +2009,7 @@
       "name": "Anonymous requests are rate limited",
       "purpose": "The per-IP limit now applies with no phone supplied (was a bypass).",
       "outcome": "passed",
-      "duration_ms": 105.66
+      "duration_ms": 60.92
     },
     {
       "id": "tests/security/test_rate_limit.py::TestVoiceWebSocketProtections::test_connection_cap_rejects_extra_connections",
@@ -2020,7 +2020,7 @@
       "name": "Connection cap rejects extra connections",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 30.71
+      "duration_ms": 22.5
     },
     {
       "id": "tests/security/test_rate_limit.py::TestVoiceWebSocketProtections::test_connection_slots_are_released",
@@ -2031,7 +2031,7 @@
       "name": "Connection slots are released",
       "purpose": "Closing a connection frees its slot for the same IP.",
       "outcome": "passed",
-      "duration_ms": 59.34
+      "duration_ms": 26.74
     },
     {
       "id": "tests/security/test_rate_limit.py::TestRateLimitCore::test_count_hit_increments",
@@ -2042,7 +2042,7 @@
       "name": "Count hit increments",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.71
+      "duration_ms": 0.54
     },
     {
       "id": "tests/security/test_rate_limit.py::TestVoiceWebSocketProtections::test_cross_origin_handshake_rejected",
@@ -2053,7 +2053,7 @@
       "name": "Cross origin handshake rejected",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 12.34
+      "duration_ms": 7.18
     },
     {
       "id": "tests/security/test_rate_limit.py::TestRateLimitCore::test_degrades_to_in_process_counter_when_store_fails",
@@ -2064,7 +2064,7 @@
       "name": "Degrades to in process counter when store fails",
       "purpose": "A broken store must not disable limiting — the fallback counts.",
       "outcome": "passed",
-      "duration_ms": 1.92
+      "duration_ms": 2.32
     },
     {
       "id": "tests/security/test_rate_limit.py::TestRateLimitCore::test_enforce_raises_429_over_limit",
@@ -2075,7 +2075,7 @@
       "name": "Enforce raises 429 over limit",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 2.06
+      "duration_ms": 1.23
     },
     {
       "id": "tests/security/test_rate_limit.py::TestRateLimitCore::test_fallback_window_resets",
@@ -2086,7 +2086,7 @@
       "name": "Fallback window resets",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 2.51
+      "duration_ms": 1.66
     },
     {
       "id": "tests/security/test_rate_limit.py::TestVoiceWebSocketProtections::test_message_over_budget_gets_rate_limited",
@@ -2097,7 +2097,7 @@
       "name": "Message over budget gets rate limited",
       "purpose": "A message beyond the shared per-IP budget is refused pre-pipeline.",
       "outcome": "passed",
-      "duration_ms": 10.07
+      "duration_ms": 7.01
     },
     {
       "id": "tests/security/test_rate_limit.py::TestVoiceWebSocketProtections::test_origin_allowed_helper",
@@ -2108,7 +2108,7 @@
       "name": "Origin allowed helper",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.75
+      "duration_ms": 0.33
     },
     {
       "id": "tests/security/test_rate_limit.py::TestVoiceEndpointRateLimit::test_phone_limit_applies_before_ip_limit",
@@ -2119,7 +2119,7 @@
       "name": "Phone limit applies before ip limit",
       "purpose": "The tighter per-phone limit still fires below the per-IP ceiling.",
       "outcome": "passed",
-      "duration_ms": 63.86
+      "duration_ms": 30.36
     },
     {
       "id": "tests/security/test_ws_and_ticket_auth.py::TestTicketRoutesRealJwtEnforcement::test_customers_routes_also_enforced",
@@ -2130,7 +2130,7 @@
       "name": "Customers routes also enforced",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 7.07
+      "duration_ms": 4.34
     },
     {
       "id": "tests/security/test_ws_and_ticket_auth.py::TestTicketRoutesRealJwtEnforcement::test_metrics_requires_token",
@@ -2141,7 +2141,7 @@
       "name": "Metrics requires token",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 6.17
+      "duration_ms": 3.15
     },
     {
       "id": "tests/security/test_ws_and_ticket_auth.py::TestTicketRoutesRealJwtEnforcement::test_tickets_list_accepts_real_jwt",
@@ -2152,7 +2152,7 @@
       "name": "Tickets list accepts real jwt",
       "purpose": "A token signed with the configured secret passes require_admin.",
       "outcome": "passed",
-      "duration_ms": 36.51
+      "duration_ms": 23.71
     },
     {
       "id": "tests/security/test_ws_and_ticket_auth.py::TestTicketRoutesRealJwtEnforcement::test_tickets_list_rejects_garbage_token",
@@ -2163,7 +2163,7 @@
       "name": "Tickets list rejects garbage token",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 5.67
+      "duration_ms": 3.16
     },
     {
       "id": "tests/security/test_ws_and_ticket_auth.py::TestTicketRoutesRealJwtEnforcement::test_tickets_list_requires_token",
@@ -2174,7 +2174,7 @@
       "name": "Tickets list requires token",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 4.99
+      "duration_ms": 3.47
     },
     {
       "id": "tests/security/test_ws_and_ticket_auth.py::TestWebSocketHappyPath::test_ws_returns_full_response_payload",
@@ -2185,7 +2185,7 @@
       "name": "Ws returns full response payload",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 16.75
+      "duration_ms": 12.27
     },
     {
       "id": "tests/unit/test_bhashini_service.py::TestStaleInferenceKeyRecovery::test_a_401_refetches_the_config_and_retries",
@@ -2196,7 +2196,7 @@
       "name": "A 401 refetches the config and retries",
       "purpose": "A rejected key is refreshed once, and the retry succeeds.",
       "outcome": "passed",
-      "duration_ms": 7.8
+      "duration_ms": 3.49
     },
     {
       "id": "tests/unit/test_bhashini_service.py::TestStaleInferenceKeyRecovery::test_a_500_is_not_treated_as_a_stale_key",
@@ -2207,7 +2207,7 @@
       "name": "A 500 is not treated as a stale key",
       "purpose": "Only auth failures trigger a refetch; a server error must not.",
       "outcome": "passed",
-      "duration_ms": 5.62
+      "duration_ms": 2.62
     },
     {
       "id": "tests/unit/test_bhashini_service.py::TestGttsFallbackGate::test_gtts_fallback_runs_when_enabled",
@@ -2218,7 +2218,7 @@
       "name": "Gtts fallback runs when enabled",
       "purpose": "Default behavior unchanged: fallback audio is produced.",
       "outcome": "passed",
-      "duration_ms": 4.82
+      "duration_ms": 2.93
     },
     {
       "id": "tests/unit/test_bhashini_service.py::TestGttsFallbackGate::test_gtts_fallback_skipped_when_disabled",
@@ -2229,7 +2229,7 @@
       "name": "Gtts fallback skipped when disabled",
       "purpose": "ALLOW_GTTS_FALLBACK=false: no response text is sent to Google.",
       "outcome": "passed",
-      "duration_ms": 2.97
+      "duration_ms": 2.19
     },
     {
       "id": "tests/unit/test_bhashini_service.py::TestBhashiniSTT::test_stt_error_no_fallback_sets_error_state",
@@ -2240,7 +2240,7 @@
       "name": "Stt error no fallback sets error state",
       "purpose": "When Bhashini AND raw_text both unavailable, error state is set.",
       "outcome": "passed",
-      "duration_ms": 4.31
+      "duration_ms": 2.12
     },
     {
       "id": "tests/unit/test_bhashini_service.py::TestBhashiniSTT::test_stt_fallback_when_bhashini_unavailable",
@@ -2251,7 +2251,7 @@
       "name": "Stt fallback when bhashini unavailable",
       "purpose": "When Bhashini fails, the pipeline falls back to raw_text.",
       "outcome": "passed",
-      "duration_ms": 2.93
+      "duration_ms": 3
     },
     {
       "id": "tests/unit/test_bhashini_service.py::TestBhashiniSTT::test_text_passthrough_no_audio",
@@ -2262,7 +2262,7 @@
       "name": "Text passthrough no audio",
       "purpose": "Text-only input passes through Voice Intake without STT call.",
       "outcome": "passed",
-      "duration_ms": 3.82
+      "duration_ms": 2.05
     },
     {
       "id": "tests/unit/test_cache.py::TestPolicyRAGCache::test_cache_hit_skips_chroma",
@@ -2273,7 +2273,7 @@
       "name": "Cache hit skips chroma",
       "purpose": "On cache hit, Chroma is NOT called and cached values are used.",
       "outcome": "passed",
-      "duration_ms": 5.45
+      "duration_ms": 2.3
     },
     {
       "id": "tests/unit/test_cache.py::TestPolicyRAGCache::test_cache_key_is_deterministic",
@@ -2284,7 +2284,7 @@
       "name": "Cache key is deterministic",
       "purpose": "Same query always produces the same cache key.",
       "outcome": "passed",
-      "duration_ms": 1.03
+      "duration_ms": 0.43
     },
     {
       "id": "tests/unit/test_cache.py::TestPolicyRAGCache::test_cache_miss_calls_chroma",
@@ -2295,7 +2295,7 @@
       "name": "Cache miss calls chroma",
       "purpose": "On cache miss, Chroma is queried and result is stored.",
       "outcome": "passed",
-      "duration_ms": 4.69
+      "duration_ms": 4.95
     },
     {
       "id": "tests/unit/test_cache.py::TestPolicyRAGCache::test_chroma_error_returns_fallback",
@@ -2306,7 +2306,7 @@
       "name": "Chroma error returns fallback",
       "purpose": "Chroma failure sets fallback policy_context without crashing.",
       "outcome": "passed",
-      "duration_ms": 7.99
+      "duration_ms": 2.9
     },
     {
       "id": "tests/unit/test_cache.py::TestPolicyRAGCache::test_different_queries_produce_different_keys",
@@ -2317,7 +2317,7 @@
       "name": "Different queries produce different keys",
       "purpose": "Different queries produce different cache keys.",
       "outcome": "passed",
-      "duration_ms": 1.04
+      "duration_ms": 0.46
     },
     {
       "id": "tests/unit/test_chroma_service.py::TestChromaService::test_get_policy_context_returns_string",
@@ -2328,7 +2328,7 @@
       "name": "Get policy context returns string",
       "purpose": "get_policy_context returns a non-empty string.",
       "outcome": "passed",
-      "duration_ms": 0.68
+      "duration_ms": 0.28
     },
     {
       "id": "tests/unit/test_chroma_service.py::TestChromaService::test_policy_rag_agent_handles_chroma_failure",
@@ -2339,7 +2339,7 @@
       "name": "Policy rag agent handles chroma failure",
       "purpose": "Agent 4 sets fallback context if ChromaDB is unavailable.",
       "outcome": "passed",
-      "duration_ms": 7.77
+      "duration_ms": 2.45
     },
     {
       "id": "tests/unit/test_chroma_service.py::TestChromaService::test_policy_rag_agent_uses_chroma",
@@ -2350,7 +2350,7 @@
       "name": "Policy rag agent uses chroma",
       "purpose": "Agent 4 (Policy RAG) calls chroma service correctly.",
       "outcome": "passed",
-      "duration_ms": 8.91
+      "duration_ms": 4.29
     },
     {
       "id": "tests/unit/test_chroma_service.py::TestChromaService::test_query_policies_returns_list",
@@ -2361,7 +2361,7 @@
       "name": "Query policies returns list",
       "purpose": "query_policies returns a list of dicts.",
       "outcome": "passed",
-      "duration_ms": 0.56
+      "duration_ms": 0.26
     },
     {
       "id": "tests/unit/test_escalation_rules.py::TestEscalationRules::test_llm_outage_fallback_escalates",
@@ -2372,7 +2372,7 @@
       "name": "Llm outage fallback escalates",
       "purpose": "The Gemini fallback resolution (confidence 0.3) must trip Rule 5.",
       "outcome": "passed",
-      "duration_ms": 4.45
+      "duration_ms": 3.79
     },
     {
       "id": "tests/unit/test_escalation_rules.py::TestEscalationRules::test_multiple_rules_all_recorded",
@@ -2383,7 +2383,7 @@
       "name": "Multiple rules all recorded",
       "purpose": "Every triggered rule appears in the joined reason.",
       "outcome": "passed",
-      "duration_ms": 2.99
+      "duration_ms": 1.07
     },
     {
       "id": "tests/unit/test_escalation_rules.py::TestEscalationRules::test_rule[no_rules_triggered]",
@@ -2394,7 +2394,7 @@
       "name": "Rule [no_rules_triggered]",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 4.73
+      "duration_ms": 1.82
     },
     {
       "id": "tests/unit/test_escalation_rules.py::TestEscalationRules::test_rule[rule1_angry_sentiment]",
@@ -2405,7 +2405,7 @@
       "name": "Rule [rule1_angry_sentiment]",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 3.52
+      "duration_ms": 2.15
     },
     {
       "id": "tests/unit/test_escalation_rules.py::TestEscalationRules::test_rule[rule1_very_angry_sentiment]",
@@ -2416,7 +2416,7 @@
       "name": "Rule [rule1_very_angry_sentiment]",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 6
+      "duration_ms": 1.21
     },
     {
       "id": "tests/unit/test_escalation_rules.py::TestEscalationRules::test_rule[rule2_high_value_negative]",
@@ -2427,7 +2427,7 @@
       "name": "Rule [rule2_high_value_negative]",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 3.4
+      "duration_ms": 1.2
     },
     {
       "id": "tests/unit/test_escalation_rules.py::TestEscalationRules::test_rule[rule2_high_value_neutral_not_escalated]",
@@ -2438,7 +2438,7 @@
       "name": "Rule [rule2_high_value_neutral_not_escalated]",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 5.05
+      "duration_ms": 1.05
     },
     {
       "id": "tests/unit/test_escalation_rules.py::TestEscalationRules::test_rule[rule2_low_value_negative_not_escalated]",
@@ -2449,7 +2449,7 @@
       "name": "Rule [rule2_low_value_negative_not_escalated]",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 3.89
+      "duration_ms": 2.02
     },
     {
       "id": "tests/unit/test_escalation_rules.py::TestEscalationRules::test_rule[rule3_pending_refund]",
@@ -2460,7 +2460,7 @@
       "name": "Rule [rule3_pending_refund]",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 3.84
+      "duration_ms": 2.18
     },
     {
       "id": "tests/unit/test_escalation_rules.py::TestEscalationRules::test_rule[rule4_failed_payment]",
@@ -2471,7 +2471,7 @@
       "name": "Rule [rule4_failed_payment]",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 4.32
+      "duration_ms": 1.82
     },
     {
       "id": "tests/unit/test_escalation_rules.py::TestEscalationRules::test_rule[rule4_success_payment_cancelled_order]",
@@ -2482,7 +2482,7 @@
       "name": "Rule [rule4_success_payment_cancelled_order]",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 6.68
+      "duration_ms": 1.18
     },
     {
       "id": "tests/unit/test_escalation_rules.py::TestEscalationRules::test_rule[rule5_low_confidence_boundary_at]",
@@ -2493,7 +2493,7 @@
       "name": "Rule [rule5_low_confidence_boundary_at]",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 4.81
+      "duration_ms": 2.41
     },
     {
       "id": "tests/unit/test_escalation_rules.py::TestEscalationRules::test_rule[rule5_low_confidence_boundary_below]",
@@ -2504,7 +2504,7 @@
       "name": "Rule [rule5_low_confidence_boundary_below]",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 6.36
+      "duration_ms": 1.12
     },
     {
       "id": "tests/unit/test_escalation_rules.py::TestEscalationRules::test_rule[rule6_llm_escalate]",
@@ -2515,7 +2515,7 @@
       "name": "Rule [rule6_llm_escalate]",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 6.49
+      "duration_ms": 0.98
     },
     {
       "id": "tests/unit/test_gemini_service.py::TestAnalyzeIntent::test_analyze_intent_angry_sentiment",
@@ -2526,7 +2526,7 @@
       "name": "Analyze intent angry sentiment",
       "purpose": "Angry sentiment is correctly extracted from LLM response.",
       "outcome": "passed",
-      "duration_ms": 1.36
+      "duration_ms": 0.79
     },
     {
       "id": "tests/unit/test_gemini_service.py::TestAnalyzeIntent::test_analyze_intent_fallback_on_llm_failure",
@@ -2537,7 +2537,7 @@
       "name": "Analyze intent fallback on llm failure",
       "purpose": "On LLM failure, analyze_intent returns safe fallback dict.",
       "outcome": "passed",
-      "duration_ms": 1.9
+      "duration_ms": 2.11
     },
     {
       "id": "tests/unit/test_gemini_service.py::TestAnalyzeIntent::test_analyze_intent_happy_path",
@@ -2548,7 +2548,7 @@
       "name": "Analyze intent happy path",
       "purpose": "analyze_intent returns structured dict on success.",
       "outcome": "passed",
-      "duration_ms": 1.86
+      "duration_ms": 0.59
     },
     {
       "id": "tests/unit/test_gemini_service.py::TestGenerateResolution::test_generate_resolution_fallback_on_error",
@@ -2559,7 +2559,7 @@
       "name": "Generate resolution fallback on error",
       "purpose": "Returns fallback resolution dict when LLM fails.",
       "outcome": "passed",
-      "duration_ms": 1.92
+      "duration_ms": 1
     },
     {
       "id": "tests/unit/test_gemini_service.py::TestGenerateResolution::test_generate_resolution_inform",
@@ -2570,7 +2570,7 @@
       "name": "Generate resolution inform",
       "purpose": "Generates Inform resolution for non-critical case.",
       "outcome": "passed",
-      "duration_ms": 1.68
+      "duration_ms": 1.13
     },
     {
       "id": "tests/unit/test_gemini_service.py::TestGenerateResponse::test_generate_response_fallback_on_error",
@@ -2581,7 +2581,7 @@
       "name": "Generate response fallback on error",
       "purpose": "Returns apologetic fallback response when LLM fails.",
       "outcome": "passed",
-      "duration_ms": 2.49
+      "duration_ms": 1.55
     },
     {
       "id": "tests/unit/test_gemini_service.py::TestGenerateResponse::test_generate_response_happy_path",
@@ -2592,7 +2592,7 @@
       "name": "Generate response happy path",
       "purpose": "Generates customer response with correct structure.",
       "outcome": "passed",
-      "duration_ms": 1.33
+      "duration_ms": 0.67
     },
     {
       "id": "tests/unit/test_gemini_service.py::TestParseJson::test_parse_clean_json",
@@ -2603,7 +2603,7 @@
       "name": "Parse clean json",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 1.23
+      "duration_ms": 0.54
     },
     {
       "id": "tests/unit/test_gemini_service.py::TestParseJson::test_parse_invalid_json_raises",
@@ -2614,7 +2614,7 @@
       "name": "Parse invalid json raises",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.85
+      "duration_ms": 0.46
     },
     {
       "id": "tests/unit/test_gemini_service.py::TestParseJson::test_parse_markdown_wrapped_json",
@@ -2625,7 +2625,7 @@
       "name": "Parse markdown wrapped json",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.96
+      "duration_ms": 0.31
     },
     {
       "id": "tests/unit/test_memory_service.py::TestMemoryService::test_clear_conversation",
@@ -2636,7 +2636,7 @@
       "name": "Clear conversation",
       "purpose": "clear_conversation removes all turns for session.",
       "outcome": "passed",
-      "duration_ms": 0.98
+      "duration_ms": 0.29
     },
     {
       "id": "tests/unit/test_memory_service.py::TestMemoryService::test_get_cache_miss_returns_none",
@@ -2647,7 +2647,7 @@
       "name": "Get cache miss returns none",
       "purpose": "get_cache returns None for missing keys.",
       "outcome": "passed",
-      "duration_ms": 1.3
+      "duration_ms": 0.53
     },
     {
       "id": "tests/unit/test_memory_service.py::TestMemoryService::test_get_conversation_history_empty",
@@ -2658,7 +2658,7 @@
       "name": "Get conversation history empty",
       "purpose": "Returns empty list for unknown session.",
       "outcome": "passed",
-      "duration_ms": 0.67
+      "duration_ms": 0.26
     },
     {
       "id": "tests/unit/test_memory_service.py::TestMemoryService::test_increment_with_expiry_counts_correctly",
@@ -2669,7 +2669,7 @@
       "name": "Increment with expiry counts correctly",
       "purpose": "increment_with_expiry returns incremented counter value.",
       "outcome": "passed",
-      "duration_ms": 1.1
+      "duration_ms": 0.27
     },
     {
       "id": "tests/unit/test_memory_service.py::TestMemoryService::test_rate_limit_allows_within_limit",
@@ -2680,7 +2680,7 @@
       "name": "Rate limit allows within limit",
       "purpose": "Returns True for requests within rate limit.",
       "outcome": "passed",
-      "duration_ms": 0.74
+      "duration_ms": 0.56
     },
     {
       "id": "tests/unit/test_memory_service.py::TestMemoryService::test_rate_limit_blocks_over_limit",
@@ -2691,7 +2691,7 @@
       "name": "Rate limit blocks over limit",
       "purpose": "Returns False when rate limit exceeded.",
       "outcome": "passed",
-      "duration_ms": 0.7
+      "duration_ms": 0.29
     },
     {
       "id": "tests/unit/test_memory_service.py::TestMemoryService::test_set_and_get_cache",
@@ -2702,7 +2702,7 @@
       "name": "Set and get cache",
       "purpose": "set_cache and get_cache work correctly.",
       "outcome": "passed",
-      "duration_ms": 1.79
+      "duration_ms": 0.61
     },
     {
       "id": "tests/unit/test_memory_service.py::TestMemoryService::test_store_and_retrieve_conversation",
@@ -2713,7 +2713,7 @@
       "name": "Store and retrieve conversation",
       "purpose": "store_conversation_turn then get_conversation_history returns turns.",
       "outcome": "passed",
-      "duration_ms": 0.88
+      "duration_ms": 0.52
     },
     {
       "id": "tests/unit/test_models.py::TestOrderModel::test_order_has_audit_fields",
@@ -2724,7 +2724,7 @@
       "name": "Order has audit fields",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.37
+      "duration_ms": 0.11
     },
     {
       "id": "tests/unit/test_models.py::TestOrderModel::test_order_has_user_relationship",
@@ -2735,7 +2735,7 @@
       "name": "Order has user relationship",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.71
+      "duration_ms": 0.1
     },
     {
       "id": "tests/unit/test_models.py::TestPipelineState::test_pipeline_state_add_trace",
@@ -2746,7 +2746,7 @@
       "name": "Pipeline state add trace",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.54
+      "duration_ms": 0.14
     },
     {
       "id": "tests/unit/test_models.py::TestPipelineState::test_pipeline_state_default_session_id_is_uuid",
@@ -2757,7 +2757,7 @@
       "name": "Pipeline state default session id is uuid",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.62
+      "duration_ms": 0.15
     },
     {
       "id": "tests/unit/test_models.py::TestPipelineState::test_pipeline_state_error_flag",
@@ -2768,7 +2768,7 @@
       "name": "Pipeline state error flag",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.4
+      "duration_ms": 0.13
     },
     {
       "id": "tests/unit/test_models.py::TestRefundModel::test_refund_has_audit_fields",
@@ -2779,7 +2779,7 @@
       "name": "Refund has audit fields",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.4
+      "duration_ms": 0.11
     },
     {
       "id": "tests/unit/test_models.py::TestReturnModel::test_return_has_audit_fields",
@@ -2790,7 +2790,7 @@
       "name": "Return has audit fields",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.43
+      "duration_ms": 0.11
     },
     {
       "id": "tests/unit/test_models.py::TestSupportMessageModel::test_support_message_has_audit_fields",
@@ -2801,7 +2801,7 @@
       "name": "Support message has audit fields",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.53
+      "duration_ms": 0.13
     },
     {
       "id": "tests/unit/test_models.py::TestSupportResolutionModel::test_support_resolution_has_audit_fields",
@@ -2812,7 +2812,7 @@
       "name": "Support resolution has audit fields",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.5
+      "duration_ms": 0.15
     },
     {
       "id": "tests/unit/test_models.py::TestSupportTicketModel::test_support_ticket_has_audit_fields",
@@ -2823,7 +2823,7 @@
       "name": "Support ticket has audit fields",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.45
+      "duration_ms": 0.17
     },
     {
       "id": "tests/unit/test_models.py::TestSupportTicketModel::test_support_ticket_has_expected_status_field",
@@ -2834,7 +2834,7 @@
       "name": "Support ticket has expected status field",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.37
+      "duration_ms": 0.15
     },
     {
       "id": "tests/unit/test_models.py::TestSupportTicketModel::test_support_ticket_indexes_exist",
@@ -2845,7 +2845,7 @@
       "name": "Support ticket indexes exist",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.59
+      "duration_ms": 0.13
     },
     {
       "id": "tests/unit/test_models.py::TestUserModel::test_user_has_required_audit_fields",
@@ -2856,7 +2856,7 @@
       "name": "User has required audit fields",
       "purpose": "User model includes audit fields (created_by, updated_by, updated_at).",
       "outcome": "passed",
-      "duration_ms": 0.62
+      "duration_ms": 0.25
     },
     {
       "id": "tests/unit/test_models.py::TestUserModel::test_user_model_pk_is_uuid",
@@ -2867,7 +2867,7 @@
       "name": "User model pk is uuid",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.49
+      "duration_ms": 0.22
     },
     {
       "id": "tests/unit/test_models.py::TestUserModel::test_user_phone_is_unique",
@@ -2878,7 +2878,7 @@
       "name": "User phone is unique",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.38
+      "duration_ms": 0.18
     },
     {
       "id": "tests/unit/test_service_internals.py::TestSharedHttpClient::test_a_closed_client_is_replaced",
@@ -2889,7 +2889,7 @@
       "name": "A closed client is replaced",
       "purpose": "A client closed at shutdown must not be handed out again.",
       "outcome": "passed",
-      "duration_ms": 623.52
+      "duration_ms": 415.15
     },
     {
       "id": "tests/unit/test_service_internals.py::TestBhashiniConfigCache::test_a_failed_lookup_is_not_cached",
@@ -2900,7 +2900,7 @@
       "name": "A failed lookup is not cached",
       "purpose": "Caching a failure would turn a blip into a 6-hour outage.",
       "outcome": "passed",
-      "duration_ms": 4.95
+      "duration_ms": 5.06
     },
     {
       "id": "tests/unit/test_service_internals.py::TestSharedHttpClient::test_closing_is_idempotent",
@@ -2911,7 +2911,7 @@
       "name": "Closing is idempotent",
       "purpose": "Shutdown runs the lifespan teardown; a double close must not raise.",
       "outcome": "passed",
-      "duration_ms": 324.43
+      "duration_ms": 212.1
     },
     {
       "id": "tests/unit/test_service_internals.py::TestBhashiniConfigCache::test_concurrent_cold_lookups_fetch_once",
@@ -2922,7 +2922,7 @@
       "name": "Concurrent cold lookups fetch once",
       "purpose": "A cold start with several simultaneous turns must not stampede.",
       "outcome": "passed",
-      "duration_ms": 2.95
+      "duration_ms": 1.57
     },
     {
       "id": "tests/unit/test_service_internals.py::TestSharedHttpClient::test_connect_fails_faster_than_a_slow_read",
@@ -2933,7 +2933,7 @@
       "name": "Connect fails faster than a slow read",
       "purpose": "An unreachable host must fail fast; a slow one gets time to answer.",
       "outcome": "passed",
-      "duration_ms": 304.38
+      "duration_ms": 202.23
     },
     {
       "id": "tests/unit/test_service_internals.py::TestBhashiniConfigCache::test_each_language_is_cached_separately",
@@ -2944,7 +2944,7 @@
       "name": "Each language is cached separately",
       "purpose": "Hindi's config must never be served for a Tamil request.",
       "outcome": "passed",
-      "duration_ms": 5.9
+      "duration_ms": 2.4
     },
     {
       "id": "tests/unit/test_service_internals.py::TestChromaContextFormatting::test_every_retrieved_policy_appears",
@@ -2955,7 +2955,7 @@
       "name": "Every retrieved policy appears",
       "purpose": "Truncating the context would silently drop grounding.",
       "outcome": "passed",
-      "duration_ms": 0.51
+      "duration_ms": 0.11
     },
     {
       "id": "tests/unit/test_service_internals.py::TestBhashiniConfigCache::test_force_refresh_bypasses_the_cache",
@@ -2966,7 +2966,7 @@
       "name": "Force refresh bypasses the cache",
       "purpose": "The escape hatch for a rotated inference key.",
       "outcome": "passed",
-      "duration_ms": 3.88
+      "duration_ms": 0.9
     },
     {
       "id": "tests/unit/test_service_internals.py::TestChromaContextFormatting::test_get_policy_context_delegates_to_the_same_path",
@@ -2977,7 +2977,7 @@
       "name": "Get policy context delegates to the same path",
       "purpose": "Kept as a thin wrapper so existing callers keep working.",
       "outcome": "passed",
-      "duration_ms": 0.86
+      "duration_ms": 0.22
     },
     {
       "id": "tests/unit/test_service_internals.py::TestChromaContextFormatting::test_no_matches_produces_an_explicit_statement",
@@ -2988,7 +2988,7 @@
       "name": "No matches produces an explicit statement",
       "purpose": "The LLM must be told there is no policy, not handed an empty string.",
       "outcome": "passed",
-      "duration_ms": 0.34
+      "duration_ms": 0.1
     },
     {
       "id": "tests/unit/test_service_internals.py::TestChromaContextFormatting::test_query_with_context_searches_once_for_both_shapes",
@@ -2999,7 +2999,7 @@
       "name": "Query with context searches once for both shapes",
       "purpose": "The whole point: one embed + one search, two return values.",
       "outcome": "passed",
-      "duration_ms": 0.81
+      "duration_ms": 0.23
     },
     {
       "id": "tests/unit/test_service_internals.py::TestChromaContextFormatting::test_retrieved_policies_render_with_title_and_relevance",
@@ -3010,7 +3010,7 @@
       "name": "Retrieved policies render with title and relevance",
       "purpose": "The resolution prompt needs the source and the score, not raw text.",
       "outcome": "passed",
-      "duration_ms": 0.41
+      "duration_ms": 0.12
     },
     {
       "id": "tests/unit/test_service_internals.py::TestBhashiniConfigCache::test_stt_and_tts_configs_do_not_collide",
@@ -3021,7 +3021,7 @@
       "name": "Stt and tts configs do not collide",
       "purpose": "Same language, different task — different pipeline.",
       "outcome": "passed",
-      "duration_ms": 6.02
+      "duration_ms": 1.6
     },
     {
       "id": "tests/unit/test_service_internals.py::TestSharedHttpClient::test_the_same_client_is_reused_across_calls",
@@ -3032,7 +3032,7 @@
       "name": "The same client is reused across calls",
       "purpose": "One pooled client, so we pay TLS setup once rather than per call.",
       "outcome": "passed",
-      "duration_ms": 450.03
+      "duration_ms": 254.65
     },
     {
       "id": "tests/unit/test_service_internals.py::TestBhashiniConfigCache::test_the_second_lookup_makes_no_network_call",
@@ -3043,7 +3043,7 @@
       "name": "The second lookup makes no network call",
       "purpose": "A cache hit is what removes a full round trip from every turn.",
       "outcome": "passed",
-      "duration_ms": 3.06
+      "duration_ms": 1.67
     },
     {
       "id": "tests/unit/test_ticket_actions.py::test_action_on_missing_ticket_404",
@@ -3054,7 +3054,7 @@
       "name": "Action on missing ticket 404",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 15.05
+      "duration_ms": 3.27
     },
     {
       "id": "tests/unit/test_ticket_actions.py::test_customer_profile_invalid_id_400",
@@ -3065,7 +3065,7 @@
       "name": "Customer profile invalid id 400",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 10.83
+      "duration_ms": 2.28
     },
     {
       "id": "tests/unit/test_ticket_actions.py::test_customers_list_and_profile",
@@ -3076,7 +3076,7 @@
       "name": "Customers list and profile",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 85
+      "duration_ms": 24.11
     },
     {
       "id": "tests/unit/test_ticket_actions.py::test_reassign_updates_assignee",
@@ -3087,7 +3087,7 @@
       "name": "Reassign updates assignee",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 30.87
+      "duration_ms": 8.07
     },
     {
       "id": "tests/unit/test_ticket_actions.py::test_reply_posts_human_message_and_progresses_status",
@@ -3098,7 +3098,7 @@
       "name": "Reply posts human message and progresses status",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 33.26
+      "duration_ms": 18
     },
     {
       "id": "tests/unit/test_ticket_actions.py::test_reply_rejects_empty_message",
@@ -3109,7 +3109,7 @@
       "name": "Reply rejects empty message",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 16.66
+      "duration_ms": 3.96
     },
     {
       "id": "tests/unit/test_ticket_actions.py::test_resolve_sets_status_then_conflicts",
@@ -3120,7 +3120,7 @@
       "name": "Resolve sets status then conflicts",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 42.11
+      "duration_ms": 13.28
     },
     {
       "id": "tests/unit/test_ticket_actions.py::test_ticket_search_by_customer_phone",
@@ -3131,7 +3131,7 @@
       "name": "Ticket search by customer phone",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 41.25
+      "duration_ms": 9.51
     },
     {
       "id": "tests/unit/test_ticket_actions.py::test_ticket_search_escapes_like_wildcards",
@@ -3142,7 +3142,7 @@
       "name": "Ticket search escapes like wildcards",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 13.89
+      "duration_ms": 6
     },
     {
       "id": "tests/unit/test_ticket_actions.py::test_ticket_search_matches_summary_case_insensitively",
@@ -3153,7 +3153,7 @@
       "name": "Ticket search matches summary case insensitively",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 40.76
+      "duration_ms": 13.13
     },
     {
       "id": "tests/unit/test_ticket_actions.py::test_ticket_search_no_match_returns_empty",
@@ -3164,7 +3164,7 @@
       "name": "Ticket search no match returns empty",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 18.74
+      "duration_ms": 3.35
     },
     {
       "id": "hooks/useVoiceInteraction.test.ts::pairHistoryTurns pairs alternating customer/ai turns into exchanges",
@@ -3175,7 +3175,7 @@
       "name": "Pairs alternating customer/ai turns into exchanges",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 3.45
+      "duration_ms": 3.73
     },
     {
       "id": "hooks/useVoiceInteraction.test.ts::pairHistoryTurns keeps an ai reply without a preceding customer message",
@@ -3186,7 +3186,7 @@
       "name": "Keeps an ai reply without a preceding customer message",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.36
+      "duration_ms": 0.46
     },
     {
       "id": "hooks/useVoiceInteraction.test.ts::pairHistoryTurns keeps consecutive customer messages as separate turns",
@@ -3197,7 +3197,7 @@
       "name": "Keeps consecutive customer messages as separate turns",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.35
+      "duration_ms": 0.43
     },
     {
       "id": "hooks/useVoiceInteraction.test.ts::pairHistoryTurns keeps a trailing unanswered customer message",
@@ -3208,7 +3208,7 @@
       "name": "Keeps a trailing unanswered customer message",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.33
+      "duration_ms": 0.36
     },
     {
       "id": "hooks/useVoiceInteraction.test.ts::pairHistoryTurns returns empty for empty history",
@@ -3219,7 +3219,7 @@
       "name": "Returns empty for empty history",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.32
+      "duration_ms": 0.28
     },
     {
       "id": "lib/constants.test.ts::language constants every language has a non-empty native-script name",
@@ -3230,7 +3230,7 @@
       "name": "Every language has a non-empty native-script name",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 3.05
+      "duration_ms": 3.32
     },
     {
       "id": "lib/constants.test.ts::language constants every language maps to a BCP-47 code and a UI locale",
@@ -3241,7 +3241,7 @@
       "name": "Every language maps to a BCP-47 code and a UI locale",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 1.24
+      "duration_ms": 1.14
     },
     {
       "id": "lib/format.test.ts::format helpers formats dates as short en-IN day + month",
@@ -3252,7 +3252,7 @@
       "name": "Formats dates as short en-IN day + month",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 29.16
+      "duration_ms": 30.69
     },
     {
       "id": "lib/format.test.ts::format helpers formats date-times with hour and minute",
@@ -3263,7 +3263,7 @@
       "name": "Formats date-times with hour and minute",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 1.28
+      "duration_ms": 0.96
     },
     {
       "id": "lib/format.test.ts::format helpers formats INR without decimals",
@@ -3274,7 +3274,7 @@
       "name": "Formats INR without decimals",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 6.58
+      "duration_ms": 6.74
     },
     {
       "id": "lib/format.test.ts::format helpers formats relative time for past values",
@@ -3285,7 +3285,7 @@
       "name": "Formats relative time for past values",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 1.17
+      "duration_ms": 1.68
     },
     {
       "id": "lib/format.test.ts::format helpers says 'just now' for sub-minute deltas",
@@ -3296,7 +3296,7 @@
       "name": "Says 'just now' for sub-minute deltas",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.54
+      "duration_ms": 0.76
     },
     {
       "id": "lib/theme.test.ts::theme meta maps covers every ticket priority",
@@ -3307,7 +3307,7 @@
       "name": "Covers every ticket priority",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 2.73
+      "duration_ms": 4.24
     },
     {
       "id": "lib/theme.test.ts::theme meta maps covers every ticket status",
@@ -3318,7 +3318,7 @@
       "name": "Covers every ticket status",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.39
+      "duration_ms": 0.46
     },
     {
       "id": "lib/theme.test.ts::theme meta maps covers every sentiment the pipeline emits",
@@ -3329,7 +3329,7 @@
       "name": "Covers every sentiment the pipeline emits",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.41
+      "duration_ms": 0.51
     },
     {
       "id": "lib/theme.test.ts::theme meta maps falls back safely for unknown or missing values",
@@ -3340,7 +3340,7 @@
       "name": "Falls back safely for unknown or missing values",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.52
+      "duration_ms": 0.65
     },
     {
       "id": "lib/ws-messages.test.ts::parseWsMessage parses pings",
@@ -3351,7 +3351,7 @@
       "name": "Parses pings",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 4.11
+      "duration_ms": 3.57
     },
     {
       "id": "lib/ws-messages.test.ts::parseWsMessage treats a stage frame with no status as a start",
@@ -3362,7 +3362,7 @@
       "name": "Treats a stage frame with no status as a start",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 1.72
+      "duration_ms": 1.27
     },
     {
       "id": "lib/ws-messages.test.ts::parseWsMessage carries the measured duration on a stage done frame",
@@ -3373,7 +3373,7 @@
       "name": "Carries the measured duration on a stage done frame",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.57
+      "duration_ms": 0.46
     },
     {
       "id": "lib/ws-messages.test.ts::parseWsMessage parses the deferred audio frame",
@@ -3384,7 +3384,7 @@
       "name": "Parses the deferred audio frame",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.56
+      "duration_ms": 0.4
     },
     {
       "id": "lib/ws-messages.test.ts::parseWsMessage ignores an audio frame with no payload",
@@ -3395,7 +3395,7 @@
       "name": "Ignores an audio frame with no payload",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.41
+      "duration_ms": 0.32
     },
     {
       "id": "lib/ws-messages.test.ts::parseWsMessage parses the terminal done frame with trace and total duration",
@@ -3406,7 +3406,7 @@
       "name": "Parses the terminal done frame with trace and total duration",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 1.74
+      "duration_ms": 1.57
     },
     {
       "id": "lib/ws-messages.test.ts::parseWsMessage defaults a done frame's missing fields rather than throwing",
@@ -3417,7 +3417,7 @@
       "name": "Defaults a done frame's missing fields rather than throwing",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.49
+      "duration_ms": 0.4
     },
     {
       "id": "lib/ws-messages.test.ts::parseWsMessage parses the final response frame",
@@ -3428,7 +3428,7 @@
       "name": "Parses the final response frame",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.52
+      "duration_ms": 0.56
     },
     {
       "id": "lib/ws-messages.test.ts::parseWsMessage parses error frames including retry_after",
@@ -3450,7 +3450,7 @@
       "name": "Never throws on malformed input",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 0.56
+      "duration_ms": 0.54
     },
     {
       "id": "components/ui/Badge.test.tsx::badges renders the status as visible text (never color-only)",
@@ -3461,7 +3461,7 @@
       "name": "Renders the status as visible text (never color-only)",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 92.26
+      "duration_ms": 101.03
     },
     {
       "id": "components/ui/Badge.test.tsx::badges renders priority and sentiment labels",
@@ -3472,7 +3472,7 @@
       "name": "Renders priority and sentiment labels",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 22.76
+      "duration_ms": 21.82
     },
     {
       "id": "components/ui/Badge.test.tsx::badges renders nothing for missing values",
@@ -3483,7 +3483,7 @@
       "name": "Renders nothing for missing values",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 2.48
+      "duration_ms": 3.01
     },
     {
       "id": "components/ui/Badge.test.tsx::badges still renders a readable label for unknown values",
@@ -3494,7 +3494,7 @@
       "name": "Still renders a readable label for unknown values",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 7.68
+      "duration_ms": 14.81
     },
     {
       "id": "components/ui/Tabs.test.tsx::Tabs exposes tablist/tab/tabpanel semantics",
@@ -3505,7 +3505,7 @@
       "name": "Exposes tablist/tab/tabpanel semantics",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 209.09
+      "duration_ms": 235.46
     },
     {
       "id": "components/ui/Tabs.test.tsx::Tabs switches on click",
@@ -3516,7 +3516,7 @@
       "name": "Switches on click",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 86.56
+      "duration_ms": 84.6
     },
     {
       "id": "components/ui/Tabs.test.tsx::Tabs supports arrow-key navigation with wrap-around",
@@ -3527,7 +3527,7 @@
       "name": "Supports arrow-key navigation with wrap-around",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 160.6
+      "duration_ms": 208.98
     },
     {
       "id": "components/ui/Tabs.test.tsx::Tabs keeps only the active tab in the tab order (roving tabindex)",
@@ -3538,7 +3538,7 @@
       "name": "Keeps only the active tab in the tab order (roving tabindex)",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 11
+      "duration_ms": 18.35
     },
     {
       "id": "smoke.spec.ts::voice landing page renders the hero and language pills",
@@ -3549,7 +3549,7 @@
       "name": "Voice landing page renders the hero and language pills",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 602
+      "duration_ms": 443
     },
     {
       "id": "smoke.spec.ts::record button renders in the footer on a phone viewport",
@@ -3560,7 +3560,7 @@
       "name": "Record button renders in the footer on a phone viewport",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 388
+      "duration_ms": 418
     },
     {
       "id": "smoke.spec.ts::unauthenticated /dashboard is redirected to /login by middleware",
@@ -3571,7 +3571,7 @@
       "name": "Unauthenticated /dashboard is redirected to /login by middleware",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 300
+      "duration_ms": 358
     },
     {
       "id": "smoke.spec.ts::login flow lands on the dashboard overview",
@@ -3582,7 +3582,7 @@
       "name": "Login flow lands on the dashboard overview",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 596
+      "duration_ms": 581
     },
     {
       "id": "smoke.spec.ts::dashboard shell works on a phone viewport",
@@ -3593,7 +3593,7 @@
       "name": "Dashboard shell works on a phone viewport",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 609
+      "duration_ms": 436
     },
     {
       "id": "smoke.spec.ts::tickets page sends the debounced search to the API",
@@ -3604,7 +3604,7 @@
       "name": "Tickets page sends the debounced search to the API",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 1013
+      "duration_ms": 869
     },
     {
       "id": "smoke.spec.ts::test suite page is public and lists every category",
@@ -3615,7 +3615,7 @@
       "name": "Test suite page is public and lists every category",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 444
+      "duration_ms": 398
     },
     {
       "id": "smoke.spec.ts::test suite page filters by category and by search",
@@ -3626,7 +3626,7 @@
       "name": "Test suite page filters by category and by search",
       "purpose": "",
       "outcome": "passed",
-      "duration_ms": 549
+      "duration_ms": 496
     }
   ]
 }

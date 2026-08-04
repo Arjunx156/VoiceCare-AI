@@ -86,13 +86,6 @@ class Settings(BaseSettings):
     login_rate_limit_per_15min: int = 5  # admin login attempts per IP per 15 minutes
     ws_max_connections_per_ip: int = 3  # concurrent voice WebSocket connections per IP
 
-    # ---- Test Runs tab ----
-    # Each scenario costs up to 3 Gemini calls (intent/resolution/response), so
-    # the default budget covers ~10 fully-live scenarios per run before the
-    # remainder fall back to the mocked GeminiService stub. Keeps a QA batch
-    # from ever exhausting the Gemini free-tier quota mid-run.
-    test_run_gemini_call_budget: int = 30
-
     # ---- Privacy ----
     # gTTS fallback sends the response text to translate.google.com when
     # Bhashini TTS fails. Set false for privacy-sensitive deployments
