@@ -45,24 +45,27 @@ export default function TicketDetailPage() {
 
   const load = useCallback(() => {
     return getTicketDetail(ticketId)
-      .then(async (data) => {
+      .then((data) => {
         setTicket(data);
+        setLoading(false);
+
         if (data.status === "Escalated") {
-          try {
-            setHandoff(await getHandoffNote(ticketId));
-          } catch (err) {
+          void getHandoffNote(ticketId).then(setHandoff).catch((err) => {
             console.error("Failed to load handoff note:", err);
-          }
+          });
+        } else {
+          setHandoff(null);
         }
       })
       .catch((err: unknown) => {
         console.error("Failed to load ticket:", err);
+        setLoading(false);
       })
-      .finally(() => setLoading(false));
   }, [ticketId]);
 
   useEffect(() => {
-    if (ticketId) void load();
+    if (!ticketId) return;
+    void load();
   }, [ticketId, load]);
 
   async function runAction(action: () => Promise<unknown>, failureMessage: string) {

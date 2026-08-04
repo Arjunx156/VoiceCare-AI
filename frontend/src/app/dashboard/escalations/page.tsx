@@ -47,16 +47,18 @@ export default function EscalationsPage() {
     let controller = new AbortController();
     let pollDelay = 5_000;       // start at 5 s, back off to 60 s on errors
     let timeoutId: ReturnType<typeof setTimeout>;
+    let hasLoadedOnce = false;
 
     async function load() {
       if (!mounted) return;
       controller = new AbortController();
       try {
-        const data = await getEscalations(controller.signal);
+        const data = await getEscalations(hasLoadedOnce ? controller.signal : undefined);
         if (mounted) {
           setEscalations(data);
           setError(null);
           pollDelay = 5_000; // reset backoff on success
+          hasLoadedOnce = true;
         }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === "AbortError") return;
@@ -64,6 +66,7 @@ export default function EscalationsPage() {
         if (mounted) {
           setError(err instanceof Error ? err.message : "Failed to load escalations");
           pollDelay = Math.min(pollDelay * 2, 60_000); // back off up to 60 s
+          hasLoadedOnce = true;
         }
       } finally {
         if (mounted) {

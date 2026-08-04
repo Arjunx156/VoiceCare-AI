@@ -23,6 +23,32 @@ const TOKEN_KEY = "vc_admin_token";
 // claim "logged in" for hours after the token has actually expired.
 const TOKEN_MAX_AGE_SECONDS = 60 * 60 * 8; // 8h
 
+type CacheEntry<T> = {
+  expiresAt: number;
+  promise?: Promise<T>;
+  data?: T;
+};
+
+const dashboardReadCache = new Map<string, CacheEntry<unknown>>();
+
+function dashboardCacheKey(path: string): string {
+  // Keep cache entries scoped to the current admin session. A logout/login swap
+  // must never show data fetched under an older token.
+  return `${getAuthToken() ?? "anonymous"}:${path}`;
+}
+
+function clearDashboardReadCache(matcher?: (path: string) => boolean): void {
+  if (!matcher) {
+    dashboardReadCache.clear();
+    return;
+  }
+
+  for (const key of dashboardReadCache.keys()) {
+    const path = key.slice(key.indexOf(":") + 1);
+    if (matcher(path)) dashboardReadCache.delete(key);
+  }
+}
+
 export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(TOKEN_KEY);
@@ -37,6 +63,7 @@ export function setAuthToken(token: string): void {
 export function clearAuthToken(): void {
   localStorage.removeItem(TOKEN_KEY);
   document.cookie = "vc_logged_in=; path=/; max-age=0";
+  clearDashboardReadCache();
 }
 
 export interface VoiceQueryResponse {
@@ -192,6 +219,41 @@ async function apiFetch<T>(path: string, options?: RequestInit & { timeoutMs?: n
   }
 }
 
+async function cachedDashboardFetch<T>(
+  path: string,
+  options?: RequestInit & { timeoutMs?: number; ttlMs?: number },
+): Promise<T> {
+  // Abortable requests are usually live polling. Do not satisfy those from a
+  // shared promise/cache because one caller's abort would affect another caller.
+  if (options?.signal) return apiFetch<T>(path, options);
+
+  const ttlMs = options?.ttlMs ?? 60_000;
+  const key = dashboardCacheKey(path);
+  const now = Date.now();
+  const cached = dashboardReadCache.get(key) as CacheEntry<T> | undefined;
+
+  if (cached?.data !== undefined && cached.expiresAt > now) {
+    return cached.data;
+  }
+  if (cached?.promise && cached.expiresAt > now) {
+    return cached.promise;
+  }
+
+  const fetchOptions = { ...(options ?? {}) };
+  delete fetchOptions.ttlMs;
+
+  const promise = apiFetch<T>(path, fetchOptions).then((data) => {
+    dashboardReadCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+    return data;
+  }).catch((err) => {
+    dashboardReadCache.delete(key);
+    throw err;
+  });
+
+  dashboardReadCache.set(key, { promise, expiresAt: now + ttlMs });
+  return promise;
+}
+
 export async function getTickets(params?: {
   status?: string;
   priority?: string;
@@ -204,23 +266,23 @@ export async function getTickets(params?: {
   if (params?.language) query.set("language", params.language);
   if (params?.search) query.set("search", params.search);
   const qs = query.toString();
-  return apiFetch<TicketSummary[]>(`/api/tickets/${qs ? `?${qs}` : ""}`);
+  return cachedDashboardFetch<TicketSummary[]>(`/api/tickets/${qs ? `?${qs}` : ""}`, { ttlMs: 45_000 });
 }
 
 export async function getEscalations(signal?: AbortSignal): Promise<TicketSummary[]> {
-  return apiFetch<TicketSummary[]>("/api/tickets/escalations", { signal });
+  return cachedDashboardFetch<TicketSummary[]>("/api/tickets/escalations", { signal, ttlMs: signal ? 0 : 15_000 });
 }
 
 export async function getTicketDetail(ticketId: string): Promise<TicketDetail> {
-  return apiFetch<TicketDetail>(`/api/tickets/${ticketId}`);
+  return cachedDashboardFetch<TicketDetail>(`/api/tickets/${ticketId}`, { ttlMs: 60_000 });
 }
 
 export async function getAnalytics(): Promise<AnalyticsOverview> {
-  return apiFetch<AnalyticsOverview>("/api/tickets/analytics");
+  return cachedDashboardFetch<AnalyticsOverview>("/api/tickets/analytics", { ttlMs: 60_000 });
 }
 
 export async function getHandoffNote(ticketId: string): Promise<HandoffNote> {
-  return apiFetch<HandoffNote>(`/api/tickets/${ticketId}/handoff`);
+  return cachedDashboardFetch<HandoffNote>(`/api/tickets/${ticketId}/handoff`, { ttlMs: 120_000 });
 }
 
 export async function adminLogin(email: string, password: string): Promise<void> {
@@ -290,25 +352,37 @@ export async function adminLogout(): Promise<void> {
     });
   } catch {
     /* token still expires server-side at its 8h limit */
+  } finally {
+    clearDashboardReadCache();
   }
 }
 
 export async function claimTicket(ticketId: string): Promise<{ ticket_id: string; status: string; assigned_to: string }> {
-  return apiFetch(`/api/tickets/${ticketId}/claim`, { method: "PATCH" });
+  const result = await apiFetch<{ ticket_id: string; status: string; assigned_to: string }>(`/api/tickets/${ticketId}/claim`, { method: "PATCH" });
+  clearDashboardReadCache((path) => (
+    path.startsWith("/api/tickets") || path === "/api/tickets/analytics"
+  ));
+  return result;
 }
 
 export async function replyToTicket(
   ticketId: string,
   messageText: string,
 ): Promise<{ message_id: string; sender_type: string; message_text: string; language: string; timestamp: string; ticket_status: string }> {
-  return apiFetch(`/api/tickets/${ticketId}/reply`, {
+  const result = await apiFetch<{ message_id: string; sender_type: string; message_text: string; language: string; timestamp: string; ticket_status: string }>(`/api/tickets/${ticketId}/reply`, {
     method: "POST",
     body: JSON.stringify({ message_text: messageText }),
   });
+  clearDashboardReadCache((path) => path.startsWith("/api/tickets"));
+  return result;
 }
 
 export async function resolveTicket(ticketId: string): Promise<{ ticket_id: string; status: string }> {
-  return apiFetch(`/api/tickets/${ticketId}/resolve`, { method: "PATCH" });
+  const result = await apiFetch<{ ticket_id: string; status: string }>(`/api/tickets/${ticketId}/resolve`, { method: "PATCH" });
+  clearDashboardReadCache((path) => (
+    path.startsWith("/api/tickets") || path === "/api/tickets/analytics"
+  ));
+  return result;
 }
 
 export interface CustomerSummary {
@@ -359,11 +433,11 @@ export interface CustomerProfile extends CustomerSummary {
 
 export async function getCustomers(search?: string): Promise<CustomerSummary[]> {
   const qs = search ? `?search=${encodeURIComponent(search)}` : "";
-  return apiFetch<CustomerSummary[]>(`/api/customers/${qs}`);
+  return cachedDashboardFetch<CustomerSummary[]>(`/api/customers/${qs}`, { ttlMs: search ? 30_000 : 60_000 });
 }
 
 export async function getCustomerProfile(customerId: string): Promise<CustomerProfile> {
-  return apiFetch<CustomerProfile>(`/api/customers/${customerId}`);
+  return cachedDashboardFetch<CustomerProfile>(`/api/customers/${customerId}`, { ttlMs: 120_000 });
 }
 
 export async function clearConversation(sessionId: string): Promise<void> {

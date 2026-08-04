@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: projectRoot,
+  },
   async rewrites() {
     const isProd = process.env.NODE_ENV === 'production';
     const defaultBackendUrl = isProd ? "https://voicecare-backend.onrender.com" : "http://localhost:8000";

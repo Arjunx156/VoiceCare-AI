@@ -10,7 +10,15 @@ import React, { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { adminLogout, clearAuthToken, getAuthToken } from "@/lib/api";
+import {
+  adminLogout,
+  clearAuthToken,
+  getAnalytics,
+  getAuthToken,
+  getCustomers,
+  getEscalations,
+  getTickets,
+} from "@/lib/api";
 import { useMotionSafe } from "@/lib/motion";
 
 class DashboardErrorBoundary extends React.Component<
@@ -83,6 +91,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // require_admin; this just avoids showing an empty/erroring dashboard.)
   useEffect(() => {
     if (!getAuthToken()) window.location.assign("/login");
+  }, []);
+
+  useEffect(() => {
+    if (!getAuthToken()) return;
+
+    const warmDashboardTabs = () => {
+      void Promise.allSettled([
+        getAnalytics(),
+        getTickets(),
+        getCustomers(),
+        getEscalations(),
+      ]);
+    };
+
+    const win = window as Window & {
+      requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+
+    if (win.requestIdleCallback) {
+      const idleId = win.requestIdleCallback(warmDashboardTabs, { timeout: 2_000 });
+      return () => win.cancelIdleCallback?.(idleId);
+    }
+
+    const timer = window.setTimeout(warmDashboardTabs, 600);
+    return () => window.clearTimeout(timer);
   }, []);
 
   function handleLogout() {
