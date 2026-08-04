@@ -2,34 +2,43 @@ name: Keep Render backend warm
 
 # Render's free plan spins the backend down after ~15 min idle regardless of
 # any app-level config. Pinging /health every 10 min keeps it under that
-# threshold during active hours; /health also runs a DB SELECT 1 (main.py),
-# so this incidentally keeps the Neon Postgres connection warm too.
+# threshold around the clock; /health also runs a DB SELECT 1 (main.py), so
+# this incidentally keeps the Neon Postgres connection warm too.
 #
-# The per-attempt budget is 240s. That number is measured, not guessed: a cold
-# free-tier instance answers /health in ~130s (container boot + `alembic
-# upgrade head` from the Dockerfile CMD + the DB/Chroma checks inside the
+# WHY THE JOB LOOPS INSTEAD OF JUST RELYING ON THE CRON
+# `schedule:` is best-effort — GitHub queues scheduled runs and drops ticks
+# under load. Measured on this repo with the same `*/10` cron below, actual
+# firings were 68, 71, 87, 106, 138, 200 and 211 minutes apart; not once was
+# it 10. Every gap over ~15 min is a spin-down, so the cron alone left the
+# backend asleep most of the time. So each run pings on its own timer for up
+# to ~5h45m, and the cron just restarts that loop whenever GitHub is willing
+# to fire. Coverage then depends on our sleep, not their scheduler.
+#
+# The concurrency group makes this self-healing rather than stacking: a new
+# tick cancels the loop still running and starts a fresh one.
+#
+# The per-attempt curl budget is 240s. That number is measured, not guessed:
+# a cold free-tier instance answers /health in ~130s (container boot +
+# `alembic upgrade head` from the Dockerfile CMD + the DB/Chroma checks in the
 # handler), and ~2s once warm. Do NOT lower it. An earlier 100s budget aborted
 # every ping mid-wake, which left the instance cold for the next tick too — a
 # self-sustaining failure loop in which this workflow never once did the one
 # thing it exists to do.
 #
-# Two attempts, not one: a single transient 5xx during a Render deploy
-# shouldn't red-X the run. Two attempts plus the gap stay under the 10-minute
-# cron interval, so runs can't stack.
+# Because runs are normally cancelled by the next tick, "cancelled" is the
+# healthy steady state here and a red run means something real: the job exits
+# non-zero only after MAX_CONSECUTIVE_FAILURES cycles fail in a row, i.e. the
+# backend is genuinely down rather than briefly redeploying.
 #
 # This does NOT replace the reactive cold-start handling already in the
 # frontend (BackendWarmup.tsx, login page's "waking up" message) — those stay
-# as the fallback for deploys/maintenance windows this can't prevent, and for
-# the gap between two cron ticks (GitHub's scheduler can run a few minutes
-# late under load; exact timing isn't the goal here).
+# as the fallback for deploys and for the window before the first ping.
 
 on:
   schedule:
     - cron: "*/10 * * * *"
   workflow_dispatch:
 
-# A run still in flight when the next tick fires is superseded rather than
-# queued behind it — a stuck ping is worthless, the fresh one is not.
 concurrency:
   group: keep-alive
   cancel-in-progress: true
@@ -37,30 +46,52 @@ concurrency:
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Under the 6h per-job ceiling, with room for a final in-flight cycle.
+    timeout-minutes: 350
     steps:
-      - name: Ping backend health endpoint
+      - name: Ping /health on a 10-minute timer
         env:
           HEALTH_URL: https://voicecare-backend.onrender.com/health
+          INTERVAL_SECONDS: 600
+          RUN_FOR_SECONDS: 20700 # 5h45m
+          MAX_CONSECUTIVE_FAILURES: 3
         run: |
-          for attempt in 1 2; do
-            start=$(date +%s)
+          deadline=$(( $(date +%s) + RUN_FOR_SECONDS ))
+          cycle=0
+          consecutive_failures=0
+
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            cycle=$(( cycle + 1 ))
+            cycle_start=$(date +%s)
+
             # `|| status=$?` captures curl's own exit code; reading $? after an
             # `if` block would report the compound statement's status instead.
             status=0
             curl -sf --max-time 240 -o /dev/null "$HEALTH_URL" || status=$?
-            elapsed=$(( $(date +%s) - start ))
+            elapsed=$(( $(date +%s) - cycle_start ))
 
             if [ "$status" -eq 0 ]; then
-              echo "healthy on attempt $attempt after ${elapsed}s"
-              exit 0
+              consecutive_failures=0
+              echo "[$(date -u +%H:%M:%S)] cycle $cycle: healthy in ${elapsed}s"
+            else
+              consecutive_failures=$(( consecutive_failures + 1 ))
+              echo "[$(date -u +%H:%M:%S)] cycle $cycle: FAILED in ${elapsed}s (curl exit $status), $consecutive_failures in a row"
+
+              if [ "$consecutive_failures" -ge "$MAX_CONSECUTIVE_FAILURES" ]; then
+                echo "backend unreachable for $consecutive_failures consecutive cycles — giving up"
+                exit 1
+              fi
             fi
 
-            echo "attempt $attempt failed after ${elapsed}s (curl exit $status)"
-            if [ "$attempt" -lt 2 ]; then
-              echo "retrying in 20s"
-              sleep 20
+            # Sleep the remainder of the interval, so a slow cold-start ping
+            # doesn't push the next one past Render's idle window. Written as a
+            # full `if`, not `[ ... ] && sleep`: that form is the last command
+            # in the loop body, so under `bash -e` a non-positive remainder
+            # would end the whole job silently.
+            remaining=$(( INTERVAL_SECONDS - elapsed ))
+            if [ "$remaining" -gt 0 ]; then
+              sleep "$remaining"
             fi
           done
-          echo "backend did not respond healthy after 2 attempts"
-          exit 1
+
+          echo "reached the $RUN_FOR_SECONDS s budget after $cycle cycles; the next scheduled run takes over"
