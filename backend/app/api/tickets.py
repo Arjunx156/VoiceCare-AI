@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case, and_, or_, update
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, noload
 
 from app.core.database import get_db
 from app.api.auth import require_admin
@@ -101,10 +101,15 @@ async def list_tickets(
     db: AsyncSession = Depends(get_db),
 ):
     """List support tickets with optional filters and free-text search."""
-    # Eager-load user to avoid N+1 queries; exclude soft-deleted tickets
+    # noload("*") first: models.py sets lazy="selectin" on nearly every
+    # relationship, so a bare select(SupportTicket) chains out to ~18 sequential
+    # round trips (ticket -> messages/resolution/sentiment, user -> orders ->
+    # items/shipment/payments, ...). This DTO reads ticket scalars plus the
+    # user's name and phone, so everything else is loaded and thrown away.
+    # Same guard the pipeline uses — see agents/pipeline.py.
     query = (
         select(SupportTicket)
-        .options(selectinload(SupportTicket.user))
+        .options(noload("*"), selectinload(SupportTicket.user).noload("*"))
         .where(SupportTicket.deleted_at.is_(None))
         .order_by(SupportTicket.created_at.desc())
     )
@@ -140,10 +145,11 @@ async def list_escalations(
     db: AsyncSession = Depends(get_db),
 ):
     """List escalated tickets for the escalation queue."""
-    # Eager-load user; exclude soft-deleted tickets
+    # noload("*") — see list_tickets. This endpoint is polled by the dashboard,
+    # so the fan-out cost was being paid repeatedly.
     query = (
         select(SupportTicket)
-        .options(selectinload(SupportTicket.user))
+        .options(noload("*"), selectinload(SupportTicket.user).noload("*"))
         .where(SupportTicket.status == "Escalated")
         .where(SupportTicket.deleted_at.is_(None))
         .order_by(SupportTicket.created_at.desc())
@@ -230,13 +236,19 @@ async def get_ticket(ticket_id: str, db: AsyncSession = Depends(get_db)):
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ticket ID")
 
-    # Eager-load user + order in one shot; messages/resolution/sentiment are
-    # already auto-loaded via lazy="selectin" on the model relationships.
+    # noload("*") switches off the model's lazy="selectin" defaults, so every
+    # relationship this response actually reads must be named explicitly below.
+    # sentiment_records is deliberately absent — TicketDetail never reads it.
+    # The trailing .noload("*") on each stops that relationship from fanning
+    # out in turn (user -> orders -> items/shipment/payments, order -> ...).
     result = await db.execute(
         select(SupportTicket)
         .options(
-            selectinload(SupportTicket.user),
-            selectinload(SupportTicket.order),
+            noload("*"),
+            selectinload(SupportTicket.user).noload("*"),
+            selectinload(SupportTicket.order).noload("*"),
+            selectinload(SupportTicket.resolution).noload("*"),
+            selectinload(SupportTicket.messages).noload("*"),
         )
         .where(
             SupportTicket.ticket_id == tid,
@@ -249,8 +261,8 @@ async def get_ticket(ticket_id: str, db: AsyncSession = Depends(get_db)):
 
     user = ticket.user
     order = ticket.order
-    resolution = ticket.resolution  # loaded via lazy="selectin" on the model
-    messages = sorted(ticket.messages, key=lambda m: m.timestamp)  # loaded via lazy="selectin"
+    resolution = ticket.resolution  # loaded via the explicit selectinload above
+    messages = sorted(ticket.messages, key=lambda m: m.timestamp)
 
     # Parse agent trace
     agent_trace = []
@@ -312,7 +324,9 @@ async def claim_ticket(
         raise HTTPException(status_code=400, detail="Invalid ticket ID")
 
     result = await db.execute(
-        select(SupportTicket).where(
+        select(SupportTicket)
+        .options(noload("*"))  # only scalar columns are read/mutated here
+        .where(
             SupportTicket.ticket_id == tid,
             SupportTicket.deleted_at.is_(None),
         )
@@ -346,7 +360,9 @@ async def release_ticket(
         raise HTTPException(status_code=400, detail="Invalid ticket ID")
 
     result = await db.execute(
-        select(SupportTicket).where(
+        select(SupportTicket)
+        .options(noload("*"))  # only scalar columns are read/mutated here
+        .where(
             SupportTicket.ticket_id == tid,
             SupportTicket.deleted_at.is_(None),
         )
@@ -376,7 +392,9 @@ async def reply_to_ticket(
     tid = _parse_ticket_id(ticket_id)
 
     result = await db.execute(
-        select(SupportTicket).where(
+        select(SupportTicket)
+        .options(noload("*"))  # only scalar columns are read/mutated here
+        .where(
             SupportTicket.ticket_id == tid,
             SupportTicket.deleted_at.is_(None),
         )
@@ -424,7 +442,9 @@ async def resolve_ticket(
     tid = _parse_ticket_id(ticket_id)
 
     result = await db.execute(
-        select(SupportTicket).where(
+        select(SupportTicket)
+        .options(noload("*"))  # only scalar columns are read/mutated here
+        .where(
             SupportTicket.ticket_id == tid,
             SupportTicket.deleted_at.is_(None),
         )
@@ -456,7 +476,9 @@ async def reassign_ticket(
     tid = _parse_ticket_id(ticket_id)
 
     result = await db.execute(
-        select(SupportTicket).where(
+        select(SupportTicket)
+        .options(noload("*"))  # only scalar columns are read/mutated here
+        .where(
             SupportTicket.ticket_id == tid,
             SupportTicket.deleted_at.is_(None),
         )
@@ -483,8 +505,12 @@ async def get_handoff_note(ticket_id: str, db: AsyncSession = Depends(get_db)):
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid ticket ID")
 
+    # noload("*") on both selects — the resolution and messages this note needs
+    # are fetched explicitly below, and only user.name/user.phone are read.
     result = await db.execute(
-        select(SupportTicket).where(
+        select(SupportTicket)
+        .options(noload("*"))
+        .where(
             SupportTicket.ticket_id == tid,
             SupportTicket.deleted_at.is_(None),
         )
@@ -496,7 +522,9 @@ async def get_handoff_note(ticket_id: str, db: AsyncSession = Depends(get_db)):
     # Gather all context
     user = None
     if ticket.user_id:
-        u = await db.execute(select(User).where(User.user_id == ticket.user_id))
+        u = await db.execute(
+            select(User).where(User.user_id == ticket.user_id).options(noload("*"))
+        )
         user = u.scalar_one_or_none()
 
     res = await db.execute(

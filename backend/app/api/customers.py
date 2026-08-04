@@ -11,7 +11,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, noload
 
 from app.core.database import get_db
 from app.api.auth import require_admin
@@ -44,7 +44,15 @@ async def list_customers(
         ~User.phone.like("anon-%"),
         ~User.phone.like("temp-%"),
     )
-    query = select(User).where(*_real_customer).order_by(User.created_at.desc())
+    # noload("*") — this listing reads scalar columns only, but User has
+    # lazy="selectin" on orders/voice_sessions/support_tickets, which chains
+    # out through order items, shipments, payments and back into tickets.
+    query = (
+        select(User)
+        .options(noload("*"))
+        .where(*_real_customer)
+        .order_by(User.created_at.desc())
+    )
     if search:
         like = f"%{search.strip()}%"
         query = query.where(
@@ -98,16 +106,22 @@ async def get_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
     `customer_id` may be a short customer code (e.g. CUST-7K3F) or, for
     backward-compatible/bookmarked links, the internal UUID.
     """
+    # noload("*") — only scalar profile fields are read off `user`; orders,
+    # tickets and sentiment are each fetched explicitly further down.
     if customer_id.upper().startswith("CUST-"):
         user = (await db.execute(
-            select(User).where(User.customer_code == customer_id.upper())
+            select(User)
+            .options(noload("*"))
+            .where(User.customer_code == customer_id.upper())
         )).scalar_one_or_none()
     else:
         try:
             uid = uuid.UUID(customer_id)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid customer ID")
-        user = (await db.execute(select(User).where(User.user_id == uid))).scalar_one_or_none()
+        user = (await db.execute(
+            select(User).options(noload("*")).where(User.user_id == uid)
+        )).scalar_one_or_none()
 
     if not user:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -116,12 +130,17 @@ async def get_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
     # Orders with their shipment, line items (+ product), and payments — most
     # recent first. Eager-load everything so the admin sees the full picture of
     # what each customer ordered without extra round-trips.
+    # noload("*") stops Order.return_request / Order.support_tickets (both
+    # lazy="selectin") from loading unread, and the trailing .noload("*") on
+    # Product stops Product.order_items pulling in every other customer's
+    # line items for the same product.
     orders = (await db.execute(
         select(Order)
         .options(
-            selectinload(Order.shipment),
-            selectinload(Order.order_items).selectinload(OrderItem.product),
-            selectinload(Order.payments),
+            noload("*"),
+            selectinload(Order.shipment).noload("*"),
+            selectinload(Order.order_items).selectinload(OrderItem.product).noload("*"),
+            selectinload(Order.payments).noload("*"),
         )
         .where(Order.user_id == uid)
         .order_by(Order.order_date.desc())
@@ -131,6 +150,7 @@ async def get_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
     # Tickets for this customer.
     tickets = (await db.execute(
         select(SupportTicket)
+        .options(noload("*"))  # scalar columns only
         .where(SupportTicket.user_id == uid, SupportTicket.deleted_at.is_(None))
         .order_by(SupportTicket.created_at.desc())
         .limit(50)
