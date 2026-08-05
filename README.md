@@ -33,8 +33,8 @@ Every one of those nine steps is recorded, and every ticket can be replayed step
 
 | | |
 |---|---|
-| **Video** | _(3-minute walkthrough — link to be added)_ |
-| **Live app** | _(Vercel URL — to be added)_ |
+| **Video** | _(https://drive.google.com/file/d/1027ZFYcXiiB-kldM-mTLlxA0f6d0a41b/view?usp=drive_link)_ |
+| **Live app** | _(https://frontend-roan-three-65.vercel.app)_ |
 | **Backend health** | [`/health`](https://voicecare-backend.onrender.com/health) — first request after idle takes ~130 s, see [Deployment notes](#deployment-notes) |
 
 **Try these after seeding.** Say your **name or order number** as well as the problem — a phone number alone is treated as a claim, not proof, so the AI will otherwise ask you to confirm your identity first.
