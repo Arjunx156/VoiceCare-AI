@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     bhashini_api_key: str = ""
     bhashini_pipeline_url: str = "https://dhruva-api.bhashini.gov.in/services/inference"
 
-    # ---- Groq ----
+    # ---- Groq (Whisper STT only — no longer used as LLM fallback) ----
     groq_api_key: str = ""
 
     # ---- Chroma ----

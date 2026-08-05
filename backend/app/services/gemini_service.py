@@ -28,18 +28,19 @@ settings = get_settings()
 # fails JSON parsing and falls through to the apologetic fallback, which is far
 # worse for the customer than a few hundred extra milliseconds.
 #
-# These ceilings only hold while thinking is off (see _THINKING_BUDGET). On
-# gemini-2.5-* thinking tokens are drawn from max_output_tokens, and an
-# unbudgeted call spends 500-600 of them before writing a single character of
-# JSON — which silently truncated every resolution call at 640.
-_MAX_TOKENS_INTENT = 512
-_MAX_TOKENS_RESOLUTION = 640
+# A small thinking budget is now enabled (see _THINKING_BUDGET). On gemini-2.5-*
+# thinking tokens are drawn from max_output_tokens, so the ceilings must be high
+# enough to accommodate both the reasoning overhead and the full JSON output.
+_MAX_TOKENS_INTENT = 768
+_MAX_TOKENS_RESOLUTION = 1280
 _MAX_TOKENS_RESPONSE = 2048
 
-# 0 disables thinking outright. Every prompt here asks for a fixed JSON shape
-# from a short context; none of them benefit from a reasoning budget, and all of
-# them sit on the customer's critical path.
-_THINKING_BUDGET = 0
+# A modest thinking budget lets the model reason before emitting JSON, which
+# meaningfully improves resolution quality — especially for multi-factor queries
+# (e.g. damaged product + refund eligibility + policy lookup). Previously set to
+# 0 when the token caps were too tight and thinking consumed the entire budget;
+# now safe to re-enable because the caps above leave ample room for output.
+_THINKING_BUDGET = 1024
 
 # Cap on a single history turn's text inside a prompt.
 _MAX_HISTORY_CHARS_PER_TURN = 300
@@ -51,8 +52,7 @@ def _is_gemini_retryable(exc: Exception) -> bool:
     Skip retrying every 4xx — auth, bad-request, model-not-found, and 429. The
     free-tier limit that actually bites here is a per-DAY request quota, so a
     backed-off retry cannot clear it and only adds dead air to the customer's
-    critical path. Quota exhaustion is already handled by the Groq fallback in
-    _call_gemini, which runs before this predicate is ever consulted.
+    critical path.
     """
     code = getattr(exc, "code", None)
     if not isinstance(code, int):
@@ -73,10 +73,11 @@ class GeminiService:
         # be applied and every call silently ran with thinking enabled.
         self.client = genai.Client(api_key=settings.gemini_api_key)
 
-    # 2 attempts, not 3: each attempt carries a 12s timeout plus an inline Groq
-    # fallback, so 3 attempts meant ~90s of dead air before the caller gave up.
+    # 3 attempts with exponential backoff. Now that the Groq LLM fallback has
+    # been removed, an extra retry is cheap insurance against transient 5xx
+    # errors from the Gemini API (~12s timeout each).
     @retry(
-        stop=stop_after_attempt(2),
+        stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=8),
         retry=retry_if_exception(_is_gemini_retryable),
         before_sleep=lambda retry_state: logger.warning(
@@ -88,7 +89,7 @@ class GeminiService:
     async def _call_gemini(
         self, prompt: str, system_instruction: str = "", max_output_tokens: int = 2048
     ) -> str:
-        """Make a Gemini API call with retry logic and Groq fallback."""
+        """Make a Gemini API call with retry logic."""
         try:
             config = genai_types.GenerateContentConfig(
                 temperature=0.3,
@@ -124,31 +125,6 @@ class GeminiService:
             return response.text
         except Exception as e:
             logger.error("gemini_call_failed", error=str(e))
-            if settings.groq_api_key:
-                logger.info("falling_back_to_groq_llm")
-                from app.core.http import get_http_client
-                try:
-                    client = get_http_client()
-                    resp = await client.post(
-                        "https://api.groq.com/openai/v1/chat/completions",
-                        headers={"Authorization": f"Bearer {settings.groq_api_key}"},
-                        json={
-                            # llama3-70b-8192 was decommissioned by Groq; use the
-                            # current 70B model so this fallback actually works when
-                            # Gemini hits its free-tier quota (429).
-                            "model": "llama-3.3-70b-versatile",
-                            "messages": [{"role": "user", "content": prompt}],
-                            "temperature": 0.3,
-                            "response_format": {"type": "json_object"}
-                        },
-                        timeout=15.0,
-                    )
-                    if resp.status_code == 200:
-                        return resp.json()["choices"][0]["message"]["content"]
-                    else:
-                        logger.error("groq_fallback_failed", status=resp.status_code, text=resp.text)
-                except Exception as groq_err:
-                    logger.error("groq_fallback_exception", error=str(groq_err))
             raise
 
     @staticmethod
@@ -295,15 +271,15 @@ Rules:
         except Exception as e:
             logger.error("generate_resolution_fallback", error=str(e))
             return {
-                "recommended_action": "Inform",
-                "resolution_summary": "We are experiencing high traffic, but your request is noted.",
+                "recommended_action": "Escalate",
+                "resolution_summary": "Your request has been noted and will be handled by a support agent shortly.",
                 "policy_reference": "Standard Practice",
-                "internal_note": "AI rate limit hit, defaulted to basic resolution.",
+                "internal_note": f"Gemini LLM unavailable — auto-escalating to human agent. Error: {e}",
                 # Honest low confidence: the LLM never ran, so the value must
                 # trip escalation Rule 5 (< 0.4) instead of masking the outage.
-                "confidence_score": 0.3,
+                "confidence_score": 0.2,
                 "requires_human_review": True,
-                "reason_for_action": "System fallback"
+                "reason_for_action": "LLM unavailable — automatic escalation"
             }
 
     async def generate_response(

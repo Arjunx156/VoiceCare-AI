@@ -107,7 +107,7 @@ class TestGenerateResolution:
                 order_data=None, policy_context="", sentiment="Neutral",
             )
 
-        assert result["recommended_action"] == "Inform"
+        assert result["recommended_action"] == "Escalate"
         # The LLM never ran — confidence must be low enough to trip the
         # deterministic low-confidence escalation rule (< 0.4).
         assert result["confidence_score"] < 0.4
