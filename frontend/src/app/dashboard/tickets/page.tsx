@@ -21,7 +21,7 @@ const FILTER_OPTIONS = {
 
 const selectStyle: React.CSSProperties = {
   padding: "8px 14px",
-  borderRadius: 999,
+  borderRadius: "var(--radius-inner)",
   fontSize: 12,
   fontWeight: 500,
   fontFamily: "var(--font-sans)",
@@ -86,7 +86,7 @@ export default function TicketsPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <PageHeader
-        eyebrow="SUPPORT TICKETS"
+        eyebrow="Support tickets"
         title={loading ? "Loading…" : error ? "Error" : `${tickets.length} ticket${tickets.length !== 1 ? "s" : ""}`}
         subtitle={error ?? undefined}
         actions={
@@ -99,7 +99,7 @@ export default function TicketsPage() {
               aria-label="Search tickets"
               style={{
                 padding: "8px 14px",
-                borderRadius: 999,
+                borderRadius: "var(--radius-inner)",
                 fontSize: 12,
                 fontFamily: "var(--font-sans)",
                 background: "var(--bg-panel)",
@@ -149,36 +149,24 @@ export default function TicketsPage() {
               href={`/dashboard/tickets/${ticket.ticket_id}`}
               style={{ textDecoration: "none", display: "block" }}
             >
-              <motion.div
-                {...entry(Math.min(i * 0.03, 0.3))}
+              <div
+                className="row-hover"
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 16,
-                  padding: "16px 24px",
-                  borderBottom: i < tickets.length - 1 ? "1px solid var(--border-subtle)" : "none",
-                  cursor: "pointer",
-                  transition: "background 120ms",
+                  padding: "15px 24px",
+                  borderBottom: i < tickets.length - 1 ? "1px solid var(--border-hairline)" : "none",
                 }}
-                whileHover={{ backgroundColor: "var(--bg-panel-raised)" }}
               >
-                {/* Left: eyebrow + bold title */}
+                {/* Left: type label + customer */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <span
-                    style={{
-                      fontSize: 10, fontWeight: 600,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      color: "var(--accent)",
-                      display: "block",
-                      marginBottom: 2,
-                    }}
-                  >
-                    {ticket.ticket_type || "SUPPORT"}
+                  <span className="eyebrow" style={{ marginBottom: 3 }}>
+                    {ticket.ticket_type || "support"}
                   </span>
                   <p
                     style={{
-                      fontSize: 14, fontWeight: 600,
+                      fontSize: 14, fontWeight: 500,
                       color: "var(--text-primary)",
                       whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                     }}
@@ -191,7 +179,7 @@ export default function TicketsPage() {
                 </div>
 
                 {/* Middle: language + sentiment */}
-                <div style={{ flexShrink: 0, textAlign: "right", minWidth: 60 }}>
+                <div style={{ flexShrink: 0, textAlign: "right", width: 92 }}>
                   <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                     <LanguageLabel language={ticket.language} />
                   </p>
@@ -199,18 +187,19 @@ export default function TicketsPage() {
                 </div>
 
                 {/* Right: priority + status pills */}
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0, width: 104 }}>
                   <PriorityBadge priority={ticket.priority} />
                   <StatusBadge status={ticket.status} />
                 </div>
 
                 {/* Date */}
                 <span
-                  style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0, minWidth: 70, textAlign: "right" }}
+                  className="mono"
+                  style={{ fontSize: 10, color: "var(--text-muted)", flexShrink: 0, minWidth: 74, textAlign: "right" }}
                 >
                   {formatDate(ticket.created_at)}
                 </span>
-              </motion.div>
+              </div>
             </Link>
           ))
         )}

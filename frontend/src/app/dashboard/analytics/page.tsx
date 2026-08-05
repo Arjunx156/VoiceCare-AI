@@ -13,9 +13,21 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { getAnalytics, type AnalyticsOverview } from "@/lib/api";
-import { CHART_COLORS, PRIORITY_HEX, chartTooltipStyle, sentimentHex } from "@/lib/theme";
+import {
+  CHART_COLORS,
+  CHART_LABEL_COLOR,
+  chartLegendStyle,
+  chartTooltipStyle,
+  priorityHex,
+  sentimentHex,
+} from "@/lib/theme";
 import { useMotionSafe } from "@/lib/motion";
-import { EmptyState, LoadingBlock, Panel, StatCard } from "@/components/ui";
+
+/** Legend labels stay neutral; the swatch beside them carries the colour. */
+const legendLabel = (value: string) => (
+  <span style={{ color: CHART_LABEL_COLOR }}>{value.replace(/_/g, " ")}</span>
+);
+import { EmptyState, LoadingBlock, Panel, StatCard, StatCluster } from "@/components/ui";
 
 const AXIS_TICK = { fill: "#8A8A8A", fontSize: 11 };
 
@@ -54,8 +66,8 @@ export default function AnalyticsPage() {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
         <div>
-          <span className="eyebrow">ANALYTICS</span>
-          <h1 className="page-title">Insights</h1>
+          <span className="eyebrow">Analytics</span>
+          <h1 className="page-title">Ticket insights</h1>
         </div>
         <Panel>
           <EmptyState
@@ -69,7 +81,9 @@ export default function AnalyticsPage() {
   }
 
   const langData = Object.entries(analytics.tickets_by_language).map(([name, value]) => ({ name, value }));
-  const catData  = Object.entries(analytics.tickets_by_category).map(([name, value]) => ({ name, value }));
+  const catData  = Object.entries(analytics.tickets_by_category)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
   const priData  = Object.entries(analytics.tickets_by_priority).map(([name, value]) => ({ name, value }));
   const sentData = Object.entries(analytics.tickets_by_sentiment).map(([name, value]) => ({ name, value }));
 
@@ -84,31 +98,32 @@ export default function AnalyticsPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
       {/* Header */}
       <motion.div {...entry()}>
-        <span className="eyebrow">ANALYTICS</span>
-        <h1 className="page-title">Ticket Insights</h1>
-        <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 6 }}>
-          Language distribution, category breakdown, priority and sentiment analysis
+        <span className="eyebrow">
+          {analytics.total_tickets.toLocaleString()} tickets analysed
+        </span>
+        <h1 className="page-title">Ticket insights</h1>
+        <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 10, maxWidth: "58ch" }}>
+          How the queue breaks down by language, category, priority and the mood customers arrived in.
         </p>
       </motion.div>
 
-      {/* KPI strip (auto-fit so it doesn't crush on narrow screens) */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-        {kpis.map((s, i) => (
-          <motion.div key={s.label} {...entry(i * 0.06)}>
-            <StatCard label={s.label} value={s.value} />
-          </motion.div>
-        ))}
-      </div>
+      {/* Four readings, one instrument — see StatCluster. */}
+      <motion.div {...entry(0.06)}>
+        <StatCluster>
+          {kpis.map((s) => (
+            <StatCard key={s.label} label={s.label} value={s.value} />
+          ))}
+        </StatCluster>
+      </motion.div>
 
       {/* Asymmetric two-column: large language bar + smaller category donut
           (collapses to one column under 900px — .grid-main-side) */}
       <div className="grid-main-side">
         {/* Ticket Volume by Language — larger block */}
-        <motion.div {...entry(0.28)} className="panel" style={{ padding: "24px 24px 16px" }}>
-          <span className="eyebrow">TICKET VOLUME</span>
-          <h2 className="section-title" style={{ marginBottom: 20 }}>
-            By Language
-          </h2>
+        <motion.div {...entry(0.12)} className="panel" style={{ padding: "22px 24px 14px" }}>
+          <div className="rule-head">
+            <h2 className="section-title">Volume by language</h2>
+          </div>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={langData} margin={{ left: -16, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
@@ -121,11 +136,10 @@ export default function AnalyticsPage() {
         </motion.div>
 
         {/* By Category — smaller, donut */}
-        <motion.div {...entry(0.34)} className="panel" style={{ padding: "24px 20px 16px" }}>
-          <span className="eyebrow">CATEGORY</span>
-          <h2 className="section-title" style={{ marginBottom: 12 }}>
-            Breakdown
-          </h2>
+        <motion.div {...entry(0.12)} className="panel" style={{ padding: "22px 20px 14px" }}>
+          <div className="rule-head">
+            <h2 className="section-title">By category</h2>
+          </div>
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
               <Pie
@@ -140,7 +154,7 @@ export default function AnalyticsPage() {
                 ))}
               </Pie>
               <Tooltip {...chartTooltipStyle} />
-              <Legend wrapperStyle={{ color: "#9A9A9A", fontSize: 10, paddingTop: 8 }} />
+              <Legend {...chartLegendStyle} formatter={legendLabel} />
             </PieChart>
           </ResponsiveContainer>
         </motion.div>
@@ -149,11 +163,10 @@ export default function AnalyticsPage() {
       {/* Priority + Sentiment side by side (stacks under 900px — .grid-half) */}
       <div className="grid-half">
         {/* By Priority */}
-        <motion.div {...entry(0.42)} className="panel" style={{ padding: "24px 24px 16px" }}>
-          <span className="eyebrow">PRIORITY</span>
-          <h2 className="section-title" style={{ marginBottom: 20 }}>
-            Distribution
-          </h2>
+        <motion.div {...entry(0.18)} className="panel" style={{ padding: "22px 24px 14px" }}>
+          <div className="rule-head">
+            <h2 className="section-title">By priority</h2>
+          </div>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={priData} layout="vertical" margin={{ left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#262626" horizontal={false} />
@@ -162,7 +175,7 @@ export default function AnalyticsPage() {
               <Tooltip {...chartTooltipStyle} />
               <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
                 {priData.map((priority, i) => (
-                  <Cell key={i} fill={PRIORITY_HEX[priority.name] || "#9A9A9A"} />
+                  <Cell key={i} fill={priorityHex(priority.name)} />
                 ))}
               </Bar>
             </BarChart>
@@ -170,11 +183,10 @@ export default function AnalyticsPage() {
         </motion.div>
 
         {/* By Sentiment */}
-        <motion.div {...entry(0.48)} className="panel" style={{ padding: "24px 24px 16px" }}>
-          <span className="eyebrow">SENTIMENT</span>
-          <h2 className="section-title" style={{ marginBottom: 12 }}>
-            Customer Mood
-          </h2>
+        <motion.div {...entry(0.18)} className="panel" style={{ padding: "22px 24px 14px" }}>
+          <div className="rule-head">
+            <h2 className="section-title">Mood on arrival</h2>
+          </div>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie
@@ -189,7 +201,7 @@ export default function AnalyticsPage() {
                 ))}
               </Pie>
               <Tooltip {...chartTooltipStyle} />
-              <Legend wrapperStyle={{ color: "#9A9A9A", fontSize: 10 }} />
+              <Legend {...chartLegendStyle} formatter={legendLabel} />
             </PieChart>
           </ResponsiveContainer>
         </motion.div>

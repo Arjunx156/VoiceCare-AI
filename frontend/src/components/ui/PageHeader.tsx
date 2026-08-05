@@ -32,7 +32,9 @@ export function PageHeader({ eyebrow, title, subtitle, actions }: Props) {
         <span className="eyebrow">{eyebrow}</span>
         <h1 className="page-title">{title}</h1>
         {subtitle && (
-          <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{subtitle}</p>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 8, maxWidth: "58ch" }}>
+            {subtitle}
+          </p>
         )}
       </div>
       {actions && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{actions}</div>}

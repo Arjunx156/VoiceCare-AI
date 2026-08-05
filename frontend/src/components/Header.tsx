@@ -12,13 +12,21 @@ export default function Header() {
         padding: "20px 24px 0",
       }}
     >
-      <div>
-        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "var(--accent)", textTransform: "uppercase" }}>
-          {process.env.NEXT_PUBLIC_COMPANY_NAME || "CommerceMind"}
+      {/* Same lockup as the console sidebar: meter mark, wordmark, mono
+          company tag. The company name no longer wears the brand coral —
+          coral is reserved for live state and the primary action. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+        <span className="brandmark" aria-hidden="true">
+          <span /><span /><span /><span /><span />
         </span>
-        <h1 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", marginTop: 2 }}>
-          {process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"}
-        </h1>
+        <div className="dash-brand-text">
+          <h1 className="wordmark" style={{ fontSize: 16 }}>
+            {process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"}
+          </h1>
+          <span className="wordmark-tag">
+            {process.env.NEXT_PUBLIC_COMPANY_NAME || "CommerceMind"}
+          </span>
+        </div>
       </div>
       <Link
         href="/dashboard"

@@ -106,14 +106,14 @@ export default function EscalationsPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
       {/* Header */}
       <motion.div {...entry()}>
-        <span className="eyebrow">ESCALATION QUEUE</span>
+        <span className="eyebrow">Escalation queue</span>
         <h1 className="page-title">
           {escalations.length > 0
             ? `${escalations.length} ticket${escalations.length !== 1 ? "s" : ""} need${escalations.length === 1 ? "s" : ""} you`
             : "All clear"}
         </h1>
-        <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 6 }}>
-          Tickets that require human agent review
+        <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 10, maxWidth: "58ch" }}>
+          Tickets the pipeline stopped on and handed to a human. Claim one to take it off the queue.
         </p>
       </motion.div>
 
@@ -122,7 +122,7 @@ export default function EscalationsPage() {
           <EmptyState
             icon={CheckCircle2}
             title="No pending escalations"
-            hint="All tickets are being handled by AI"
+            hint="The pipeline is resolving everything on its own right now."
           />
         </Panel>
       ) : (
@@ -131,12 +131,12 @@ export default function EscalationsPage() {
             const raised = isRaised(ticket.priority);
             const meta = priorityMeta(ticket.priority);
             return (
-              <motion.div key={ticket.ticket_id} {...entry(Math.min(i * 0.06, 0.4))}>
+              <motion.div key={ticket.ticket_id} {...entry(Math.min(i * 0.03, 0.18))}>
                 <Link href={`/dashboard/tickets/${ticket.ticket_id}`} style={{ textDecoration: "none", display: "block" }}>
                   <div
                     className="panel-hover"
                     style={{
-                      borderRadius: 18,
+                      borderRadius: "var(--radius-container)",
                       padding: "20px 22px",
                       position: "relative",
                       overflow: "hidden",
@@ -151,11 +151,12 @@ export default function EscalationsPage() {
                         style={{
                           position: "absolute",
                           top: 0, right: 0,
-                          padding: "5px 12px",
-                          borderRadius: "0 18px 0 12px",
+                          padding: "5px 11px",
+                          borderRadius: "0 12px 0 10px",
+                          fontFamily: "var(--font-mono)",
                           fontSize: 10,
-                          fontWeight: 700,
-                          letterSpacing: "0.06em",
+                          fontWeight: 500,
+                          letterSpacing: "0.08em",
                           background: meta.bg,
                           color: meta.fg,
                           textTransform: "uppercase",
@@ -166,17 +167,17 @@ export default function EscalationsPage() {
                     )}
 
                     {/* Eyebrow + name */}
-                    <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--accent)", display: "block", marginBottom: 4 }}>
-                      {ticket.ticket_type || "SUPPORT"}
+                    <span className="eyebrow" style={{ marginBottom: 5 }}>
+                      {ticket.ticket_type || "support"}
                     </span>
-                    <p style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
+                    <p style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--text-primary)" }}>
                       {ticket.user_name}
                     </p>
                     <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                       {ticket.phone} · <LanguageLabel language={ticket.language} />
                     </p>
 
-                    <div className="divider" style={{ margin: "12px 0" }} />
+                    <div style={{ height: 1, background: "var(--border-hairline)", margin: "14px 0" }} />
 
                     <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>
                       {ticket.summary || `${ticket.ticket_type} issue`}
@@ -191,7 +192,7 @@ export default function EscalationsPage() {
                           <Badge meta={sentimentMeta(ticket.sentiment)}>{ticket.sentiment}</Badge>
                         )}
                       </div>
-                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                      <span className="mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>
                         {formatDate(ticket.created_at)}
                       </span>
                     </div>

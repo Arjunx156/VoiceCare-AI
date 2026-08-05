@@ -142,32 +142,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           borderRight: "1px solid var(--border-subtle)",
         }}
       >
-        {/* Logo */}
+        {/* Brand lockup — level-meter mark, no container box. See the
+            BRANDMARK note in globals.css for why the mic squircle went. */}
         <Link
           href="/"
           className="dash-brand"
-          style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 20px 24px", textDecoration: "none" }}
+          style={{ display: "flex", alignItems: "center", gap: 11, padding: "0 20px 22px", textDecoration: "none" }}
         >
-          {/* Mic mark */}
-          <div
-            style={{
-              width: 32, height: 32,
-              borderRadius: 10,
-              background: "var(--accent)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <svg width="16" height="16" fill="white" viewBox="0 0 24 24">
-              <path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z"/>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/>
-              <line x1="12" y1="19" x2="12" y2="23" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </div>
-          <div className="dash-brand-text">
-            <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"}</p>
-            <p style={{ fontSize: 10, color: "var(--text-muted)", letterSpacing: "0.04em" }}>Admin Dashboard</p>
-          </div>
+          <span className="brandmark" aria-hidden="true">
+            <span /><span /><span /><span /><span />
+          </span>
+          <span className="dash-brand-text">
+            <span className="wordmark">{process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"}</span>
+            <span className="wordmark-tag">
+              {process.env.NEXT_PUBLIC_COMPANY_NAME || "CommerceMind"}
+            </span>
+          </span>
         </Link>
 
         {/* Divider */}
@@ -249,7 +239,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Link>
           <button
             onClick={handleLogout}
+            aria-label="Sign out"
             style={{
+              whiteSpace: "nowrap",
               display: "flex",
               alignItems: "center",
               gap: 10,
@@ -271,7 +263,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <path d="M10 11l3-3-3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               <line x1="13" y1="8" x2="6" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
-            Sign out
+            {/* Label drops on the compact top bar; the icon plus aria-label
+                keeps the control reachable without crowding the nav. */}
+            <span className="dash-signout-label">Sign out</span>
           </button>
         </div>
       </aside>

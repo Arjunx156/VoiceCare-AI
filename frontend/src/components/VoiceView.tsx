@@ -230,12 +230,13 @@ export default function VoiceView(props: VoiceState) {
           initial="hidden"
           animate="show"
           style={{
-            fontSize: "clamp(28px, 5vw, 44px)",
-            fontWeight: 800,
+            fontSize: "clamp(30px, 5.2vw, 48px)",
+            fontWeight: 600,
             color: "var(--text-primary)",
             textAlign: "center",
-            lineHeight: 1.08,
-            letterSpacing: "-0.025em",
+            lineHeight: 1.02,
+            letterSpacing: "-0.04em",
+            textWrap: "balance",
             maxWidth: "18ch",
             marginBottom: showLanguageLine ? 10 : 24,
           }}

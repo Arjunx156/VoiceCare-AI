@@ -6,5 +6,5 @@ export { PageHeader } from "./PageHeader";
 export { Panel } from "./Panel";
 export { SkeletonList } from "./Skeleton";
 export { LoadingBlock, Spinner } from "./Spinner";
-export { StatCard } from "./StatCard";
+export { StatCard, StatCluster } from "./StatCard";
 export { Tabs, type TabItem } from "./Tabs";

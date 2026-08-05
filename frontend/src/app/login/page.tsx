@@ -69,8 +69,21 @@ function LoginForm() {
 
   return (
     <Panel style={{ width: "100%", maxWidth: 400, padding: "36px 32px" }}>
-      <span className="eyebrow">ADMIN ACCESS</span>
-      <h1 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", marginTop: 8, marginBottom: 6 }}>
+      {/* The first screen anyone sees should carry the identity. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 28 }}>
+        <span className="brandmark" aria-hidden="true">
+          <span /><span /><span /><span /><span />
+        </span>
+        <div className="dash-brand-text">
+          <span className="wordmark">{process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"}</span>
+          <span className="wordmark-tag">
+            {process.env.NEXT_PUBLIC_COMPANY_NAME || "CommerceMind"}
+          </span>
+        </div>
+      </div>
+
+      <span className="eyebrow">Admin access</span>
+      <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.03em", color: "var(--text-primary)", marginTop: 4, marginBottom: 8 }}>
         Sign in to VoiceCare
       </h1>
       <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: expired ? 16 : 28 }}>

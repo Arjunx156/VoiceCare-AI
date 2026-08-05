@@ -9,17 +9,25 @@ type BadgeProps = {
   withDot?: boolean;
 };
 
+/**
+ * A classification the pipeline assigned — priority, status, sentiment. Set in
+ * the mono register and cut square rather than pill-shaped, so it reads as a
+ * data tag rather than a marketing chip.
+ */
 export function Badge({ meta, children, withDot = true }: BadgeProps) {
   return (
     <span
+      className="mono"
       style={{
         display: "inline-flex",
         alignItems: "center",
         gap: 5,
         fontSize: 10,
-        fontWeight: 600,
-        padding: "3px 9px",
-        borderRadius: 999,
+        fontWeight: 500,
+        letterSpacing: "0.06em",
+        textTransform: "uppercase",
+        padding: "3px 7px",
+        borderRadius: 4,
         whiteSpace: "nowrap",
         background: meta.bg,
         color: meta.fg,

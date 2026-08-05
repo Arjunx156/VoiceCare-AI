@@ -50,7 +50,7 @@ export default function CustomersPage() {
       style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 900 }}
     >
       <div>
-        <span className="eyebrow">DIRECTORY</span>
+        <span className="eyebrow">Directory</span>
         <h1 className="page-title">Customers</h1>
       </div>
 
@@ -60,7 +60,7 @@ export default function CustomersPage() {
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by name, phone, or email…"
         aria-label="Search customers"
-        style={{ background: "var(--bg-panel)", borderRadius: 12 }}
+        style={{ background: "var(--bg-panel)" }}
       />
 
       {loading ? (
