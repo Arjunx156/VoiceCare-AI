@@ -11,6 +11,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
+  BarChart3,
+  ChevronLeft,
+  LayoutGrid,
+  LogOut,
+  MessageSquareText,
+  TriangleAlert,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+import {
   adminLogout,
   clearAuthToken,
   getAnalytics,
@@ -20,6 +30,7 @@ import {
   getTickets,
 } from "@/lib/api";
 import { useMotionSafe } from "@/lib/motion";
+import { Brandmark } from "@/components/ui";
 
 class DashboardErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -59,28 +70,16 @@ class DashboardErrorBoundary extends React.Component<
   }
 }
 
-const NAV_ITEMS = [
-  { href: "/dashboard",             label: "Overview",    icon: "overview" },
-  { href: "/dashboard/tickets",     label: "Tickets",     icon: "tickets" },
-  { href: "/dashboard/customers",   label: "Customers",   icon: "customers" },
-  { href: "/dashboard/escalations", label: "Escalations", icon: "escalations" },
-  { href: "/dashboard/analytics",   label: "Analytics",   icon: "analytics" },
+const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: "/dashboard",             label: "Overview",    icon: LayoutGrid },
+  { href: "/dashboard/tickets",     label: "Tickets",     icon: MessageSquareText },
+  { href: "/dashboard/customers",   label: "Customers",   icon: Users },
+  { href: "/dashboard/escalations", label: "Escalations", icon: TriangleAlert },
+  { href: "/dashboard/analytics",   label: "Analytics",   icon: BarChart3 },
 ];
 
-// Minimal SVG icons (no emojis — editorial clean)
-function NavIcon({ name, active }: { name: string; active: boolean }) {
-  const color = active ? "var(--accent)" : "var(--text-muted)";
-  if (name === "overview")
-    return <svg aria-hidden="true" width="16" height="16" fill="none" viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1.5" fill={color}/><rect x="9" y="1" width="6" height="6" rx="1.5" fill={color} opacity=".5"/><rect x="1" y="9" width="6" height="6" rx="1.5" fill={color} opacity=".5"/><rect x="9" y="9" width="6" height="6" rx="1.5" fill={color} opacity=".3"/></svg>;
-  if (name === "tickets")
-    return <svg aria-hidden="true" width="16" height="16" fill="none" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="2" stroke={color} strokeWidth="1.5"/><line x1="5" y1="7" x2="11" y2="7" stroke={color} strokeWidth="1.5" strokeLinecap="round"/><line x1="5" y1="10" x2="9" y2="10" stroke={color} strokeWidth="1.5" strokeLinecap="round"/></svg>;
-  if (name === "customers")
-    return <svg aria-hidden="true" width="16" height="16" fill="none" viewBox="0 0 16 16"><circle cx="8" cy="5" r="2.5" stroke={color} strokeWidth="1.5"/><path d="M3 13c0-2.5 2.2-4 5-4s5 1.5 5 4" stroke={color} strokeWidth="1.5" strokeLinecap="round"/></svg>;
-  if (name === "escalations")
-    return <svg aria-hidden="true" width="16" height="16" fill="none" viewBox="0 0 16 16"><path d="M8 2L14 13H2L8 2Z" stroke={color} strokeWidth="1.5" strokeLinejoin="round"/><line x1="8" y1="7" x2="8" y2="10" stroke={color} strokeWidth="1.5" strokeLinecap="round"/><circle cx="8" cy="12" r="0.75" fill={color}/></svg>;
-  // analytics — also the fall-through, so NavIcon always returns an element
-  return <svg aria-hidden="true" width="16" height="16" fill="none" viewBox="0 0 16 16"><rect x="2" y="9" width="3" height="5" rx="1" fill={color} opacity=".5"/><rect x="6.5" y="6" width="3" height="8" rx="1" fill={color} opacity=".7"/><rect x="11" y="3" width="3" height="11" rx="1" fill={color}/></svg>;
-}
+/** One family, one stroke weight. Hand-drawn SVG paths drifted in both. */
+const ICON_STROKE = 1.75;
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -149,15 +148,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           className="dash-brand"
           style={{ display: "flex", alignItems: "center", gap: 11, padding: "0 20px 22px", textDecoration: "none" }}
         >
-          <span className="brandmark" aria-hidden="true">
-            <span /><span /><span /><span /><span />
-          </span>
-          <span className="dash-brand-text">
-            <span className="wordmark">{process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"}</span>
-            <span className="wordmark-tag">
-              {process.env.NEXT_PUBLIC_COMPANY_NAME || "CommerceMind"}
-            </span>
-          </span>
+          <Brandmark />
         </Link>
 
         {/* Divider */}
@@ -166,6 +157,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Nav */}
         <nav className="dash-nav" aria-label="Dashboard navigation" style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 12px" }}>
           {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
             const isActive =
               item.href === "/dashboard"
                 ? pathname === "/dashboard"
@@ -182,9 +174,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   alignItems: "center",
                   gap: 10,
                   padding: "9px 12px",
-                  borderRadius: 10,
-                  fontSize: 13,
-                  fontWeight: isActive ? 600 : 400,
+                  borderRadius: "var(--radius-inner)",
+                  fontSize: 13.5,
+                  fontWeight: isActive ? 600 : 450,
                   color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
                   background: isActive ? "var(--bg-panel-raised)" : "transparent",
                   textDecoration: "none",
@@ -207,7 +199,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     transition={{ type: "spring", stiffness: 320, damping: 32 }}
                   />
                 )}
-                <NavIcon name={item.icon} active={isActive} />
+                <Icon
+                  size={16}
+                  strokeWidth={ICON_STROKE}
+                  aria-hidden="true"
+                  style={{ color: isActive ? "var(--accent)" : "var(--text-muted)", flexShrink: 0 }}
+                />
                 <span>{item.label}</span>
               </Link>
             );
@@ -232,10 +229,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               transition: "color 120ms",
             }}
           >
-            <svg width="14" height="14" fill="none" viewBox="0 0 16 16">
-              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Voice Interface
+            <ChevronLeft size={15} strokeWidth={ICON_STROKE} aria-hidden="true" />
+            Voice interface
           </Link>
           <button
             onClick={handleLogout}
@@ -258,11 +253,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               marginTop: 2,
             }}
           >
-            <svg width="14" height="14" fill="none" viewBox="0 0 16 16">
-              <path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M10 11l3-3-3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <line x1="13" y1="8" x2="6" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
+            <LogOut size={15} strokeWidth={ICON_STROKE} aria-hidden="true" />
             {/* Label drops on the compact top bar; the icon plus aria-label
                 keeps the control reachable without crowding the nav. */}
             <span className="dash-signout-label">Sign out</span>

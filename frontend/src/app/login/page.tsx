@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { adminLogin, getAuthToken, clearAuthToken } from "@/lib/api";
-import { Button, Panel } from "@/components/ui";
+import { Brandmark, Button, Panel } from "@/components/ui";
 
 // Only honor internal, single-slash paths as a redirect target — never an
 // absolute URL or protocol-relative "//host" (open-redirect protection).
@@ -70,20 +70,12 @@ function LoginForm() {
   return (
     <Panel style={{ width: "100%", maxWidth: 400, padding: "36px 32px" }}>
       {/* The first screen anyone sees should carry the identity. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 28 }}>
-        <span className="brandmark" aria-hidden="true">
-          <span /><span /><span /><span /><span />
-        </span>
-        <div className="dash-brand-text">
-          <span className="wordmark">{process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"}</span>
-          <span className="wordmark-tag">
-            {process.env.NEXT_PUBLIC_COMPANY_NAME || "CommerceMind"}
-          </span>
-        </div>
+      <div style={{ marginBottom: 30 }}>
+        <Brandmark />
       </div>
 
       <span className="eyebrow">Admin access</span>
-      <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.03em", color: "var(--text-primary)", marginTop: 4, marginBottom: 8 }}>
+      <h1 style={{ fontSize: 27, fontWeight: 700, letterSpacing: "-0.03em", color: "var(--text-primary)", marginTop: 4, marginBottom: 8 }}>
         Sign in to VoiceCare
       </h1>
       <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: expired ? 16 : 28 }}>

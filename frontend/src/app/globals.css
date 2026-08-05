@@ -39,11 +39,11 @@
   --accent-border:  rgba(255, 90, 43, 0.3);
 
   /* ---- Text ---- */
-  --text-primary:   #F5F5F5;
-  --text-secondary: #9A9A9A;
+  --text-primary:   #FAFAFA;
+  --text-secondary: #A8A8A8;
   /* Muted must stay AA-readable (~5.6:1 on --bg-base) — it is used for real
      copy (dates, subtitles, empty states), not just decoration. */
-  --text-muted:     #8A8A8A;
+  --text-muted:     #939393;
   /* Faint is for purely decorative marks (dividers, ghost glyphs) — never
      for text that must be read. */
   --text-faint:     #5A5A5A;
@@ -72,11 +72,17 @@
   --error:          #E53935;
 
   /* ---- Fonts ----
-     Two registers. Inter is the human voice: prose, headings, names.
-     The mono is the machine's: labels, IDs, counts, latencies, status.
-     Never mix the two inside one phrase — the boundary is the meaning. */
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+     Geist + Geist Mono. Geist is drawn for exactly this kind of surface:
+     technical, neutral, but with more shape in the letterforms than Inter,
+     which every generated dashboard defaults to.
+
+     MONO IS FOR NUMBERS, NOT FOR LABELS. Its job is tabular figures in the
+     data columns: counts, IDs, timestamps, latencies. Setting every section
+     label in 10px tracked-out uppercase mono is its own cliche, and putting
+     it on every panel made the whole page read grey and templated. Labels
+     are sans, sentence case, and legible. */
+  --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
 /* ---- Reset ---- */
@@ -252,11 +258,10 @@ body {
    screen is the fastest way to make a form look assembled rather than
    designed, so form labels and system labels share one voice. */
 .field-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--text-muted);
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -266,8 +271,8 @@ body {
    tight tracking instead, which leaves 700 free to mean something
    further down the scale. */
 .page-title {
-  font-size: clamp(30px, 2.4vw, 38px);
-  font-weight: 600;
+  font-size: clamp(31px, 2.5vw, 40px);
+  font-weight: 700;
   color: var(--text-primary);
   line-height: 1.05;
   letter-spacing: -0.035em;
@@ -278,7 +283,7 @@ body {
    Sits well below the page title so the two never compete. */
 .section-title {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 650;
   color: var(--text-primary);
   line-height: 1.25;
   letter-spacing: -0.015em;
@@ -384,14 +389,13 @@ body {
    in the machine register — mono, muted, wide — so it reads as a
    channel name on an instrument rather than a marketing kicker. */
 .eyebrow {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--text-muted);
   display: block;
-  margin-bottom: 10px;
+  margin-bottom: 9px;
 }
 
 /* ---- Mono utility register ----
@@ -419,8 +423,6 @@ body {
 .rule-head::after {
   content: "";
   flex: 1;
-  height: 1px;
-  background: var(--border-hairline);
   order: 2;
 }
 /* Opt-in trailing readout — sits past the rule, hard right. */
@@ -436,8 +438,6 @@ body {
    An inline style has to be beaten with !important here. */
 .recharts-legend-item-text {
   color: var(--text-secondary) !important;
-  font-family: var(--font-mono);
-  letter-spacing: 0.02em;
 }
 
 /* ---- Divider ---- */
@@ -478,81 +478,84 @@ body {
   background: var(--bg-panel-raised);
 }
 .stat-value {
-  font-size: 32px;
-  font-weight: 600;
+  font-size: 36px;
+  font-weight: 700;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
 }
 
 /* ============================================================
-   BRANDMARK — a five-bar level meter
+   BRANDMARK - wordmark-led, accent inside the name
    ------------------------------------------------------------
-   Replaces the coral-squircle-with-a-mic-glyph lockup. That lockup
-   is the stock identity every generated dashboard wears, and a mic
-   is the most literal possible symbol for a voice product. What the
-   system actually shows an operator is signal, so the mark is the
-   signal: five unequal bars, no container, sharing the wordmark's
-   baseline. Static by default; it only animates while the pipeline
-   is live, so motion carries state instead of decoration.
+   Third attempt, and the reasoning matters. A coral squircle with a mic
+   glyph is the stock generated-SaaS lockup. Replacing it with five 2px
+   hairline bars swapped one problem for another: the mark had no presence
+   at 18px, and thin even bars read as a bar chart, not as a voice.
+
+   What serious tools do instead is lead with the wordmark and let the
+   accent live inside the name. So: "VoiceCare" in near-white, "AI" in
+   coral, one tight lockup. The meter glyph stays but is drawn with actual
+   weight - four bars, 3px, uneven heights, rounded caps - so it reads as a
+   signal at a glance instead of dissolving into the sidebar.
+
+   The grey company caption underneath is gone. A second line of muted text
+   under a product name is the thing that made the original look templated,
+   and it told the operator nothing they did not already know.
    ============================================================ */
 .brandmark {
   display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 18px;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
   flex-shrink: 0;
 }
 .brandmark span {
-  width: 2px;
-  border-radius: 1px;
+  width: 3px;
+  border-radius: 2px;
   background: var(--accent);
-  transform-origin: bottom;
+  transform-origin: center;
 }
-.brandmark span:nth-child(1) { height: 38%; }
-.brandmark span:nth-child(2) { height: 72%; }
-.brandmark span:nth-child(3) { height: 100%; }
-.brandmark span:nth-child(4) { height: 55%; }
-.brandmark span:nth-child(5) { height: 24%; }
+.brandmark span:nth-child(1) { height: 34%; }
+.brandmark span:nth-child(2) { height: 100%; }
+.brandmark span:nth-child(3) { height: 58%; }
+.brandmark span:nth-child(4) { height: 82%; }
 
 @keyframes meter {
-  0%, 100% { transform: scaleY(0.55); }
+  0%, 100% { transform: scaleY(0.45); }
   50%      { transform: scaleY(1); }
 }
+/* Motion only while the pipeline is actually listening - it carries state,
+   it is not ambience. */
 .brandmark.live span {
-  animation: meter 1.1s ease-in-out infinite;
+  animation: meter 1s ease-in-out infinite;
 }
-.brandmark.live span:nth-child(2) { animation-delay: 0.12s; }
-.brandmark.live span:nth-child(3) { animation-delay: 0.24s; }
-.brandmark.live span:nth-child(4) { animation-delay: 0.08s; }
-.brandmark.live span:nth-child(5) { animation-delay: 0.3s; }
+.brandmark.live span:nth-child(2) { animation-delay: 0.14s; }
+.brandmark.live span:nth-child(3) { animation-delay: 0.28s; }
+.brandmark.live span:nth-child(4) { animation-delay: 0.07s; }
 
 .dash-brand-text {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  gap: 0.18em;
   min-width: 0;
 }
 
-/* Wordmark: tight, low-contrast, no drop-shadow theatrics. */
 .wordmark {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.03em;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
   color: var(--text-primary);
   line-height: 1;
+  white-space: nowrap;
 }
-.wordmark-tag {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  line-height: 1;
-  margin-top: 5px;
-  display: block;
+/* The accent lives inside the name. This is what gives the lockup colour
+   without bolting a coloured container onto it. */
+.wordmark-accent {
+  color: var(--accent);
 }
+
 
 /* ---- Status dots (semantic, not accent) ---- */
 .status-dot {
