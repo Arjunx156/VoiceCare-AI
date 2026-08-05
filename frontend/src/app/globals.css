@@ -1,26 +1,13 @@
 @import "tailwindcss";
 
 /* ============================================================
-   CommerceMind VoiceCare AI — Design System v3 "Instrument"
+   CommerceMind VoiceCare AI — Design System v2
 
-   This is an operations console for a live voice pipeline, so it is
-   drawn like instrumentation, not like a SaaS marketing dashboard.
-   The rules this file holds itself to:
-
-     - CORAL IS RATIONED. --accent means one of four things and
-       nothing else: the active nav item, the primary action, a live
-       data series, or the recording state. It is never spent on a
-       label, an eyebrow, or a divider. Decoration in coral is what
-       makes an interface read as generic.
-     - TWO REGISTERS OF TYPE. Inter sets prose and headings; the mono
-       face sets everything the machine produced — labels, IDs,
-       counts, timings, status. The split is the personality.
-     - DEPTH IS HAIRLINES, NOT SHADOWS. --border-hairline rules
-       *inside* a surface; --border-subtle bounds it. Two tiers give
-       structure without a single box-shadow.
-     - RADIUS IS A SCALE, NOT A CONSTANT. Containers 12px, inner
-       elements 8px, controls 999px. One radius everywhere flattens
-       hierarchy.
+   Dark, editorial, single warm accent. The rules this file holds
+   itself to, so new components stay consistent with it:
+     - One brand accent (--accent coral) and nothing else decorative.
+       Status colors below are semantic and never used for branding.
+     - Depth comes from 1px borders and contrast, not shadows.
      - Status is never signalled by color alone — always a word or
        glyph alongside it.
      - Tabular numerals globally so live figures don't jitter.
@@ -30,35 +17,27 @@
 :root {
   /* ---- Canvas ---- */
   --bg-base:        #0B0B0C;
-  --bg-panel:       #141415;
-  --bg-panel-raised:#1C1C1D;
+  --bg-panel:       #161616;
+  --bg-panel-raised:#1E1E1F;
 
-  /* ---- Brand Accent (one, warm coral-orange — see rationing rule) ---- */
+  /* ---- Brand Accent (one, warm coral-orange) ---- */
   --accent:         #FF5A2B;
   --accent-dim:     rgba(255, 90, 43, 0.15);
   --accent-border:  rgba(255, 90, 43, 0.3);
 
   /* ---- Text ---- */
-  --text-primary:   #FAFAFA;
-  --text-secondary: #A8A8A8;
+  --text-primary:   #F5F5F5;
+  --text-secondary: #9A9A9A;
   /* Muted must stay AA-readable (~5.6:1 on --bg-base) — it is used for real
      copy (dates, subtitles, empty states), not just decoration. */
-  --text-muted:     #939393;
+  --text-muted:     #8A8A8A;
   /* Faint is for purely decorative marks (dividers, ghost glyphs) — never
      for text that must be read. */
   --text-faint:     #5A5A5A;
 
-  /* ---- Borders / Depth (no shadows — only contrast + 1px) ----
-     hairline rules *within* a surface; subtle bounds the surface;
-     raised is the hover/emphasis step. Three tiers, in that order. */
-  --border-hairline:#1E1E1F;
+  /* ---- Borders / Depth (no shadows — only contrast + 1px) ---- */
   --border-subtle:  #262626;
   --border-raised:  #333333;
-
-  /* ---- Radius scale ---- */
-  --radius-container: 12px;
-  --radius-inner:     8px;
-  --radius-control:   999px;
 
   /* ---- Semantic Status Colors (never confused with --accent) ---- */
   --status-low:     #4CAF73;      /* muted green */
@@ -71,18 +50,8 @@
   /* ---- Semantic alias ---- */
   --error:          #E53935;
 
-  /* ---- Fonts ----
-     Geist + Geist Mono. Geist is drawn for exactly this kind of surface:
-     technical, neutral, but with more shape in the letterforms than Inter,
-     which every generated dashboard defaults to.
-
-     MONO IS FOR NUMBERS, NOT FOR LABELS. Its job is tabular figures in the
-     data columns: counts, IDs, timestamps, latencies. Setting every section
-     label in 10px tracked-out uppercase mono is its own cliche, and putting
-     it on every panel made the whole page read grey and templated. Labels
-     are sans, sentence case, and legible. */
-  --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
-  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* ---- Font ---- */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 /* ---- Reset ---- */
@@ -139,54 +108,24 @@ body {
    COMPONENT TOKENS
    ============================================================ */
 
-/* ---- Panel (the house surface) ---- */
+/* ---- Panel (replaces glass-card) ---- */
 .panel {
   background: var(--bg-panel);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-container);
+  border-radius: 18px;
 }
 .panel-raised {
   background: var(--bg-panel-raised);
   border: 1px solid var(--border-raised);
-  border-radius: var(--radius-container);
+  border-radius: 18px;
 }
-/* Hover lift: 2px + border brightens, no shadow.
-   Panels lift. Rows do not — see .row-hover. */
+/* Hover lift: 2px + border brightens, no shadow */
 .panel-hover {
   transition: transform 150ms ease-out, border-color 150ms ease-out;
 }
 .panel-hover:hover {
   transform: translateY(-2px);
   border-color: var(--border-raised);
-}
-
-/* ---- Row hover (list rows, table rows) ----
-   A row is part of a continuous surface, so it must not detach from
-   its neighbours. It brightens and grows a coral edge marker instead
-   of lifting — the same marker language as the active nav item. */
-.row-hover {
-  position: relative;
-  transition: background 140ms ease-out;
-}
-.row-hover::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 2px;
-  border-radius: 0 2px 2px 0;
-  background: var(--accent);
-  transform: scaleY(0);
-  transform-origin: center;
-  transition: transform 140ms ease-out;
-}
-.row-hover:hover {
-  background: var(--bg-panel-raised);
-}
-.row-hover:hover::before,
-.row-hover:focus-visible::before {
-  transform: scaleY(1);
 }
 
 /* ---- Spinner (single definition — replaces per-page inline keyframes) ---- */
@@ -240,7 +179,7 @@ body {
 .text-input {
   background: var(--bg-base);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-inner);
+  border-radius: 10px;
   padding: 10px 14px;
   font-size: 14px;
   font-family: var(--font-sans);
@@ -253,40 +192,31 @@ body {
 .text-input:focus-visible { border-color: var(--accent-border); }
 .text-input::placeholder { color: var(--text-muted); }
 
-/* ---- Field label ----
-   Same register as .eyebrow. Two different uppercase label systems on one
-   screen is the fastest way to make a form look assembled rather than
-   designed, so form labels and system labels share one voice. */
+/* ---- Field label ---- */
 .field-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-/* ---- Page title (single definition for every dashboard h1) ----
-   Bigger and *lighter* than before. Inter at 800 is the default
-   "this is important" move; the presence should come from size and
-   tight tracking instead, which leaves 700 free to mean something
-   further down the scale. */
+/* ---- Page title (single definition for every dashboard h1) ---- */
 .page-title {
-  font-size: clamp(31px, 2.5vw, 40px);
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
   color: var(--text-primary);
-  line-height: 1.05;
-  letter-spacing: -0.035em;
-  text-wrap: balance;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
 }
 
-/* ---- Section title (panel h2s) ----
-   Sits well below the page title so the two never compete. */
+/* ---- Section title (panel h2s — one definition, matches the page-title voice) ---- */
 .section-title {
-  font-size: 16px;
-  font-weight: 650;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.25;
-  letter-spacing: -0.015em;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 
 /* ---- Skeleton loading blocks (subtle pulse; frozen under reduced motion) ---- */
@@ -301,24 +231,72 @@ body {
 }
 
 /* ============================================================
+   BRANDMARK
+   ------------------------------------------------------------
+   Four coral bars with uneven heights, plus the wordmark with the last
+   word of the product name in the accent colour ("VoiceCare AI"). The
+   colour lives inside the name rather than in a container, which is what
+   replaced the coral squircle + mic glyph.
+
+   Everything else on this page is the original design language; this block
+   is the one piece carried over.
+   ============================================================ */
+.brandmark {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.brandmark span {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform-origin: center;
+}
+.brandmark span:nth-child(1) { height: 34%; }
+.brandmark span:nth-child(2) { height: 100%; }
+.brandmark span:nth-child(3) { height: 58%; }
+.brandmark span:nth-child(4) { height: 82%; }
+
+@keyframes meter {
+  0%, 100% { transform: scaleY(0.45); }
+  50%      { transform: scaleY(1); }
+}
+/* Only while the pipeline is actually listening - the motion carries state. */
+.brandmark.live span {
+  animation: meter 1s ease-in-out infinite;
+}
+.brandmark.live span:nth-child(2) { animation-delay: 0.14s; }
+.brandmark.live span:nth-child(3) { animation-delay: 0.28s; }
+.brandmark.live span:nth-child(4) { animation-delay: 0.07s; }
+
+.wordmark {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  line-height: 1;
+  white-space: nowrap;
+}
+.wordmark-accent {
+  color: var(--accent);
+}
+
+/* ============================================================
    DASHBOARD RESPONSIVE SHELL & GRIDS
    ============================================================ */
 
-/* Two-column analytics layouts collapse to one column on small screens.
-   `align-items: start` matters: without it the grid stretches the shorter
-   panel to its neighbour's height, and a short list ends up marooned at the
-   top of a tall empty box. Height is earned by content. */
+/* Two-column analytics layouts collapse to one column on small screens. */
 .grid-main-side {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 16px;
-  align-items: start;
 }
 .grid-half {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  align-items: start;
 }
 @media (max-width: 900px) {
   .grid-main-side,
@@ -346,10 +324,6 @@ body {
     overflow-x: auto;
     padding: 0 4px !important;
     gap: 4px !important;
-    /* Take the leftover width and allow shrinking, so the row scrolls instead
-       of shoving the sign-out control off the edge. */
-    flex: 1;
-    min-width: 0;
     /* Let the row scroll without a visible scrollbar */
     scrollbar-width: none;
   }
@@ -363,81 +337,33 @@ body {
     padding: 0 !important;
     flex-shrink: 0;
   }
-  /* Hide the wordmark text + bottom links on the compact bar; the mic mark
+  /* Hide the wordmark text + bottom links on the compact bar; the meter mark
      stays as the home link and Sign out stays reachable. */
+  .dash-sidebar .wordmark,
   .dash-sidebar .dash-brand-text,
   .dash-sidebar .dash-divider,
-  .dash-sidebar .dash-voice-link,
-  .dash-sidebar .dash-signout-label {
+  .dash-sidebar .dash-voice-link {
     display: none !important;
   }
   .dash-sidebar .dash-bottom {
     margin-top: 0 !important;
     padding: 0 !important;
     margin-left: auto;
-    flex-shrink: 0;
   }
   .dash-main {
     padding: 20px 16px !important;
   }
 }
 
-/* ---- Eyebrow / system label ----
-   Deliberately NOT coral. A coral uppercase label above every bold
-   heading is the single most templated pattern in dashboard design,
-   and it spends the brand accent on decoration. Here the label is set
-   in the machine register — mono, muted, wide — so it reads as a
-   channel name on an instrument rather than a marketing kicker. */
+/* ---- Eyebrow Label ---- */
 .eyebrow {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--accent);
   display: block;
-  margin-bottom: 9px;
-}
-
-/* ---- Mono utility register ----
-   For anything the system produced: IDs, counts, latencies, codes. */
-.mono {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-/* ---- Ruled section head ----
-   Label sits on a hairline that runs to the edge of the panel, so the
-   structure of the page is drawn by the content rather than by a
-   stack of floating boxes. */
-.rule-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 18px;
-}
-.rule-head > :first-child {
-  margin-bottom: 0;
-  flex-shrink: 0;
-}
-.rule-head::after {
-  content: "";
-  flex: 1;
-  order: 2;
-}
-/* Opt-in trailing readout — sits past the rule, hard right. */
-.rule-head > .rule-tail {
-  order: 3;
-  flex-shrink: 0;
-}
-
-/* ---- Recharts legend ----
-   Recharts writes the series colour inline onto each legend label, which puts
-   small saturated text on a dark panel and makes the legend compete with the
-   chart it explains. The swatch keeps the colour; the word stays readable.
-   An inline style has to be beaten with !important here. */
-.recharts-legend-item-text {
-  color: var(--text-secondary) !important;
+  margin-bottom: 8px;
 }
 
 /* ---- Divider ---- */
@@ -446,116 +372,6 @@ body {
   background: var(--border-subtle);
   width: 100%;
 }
-
-/* ============================================================
-   STAT CLUSTER — the KPI row, drawn as one instrument
-   ------------------------------------------------------------
-   Six equal readings, unchanged in content and weight, but joined
-   into a single bounded surface split by hairlines instead of six
-   separate floating cards. A row of identical rounded rectangles is
-   the default dashboard shape; a divided cluster reads as one meter
-   with six channels, which is what the numbers actually are.
-
-   The 1px `gap` over a hairline background is what draws the rules —
-   it reflows correctly at any column count, so wrapped rows get their
-   dividers for free.
-   ============================================================ */
-.stat-cluster {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
-  gap: 1px;
-  background: var(--border-hairline);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-container);
-  overflow: hidden;
-}
-.stat-cell {
-  background: var(--bg-panel);
-  padding: 18px 20px 20px;
-  transition: background 140ms ease-out;
-}
-.stat-cell:hover {
-  background: var(--bg-panel-raised);
-}
-.stat-value {
-  font-size: 36px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.035em;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
-}
-
-/* ============================================================
-   BRANDMARK - wordmark-led, accent inside the name
-   ------------------------------------------------------------
-   Third attempt, and the reasoning matters. A coral squircle with a mic
-   glyph is the stock generated-SaaS lockup. Replacing it with five 2px
-   hairline bars swapped one problem for another: the mark had no presence
-   at 18px, and thin even bars read as a bar chart, not as a voice.
-
-   What serious tools do instead is lead with the wordmark and let the
-   accent live inside the name. So: "VoiceCare" in near-white, "AI" in
-   coral, one tight lockup. The meter glyph stays but is drawn with actual
-   weight - four bars, 3px, uneven heights, rounded caps - so it reads as a
-   signal at a glance instead of dissolving into the sidebar.
-
-   The grey company caption underneath is gone. A second line of muted text
-   under a product name is the thing that made the original look templated,
-   and it told the operator nothing they did not already know.
-   ============================================================ */
-.brandmark {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  height: 24px;
-  flex-shrink: 0;
-}
-.brandmark span {
-  width: 3px;
-  border-radius: 2px;
-  background: var(--accent);
-  transform-origin: center;
-}
-.brandmark span:nth-child(1) { height: 34%; }
-.brandmark span:nth-child(2) { height: 100%; }
-.brandmark span:nth-child(3) { height: 58%; }
-.brandmark span:nth-child(4) { height: 82%; }
-
-@keyframes meter {
-  0%, 100% { transform: scaleY(0.45); }
-  50%      { transform: scaleY(1); }
-}
-/* Motion only while the pipeline is actually listening - it carries state,
-   it is not ambience. */
-.brandmark.live span {
-  animation: meter 1s ease-in-out infinite;
-}
-.brandmark.live span:nth-child(2) { animation-delay: 0.14s; }
-.brandmark.live span:nth-child(3) { animation-delay: 0.28s; }
-.brandmark.live span:nth-child(4) { animation-delay: 0.07s; }
-
-.dash-brand-text {
-  display: flex;
-  align-items: baseline;
-  gap: 0.18em;
-  min-width: 0;
-}
-
-.wordmark {
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  color: var(--text-primary);
-  line-height: 1;
-  white-space: nowrap;
-}
-/* The accent lives inside the name. This is what gives the lockup colour
-   without bolting a coloured container onto it. */
-.wordmark-accent {
-  color: var(--accent);
-}
-
 
 /* ---- Status dots (semantic, not accent) ---- */
 .status-dot {

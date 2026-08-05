@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Dashboard overview — one stat cluster, ruled section heads, and an
- * escalation queue drawn as list rows rather than cards.
+ * Dashboard overview — asymmetric two-column analytics, eyebrow labels,
+ * editorial escalation list-rows.
  */
 
 import { useEffect, useState } from "react";
@@ -13,7 +13,7 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 import { getAnalytics, getEscalations, type AnalyticsOverview, type TicketSummary } from "@/lib/api";
 import { chartTooltipStyle } from "@/lib/theme";
 import { useMotionSafe } from "@/lib/motion";
-import { Button, EmptyState, LanguageLabel, PriorityBadge, StatCard, StatCluster } from "@/components/ui";
+import { Button, EmptyState, LanguageLabel, PriorityBadge, StatCard } from "@/components/ui";
 
 type FetchResult =
   | { key: number; analytics: AnalyticsOverview; escalations: TicketSummary[] }
@@ -57,11 +57,11 @@ export default function DashboardPage() {
           <span className="skeleton" style={bar(90, 10, 12)} />
           <span className="skeleton" style={bar(280, 26)} />
         </div>
-        <div className="stat-cluster">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
           {[0, 1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="stat-cell">
-              <span className="skeleton" style={bar(64, 8, 14)} />
-              <span className="skeleton" style={bar(56, 26)} />
+            <div key={i} className="panel" style={{ padding: "20px 22px" }}>
+              <span className="skeleton" style={bar(70, 8, 12)} />
+              <span className="skeleton" style={bar(60, 28)} />
             </div>
           ))}
         </div>
@@ -90,13 +90,11 @@ export default function DashboardPage() {
   const { analytics, escalations } = current;
   const total = analytics.total_tickets || 0;
 
-  const fmt = (n: number) => (n || 0).toLocaleString();
-
   const stats = [
-    { label: "TOTAL",      value: fmt(total),                       hint: "all time" },
-    { label: "OPEN",       value: fmt(analytics.open_tickets),      hint: "awaiting resolution" },
-    { label: "ESCALATED",  value: fmt(analytics.escalated_tickets), hint: "needs human" },
-    { label: "RESOLVED",   value: fmt(analytics.resolved_tickets),  hint: "closed" },
+    { label: "TOTAL",      value: total,                              hint: "all time" },
+    { label: "OPEN",       value: analytics.open_tickets || 0,        hint: "awaiting resolution" },
+    { label: "ESCALATED",  value: analytics.escalated_tickets || 0,   hint: "needs human" },
+    { label: "RESOLVED",   value: analytics.resolved_tickets || 0,    hint: "closed" },
     { label: "RESOLUTION", value: `${analytics.resolution_rate || 0}%`, hint: "resolution rate" },
     { label: "ESCALATION", value: `${analytics.escalation_rate || 0}%`, hint: "escalation rate" },
   ];
@@ -105,36 +103,31 @@ export default function DashboardPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-      {/* Page header. The eyebrow carries the record count rather than the
-          word "OVERVIEW" — a label that repeats the heading below it is
-          decoration, and this slot can hold something true instead. */}
+      {/* Page header */}
       <motion.div {...entry()}>
-        <span className="eyebrow">
-          {total.toLocaleString()} tickets on record
-        </span>
-        <h1 className="page-title">Support operations</h1>
-        <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 10, maxWidth: "58ch" }}>
-          Everything the voice pipeline has handled, and everything it has handed back to you.
+        <span className="eyebrow">OVERVIEW</span>
+        <h1 className="page-title">Support Operations</h1>
+        <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 6 }}>
+          Live view of {process.env.NEXT_PUBLIC_APP_NAME || "VoiceCare AI"} customer support activity
         </p>
       </motion.div>
 
-      {/* Six readings, one instrument. Animated as a single unit — a
-          per-tile stagger across six equal numbers implies an order that
-          isn't there. */}
-      <motion.div {...entry(0.06)}>
-        <StatCluster>
-          {stats.map((s) => (
-            <StatCard key={s.label} {...s} />
-          ))}
-        </StatCluster>
-      </motion.div>
+      {/* Stats — 4 primary + 2 rate, one uniform row */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
+        {stats.map((s, i) => (
+          <motion.div key={s.label} {...entry(i * 0.06)}>
+            <StatCard {...s} />
+          </motion.div>
+        ))}
+      </div>
 
       {/* Ticket volume trend — the pipeline's heartbeat over time */}
       {trend.length > 1 && (
-        <motion.div {...entry(0.12)} className="panel" style={{ padding: "22px 26px 8px" }}>
-          <div className="rule-head">
-            <h2 className="section-title">Tickets over time</h2>
-          </div>
+        <motion.div {...entry(0.36)} className="panel" style={{ padding: "24px 28px 10px" }}>
+          <span className="eyebrow">VOLUME</span>
+          <h2 className="section-title" style={{ marginBottom: 16 }}>
+            Tickets Over Time
+          </h2>
           <ResponsiveContainer width="100%" height={150}>
             <AreaChart data={trend} margin={{ left: -24, right: 4, top: 4 }}>
               <defs>
@@ -176,10 +169,11 @@ export default function DashboardPage() {
           (collapses to one column under 900px — .grid-main-side) */}
       <div className="grid-main-side">
         {/* Ticket volume by language — the larger block */}
-        <motion.div {...entry(0.16)} className="panel" style={{ padding: "22px 26px" }}>
-          <div className="rule-head">
-            <h2 className="section-title">Volume by language</h2>
-          </div>
+        <motion.div {...entry(0.42)} className="panel" style={{ padding: "24px 28px" }}>
+          <span className="eyebrow">TICKET VOLUME</span>
+          <h2 className="section-title" style={{ marginBottom: 20 }}>
+            By Language
+          </h2>
           {Object.entries(analytics.tickets_by_language).length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {Object.entries(analytics.tickets_by_language)
@@ -227,10 +221,11 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Right column: category breakdown */}
-        <motion.div {...entry(0.16)} className="panel" style={{ padding: "22px 24px" }}>
-          <div className="rule-head">
-            <h2 className="section-title">Ticket types</h2>
-          </div>
+        <motion.div {...entry(0.48)} className="panel" style={{ padding: "24px 22px" }}>
+          <span className="eyebrow">BY CATEGORY</span>
+          <h2 className="section-title" style={{ marginBottom: 20 }}>
+            Ticket Types
+          </h2>
           {Object.entries(analytics.tickets_by_category).length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {Object.entries(analytics.tickets_by_category).map(([cat, count]) => (
@@ -260,64 +255,54 @@ export default function DashboardPage() {
       </div>
 
       {/* Escalation Queue — editorial list rows */}
-      <motion.div {...entry(0.22)} className="panel" style={{ padding: "22px 26px" }}>
-        <div className="rule-head">
-          <h2 className="section-title">Escalation queue</h2>
+      <motion.div {...entry(0.56)} className="panel" style={{ padding: "24px 28px" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 20 }}>
+          <span className="eyebrow" style={{ marginBottom: 0 }}>ESCALATION QUEUE</span>
           {escalations.length > 0 && (
-            <span
-              className="rule-tail"
-              style={{ fontSize: 13, color: "var(--text-muted)" }}
-            >
-              {escalations.length} waiting on you
+            <span style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
+              {escalations.length} ticket{escalations.length !== 1 ? "s" : ""} need{escalations.length === 1 ? "s" : ""} you
             </span>
           )}
         </div>
 
         {escalations.length > 0 ? (
-          /* Rows bleed to the panel edge (negative margin + matching padding)
-             so the hover highlight covers a full band instead of a floating
-             inset strip. Rows brighten and grow an edge marker; they never
-             lift — a row is part of a continuous surface. */
-          <div style={{ margin: "0 -26px" }}>
+          <div>
             {escalations.slice(0, 6).map((ticket, i) => (
-              <Link
-                key={ticket.ticket_id}
-                href={`/dashboard/tickets/${ticket.ticket_id}`}
-                className="row-hover"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 16,
-                  padding: "11px 26px",
-                  textDecoration: "none",
-                  borderBottom:
-                    i < Math.min(escalations.length, 6) - 1
-                      ? "1px solid var(--border-hairline)"
-                      : "none",
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ display: "flex", alignItems: "baseline", gap: 8, whiteSpace: "nowrap", overflow: "hidden" }}>
-                    <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--text-primary)" }}>
+              <Link key={ticket.ticket_id} href={`/dashboard/tickets/${ticket.ticket_id}`} style={{ textDecoration: "none" }}>
+                <motion.div
+                  {...entry(0.55 + i * 0.05)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 16,
+                    padding: "14px 0",
+                    borderBottom: i < Math.min(escalations.length, 6) - 1 ? "1px solid var(--border-subtle)" : "none",
+                    cursor: "pointer",
+                  }}
+                  className="panel-hover"
+                >
+                  {/* Eyebrow + title */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--accent)", display: "block", marginBottom: 2 }}>
+                      {ticket.ticket_type || "SUPPORT"}
+                    </span>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {ticket.user_name}
-                    </span>
-                    <span style={{ fontSize: 12, color: "var(--text-faint)", textTransform: "lowercase" }}>
-                      {ticket.ticket_type || "support"}
-                    </span>
-                  </p>
-                  {ticket.summary && (
-                    <p style={{ fontSize: 12.5, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 3 }}>
-                      {ticket.summary}
                     </p>
-                  )}
-                </div>
+                    {ticket.summary && (
+                      <p style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {ticket.summary}
+                      </p>
+                    )}
+                  </div>
 
-                <PriorityBadge priority={ticket.priority} />
+                  <PriorityBadge priority={ticket.priority} />
+                </motion.div>
               </Link>
             ))}
           </div>
         ) : (
-          <EmptyState icon={CheckCircle2} title="No pending escalations" hint="The pipeline is resolving everything on its own right now." />
+          <EmptyState icon={CheckCircle2} title="No pending escalations" hint="The AI is handling everything right now." />
         )}
       </motion.div>
     </div>

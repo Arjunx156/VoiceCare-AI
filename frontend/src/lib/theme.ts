@@ -45,45 +45,22 @@ export const SENTIMENT_META: Record<string, BadgeMeta> = {
   "High-risk Escalation": meta("var(--status-critical)", "rgba(198,40,40,0.12)"),
 };
 
-/**
- * Look a value up regardless of the casing the API sent it in. The maps are
- * keyed in Title Case; a lowercase "critical" used to fall through to the grey
- * FALLBACK, which silently discards the meaning the colour carries.
- */
-function lookup(map: Record<string, BadgeMeta>, key: string | null | undefined): BadgeMeta {
-  if (!key) return FALLBACK;
-  if (map[key]) return map[key];
-  const wanted = key.toLowerCase();
-  const found = Object.keys(map).find((k) => k.toLowerCase() === wanted);
-  return found ? map[found] : FALLBACK;
-}
-
 export function priorityMeta(priority: string | null | undefined): BadgeMeta {
-  return lookup(PRIORITY_META, priority);
+  return (priority && PRIORITY_META[priority]) || FALLBACK;
 }
 
 export function statusMeta(status: string | null | undefined): BadgeMeta {
-  return lookup(STATUS_META, status);
+  return (status && STATUS_META[status]) || FALLBACK;
 }
 
 export function sentimentMeta(sentiment: string | null | undefined): BadgeMeta {
-  return lookup(SENTIMENT_META, sentiment);
+  return (sentiment && SENTIMENT_META[sentiment]) || FALLBACK;
 }
 
-/**
- * Chart ramp for breakdowns whose slices carry no meaning of their own —
- * ticket categories, for instance. A rainbow of unrelated hues implies each
- * slice means something different and quietly reintroduces the colours the
- * design system spent effort removing. This is one hue stepped through
- * lightness instead, so size is the only thing the colour encodes. Sort the
- * data by value before applying it and the ramp reads as a scale.
- *
- * Semantic dimensions (priority, sentiment, status) do NOT use this — they use
- * PRIORITY_HEX / sentimentHex, where the hue is the meaning.
- */
+/** Categorical palette for charts (accent-led, then semantic hues). */
 export const CHART_COLORS = [
-  "#FFB59A", "#FF9375", "#FF7551", "#FF5A2B",
-  "#D9481F", "#A93916", "#7C2A11", "#571C0C",
+  "#FF5A2B", "#D4A017", "#4CAF73", "#607D8B",
+  "#E53935", "#8D6E63", "#42A5F5", "#AB47BC",
 ] as const;
 
 /** Recharts hex values for priority bars (Recharts can't resolve CSS vars). */
@@ -94,16 +71,10 @@ export const PRIORITY_HEX: Record<string, string> = {
   Low:      "#4CAF73",
 };
 
-export function priorityHex(name: string): string {
-  const found = Object.keys(PRIORITY_HEX).find((k) => k.toLowerCase() === name.toLowerCase());
-  return found ? PRIORITY_HEX[found] : "#8A8A8A";
-}
-
 export function sentimentHex(name: string): string {
-  const n = name.toLowerCase();
-  if (n === "angry" || n === "very angry") return "#E53935";
-  if (n === "frustrated" || n === "negative" || n === "dissatisfied") return "#D4A017";
-  if (n === "calm" || n === "confused" || n === "neutral") return "#607D8B";
+  if (name === "Angry" || name === "Very Angry") return "#E53935";
+  if (name === "Negative") return "#D4A017";
+  if (name === "Calm" || name === "Confused" || name === "Neutral") return "#607D8B";
   return "#4CAF73";
 }
 
@@ -118,18 +89,3 @@ export const chartTooltipStyle = {
   },
   cursor: { fill: "rgba(255,255,255,0.04)" },
 } as const;
-
-/**
- * Legend labels stay neutral. Recharts tints each label with its series colour
- * by default, which puts small coloured text on a dark panel — poor contrast,
- * and it makes the legend compete with the chart it is explaining. The swatch
- * carries the colour; the word stays readable.
- */
-export const chartLegendStyle = {
-  wrapperStyle: { fontSize: 10, paddingTop: 10 },
-  iconSize: 8,
-  iconType: "square",
-} as const;
-
-/** Neutral text colour for legend labels — pair with `formatter` in the page. */
-export const CHART_LABEL_COLOR = "#9A9A9A";

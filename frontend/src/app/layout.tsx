@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import BackendWarmup from "@/components/BackendWarmup";
 
@@ -7,20 +7,9 @@ import BackendWarmup from "@/components/BackendWarmup";
 // so the first API/WS call skips DNS + TCP + TLS setup.
 const backendOrigin = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-// Geist over Inter. Inter is the face every generated dashboard defaults to;
-// Geist is drawn for the same job with more shape in the letterforms, and it
-// holds up better at the heavy display weights this dark theme needs.
-const geistSans = Geist({
+const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
-  display: "swap",
-});
-
-// Numbers only: counts, IDs, timestamps, latencies. Not labels — see the
-// font note in globals.css.
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
   display: "swap",
 });
 
@@ -47,7 +36,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${inter.variable} antialiased`}>
         {/* React 19 hoists resource links into <head> */}
         {backendOrigin && (
           <>

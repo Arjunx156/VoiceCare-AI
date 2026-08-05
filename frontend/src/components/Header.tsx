@@ -14,7 +14,6 @@ export default function Header() {
         padding: "20px 24px 0",
       }}
     >
-      {/* Same lockup as the console sidebar. */}
       <Brandmark as="h1" />
       <Link
         href="/dashboard"

@@ -21,7 +21,7 @@ const FILTER_OPTIONS = {
 
 const selectStyle: React.CSSProperties = {
   padding: "8px 14px",
-  borderRadius: "var(--radius-inner)",
+  borderRadius: 999,
   fontSize: 12,
   fontWeight: 500,
   fontFamily: "var(--font-sans)",
@@ -86,7 +86,7 @@ export default function TicketsPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <PageHeader
-        eyebrow="Support tickets"
+        eyebrow="SUPPORT TICKETS"
         title={loading ? "Loading…" : error ? "Error" : `${tickets.length} ticket${tickets.length !== 1 ? "s" : ""}`}
         subtitle={error ?? undefined}
         actions={
@@ -99,7 +99,7 @@ export default function TicketsPage() {
               aria-label="Search tickets"
               style={{
                 padding: "8px 14px",
-                borderRadius: "var(--radius-inner)",
+                borderRadius: 999,
                 fontSize: 12,
                 fontFamily: "var(--font-sans)",
                 background: "var(--bg-panel)",
@@ -149,25 +149,41 @@ export default function TicketsPage() {
               href={`/dashboard/tickets/${ticket.ticket_id}`}
               style={{ textDecoration: "none", display: "block" }}
             >
-              <div
-                className="row-hover"
+              <motion.div
+                {...entry(Math.min(i * 0.03, 0.3))}
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 16,
-                  padding: "12px 24px",
-                  borderBottom: i < tickets.length - 1 ? "1px solid var(--border-hairline)" : "none",
+                  padding: "16px 24px",
+                  borderBottom: i < tickets.length - 1 ? "1px solid var(--border-subtle)" : "none",
+                  cursor: "pointer",
+                  transition: "background 120ms",
                 }}
+                whileHover={{ backgroundColor: "var(--bg-panel-raised)" }}
               >
-                {/* Left: type label + customer */}
+                {/* Left: eyebrow + bold title */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ display: "flex", alignItems: "baseline", gap: 8, whiteSpace: "nowrap", overflow: "hidden" }}>
-                    <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--text-primary)" }}>
-                      {ticket.user_name}
-                    </span>
-                    <span style={{ fontSize: 12, color: "var(--text-faint)", textTransform: "lowercase" }}>
-                      {ticket.ticket_type || "support"}
-                    </span>
+                  <span
+                    style={{
+                      fontSize: 10, fontWeight: 600,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "var(--accent)",
+                      display: "block",
+                      marginBottom: 2,
+                    }}
+                  >
+                    {ticket.ticket_type || "SUPPORT"}
+                  </span>
+                  <p
+                    style={{
+                      fontSize: 14, fontWeight: 600,
+                      color: "var(--text-primary)",
+                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                    }}
+                  >
+                    {ticket.user_name}
                   </p>
                   <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {ticket.summary || ticket.phone || "—"}
@@ -175,7 +191,7 @@ export default function TicketsPage() {
                 </div>
 
                 {/* Middle: language + sentiment */}
-                <div style={{ flexShrink: 0, textAlign: "right", width: 92 }}>
+                <div style={{ flexShrink: 0, textAlign: "right", minWidth: 60 }}>
                   <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                     <LanguageLabel language={ticket.language} />
                   </p>
@@ -183,19 +199,18 @@ export default function TicketsPage() {
                 </div>
 
                 {/* Right: priority + status pills */}
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0, width: 104 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
                   <PriorityBadge priority={ticket.priority} />
                   <StatusBadge status={ticket.status} />
                 </div>
 
                 {/* Date */}
                 <span
-                  className="mono"
-                  style={{ fontSize: 10, color: "var(--text-muted)", flexShrink: 0, minWidth: 74, textAlign: "right" }}
+                  style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0, minWidth: 70, textAlign: "right" }}
                 >
                   {formatDate(ticket.created_at)}
                 </span>
-              </div>
+              </motion.div>
             </Link>
           ))
         )}
