@@ -38,6 +38,26 @@ _MIN_BROWSER_TRANSCRIPT_CHARS = 8
 
 TOTAL_STAGES = 9
 
+# Placeholder phone for a caller who never identified themselves. The prefix is
+# load-bearing — api/customers.py and utils/cleanup_anonymous.py both select on
+# `anon-%` to keep ghost rows out of the customer list.
+_ANON_PHONE_PREFIX = "anon-"
+# Derived from the column, not hardcoded: at 16 hex chars the placeholder was 21
+# characters against a varchar(20), so every anonymous caller's user INSERT
+# raised StringDataRightTruncationError, the savepoint rolled back, and the
+# ticket was silently dropped with ticket_created=False.
+_ANON_PHONE_HEX_LEN = User.__table__.c.phone.type.length - len(_ANON_PHONE_PREFIX)
+
+
+def _anon_phone(session_id) -> str:
+    """Stable placeholder phone for one conversation.
+
+    Keyed to the conversation id rather than a random UUID so an anonymous
+    caller never creates more than one ghost row regardless of turn count.
+    """
+    conv_hex = str(session_id).replace("-", "")[:_ANON_PHONE_HEX_LEN]
+    return f"{_ANON_PHONE_PREFIX}{conv_hex}"
+
 # Human-readable label per stage, emitted with the start/done frames.
 STAGE_MESSAGES = {
     1: "Listening...",
@@ -790,8 +810,7 @@ class VoiceCarePipeline:
                     if state.extracted_phone:
                         phone_val = state.extracted_phone
                     else:
-                        conv_hex = str(state.session_id).replace("-", "")[:16]
-                        phone_val = f"anon-{conv_hex}"
+                        phone_val = _anon_phone(state.session_id)
                     existing = (await self.db.execute(
                         select(User).where(User.phone == phone_val).options(noload("*"))
                     )).scalar_one_or_none()

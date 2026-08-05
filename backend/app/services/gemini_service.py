@@ -13,7 +13,8 @@ from tenacity import (
     wait_exponential,
     retry_if_exception,
 )
-import google.generativeai as genai
+from google import genai
+from google.genai import types as genai_types
 
 from app.core.config import get_settings
 
@@ -26,9 +27,19 @@ settings = get_settings()
 # Devanagari/Tamil cost 3-4x more tokens per character; a truncated response
 # fails JSON parsing and falls through to the apologetic fallback, which is far
 # worse for the customer than a few hundred extra milliseconds.
+#
+# These ceilings only hold while thinking is off (see _THINKING_BUDGET). On
+# gemini-2.5-* thinking tokens are drawn from max_output_tokens, and an
+# unbudgeted call spends 500-600 of them before writing a single character of
+# JSON — which silently truncated every resolution call at 640.
 _MAX_TOKENS_INTENT = 512
 _MAX_TOKENS_RESOLUTION = 640
 _MAX_TOKENS_RESPONSE = 2048
+
+# 0 disables thinking outright. Every prompt here asks for a fixed JSON shape
+# from a short context; none of them benefit from a reasoning budget, and all of
+# them sit on the customer's critical path.
+_THINKING_BUDGET = 0
 
 # Cap on a single history turn's text inside a prompt.
 _MAX_HISTORY_CHARS_PER_TURN = 300
@@ -37,28 +48,30 @@ _MAX_HISTORY_CHARS_PER_TURN = 300
 def _is_gemini_retryable(exc: Exception) -> bool:
     """Return True only for transient errors that are worth retrying.
 
-    Skip retrying permanent failures (auth, bad-request, quota hard-limit) —
-    they will keep failing and only waste time and quota.
+    Skip retrying every 4xx — auth, bad-request, model-not-found, and 429. The
+    free-tier limit that actually bites here is a per-DAY request quota, so a
+    backed-off retry cannot clear it and only adds dead air to the customer's
+    critical path. Quota exhaustion is already handled by the Groq fallback in
+    _call_gemini, which runs before this predicate is ever consulted.
     """
-    try:
-        import google.api_core.exceptions as _gapi
-        if isinstance(exc, (_gapi.InvalidArgument, _gapi.PermissionDenied,
-                             _gapi.NotFound, _gapi.Unauthenticated)):
-            return False
-    except ImportError:
-        pass
-    # Retry server-side / transient errors
-    if hasattr(exc, "status_code") and exc.status_code < 500:  # type: ignore[attr-defined]
-        return False
+    code = getattr(exc, "code", None)
+    if not isinstance(code, int):
+        code = getattr(exc, "status_code", None)
+    if isinstance(code, int):
+        return code >= 500
     return True
 
 
 class GeminiService:
     """Service for interacting with Google Gemini 2.5 Flash-Lite."""
 
+    MODEL = "gemini-2.5-flash"
+
     def __init__(self):
-        genai.configure(api_key=settings.gemini_api_key)
-        self.model = genai.GenerativeModel("gemini-2.5-flash")
+        # google-genai, not the retired google-generativeai package: the latter
+        # has no thinking_config field at all, so the budget below could never
+        # be applied and every call silently ran with thinking enabled.
+        self.client = genai.Client(api_key=settings.gemini_api_key)
 
     # 2 attempts, not 3: each attempt carries a 12s timeout plus an inline Groq
     # fallback, so 3 attempts meant ~90s of dead air before the caller gave up.
@@ -77,30 +90,37 @@ class GeminiService:
     ) -> str:
         """Make a Gemini API call with retry logic and Groq fallback."""
         try:
-            import google.api_core.exceptions as _gapi_exc
-            gen_config_kwargs: dict = {
-                "temperature": 0.3,
-                "max_output_tokens": max_output_tokens,
-                "response_mime_type": "application/json",
-            }
-            # Disable thinking on gemini-2.5-* — thinking tokens eat into
-            # max_output_tokens and cause JSON truncation on non-Latin scripts.
-            try:
-                gen_config_kwargs["thinking_config"] = {"thinking_budget": 0}
-                generation_config = genai.GenerationConfig(**gen_config_kwargs)
-            except (TypeError, AttributeError):
-                gen_config_kwargs.pop("thinking_config", None)
-                generation_config = genai.GenerationConfig(**gen_config_kwargs)
-
-            # generate_content_async, NOT generate_content: the sync method blocks
-            # the uvicorn event loop for the whole call (1.5-5s x3 per turn), which
-            # stalls the WS keep-alive ping and makes the asyncio.gather in
-            # pipeline.run() fake parallelism.
-            response = await self.model.generate_content_async(
-                prompt,
-                generation_config=generation_config,
-                request_options={"timeout": 12},
+            config = genai_types.GenerateContentConfig(
+                temperature=0.3,
+                max_output_tokens=max_output_tokens,
+                response_mime_type="application/json",
+                # Thinking tokens are drawn from max_output_tokens, so leaving
+                # this unset burns the whole budget before any JSON is written.
+                thinking_config=genai_types.ThinkingConfig(
+                    thinking_budget=_THINKING_BUDGET
+                ),
+                http_options=genai_types.HttpOptions(timeout=12_000),
             )
+
+            # client.aio, NOT the sync client: the sync method blocks the uvicorn
+            # event loop for the whole call (1.5-5s x3 per turn), which stalls the
+            # WS keep-alive ping and makes the asyncio.gather in pipeline.run()
+            # fake parallelism.
+            response = await self.client.aio.models.generate_content(
+                model=self.MODEL, contents=prompt, config=config
+            )
+
+            # A truncated candidate still returns 200 with partial JSON, which
+            # fails downstream in _parse_json as an opaque "Unterminated string"
+            # and degrades the turn to a canned fallback. Name it here instead.
+            candidate = (response.candidates or [None])[0]
+            finish_reason = getattr(candidate, "finish_reason", None)
+            if finish_reason is not None and str(finish_reason).endswith("MAX_TOKENS"):
+                logger.warning(
+                    "gemini_response_truncated",
+                    max_output_tokens=max_output_tokens,
+                    usage=str(getattr(response, "usage_metadata", None)),
+                )
             return response.text
         except Exception as e:
             logger.error("gemini_call_failed", error=str(e))
@@ -158,7 +178,14 @@ class GeminiService:
             text = text[3:]
         if text.endswith("```"):
             text = text[:-3]
-        return json.loads(text.strip())
+        text = text.strip()
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            # The callers turn this into a canned fallback answer, so without the
+            # offending payload a truncation looks identical to an outage.
+            logger.error("gemini_json_parse_failed", chars=len(text), preview=text[:200])
+            raise
 
     async def analyze_intent(
         self, query: str, language: str, conversation_history: list = None
