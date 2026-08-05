@@ -155,23 +155,19 @@ export default function TicketsPage() {
                   display: "flex",
                   alignItems: "center",
                   gap: 16,
-                  padding: "15px 24px",
+                  padding: "12px 24px",
                   borderBottom: i < tickets.length - 1 ? "1px solid var(--border-hairline)" : "none",
                 }}
               >
                 {/* Left: type label + customer */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <span className="eyebrow" style={{ marginBottom: 3 }}>
-                    {ticket.ticket_type || "support"}
-                  </span>
-                  <p
-                    style={{
-                      fontSize: 14, fontWeight: 500,
-                      color: "var(--text-primary)",
-                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                    }}
-                  >
-                    {ticket.user_name}
+                  <p style={{ display: "flex", alignItems: "baseline", gap: 8, whiteSpace: "nowrap", overflow: "hidden" }}>
+                    <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--text-primary)" }}>
+                      {ticket.user_name}
+                    </span>
+                    <span style={{ fontSize: 12, color: "var(--text-faint)", textTransform: "lowercase" }}>
+                      {ticket.ticket_type || "support"}
+                    </span>
                   </p>
                   <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {ticket.summary || ticket.phone || "—"}

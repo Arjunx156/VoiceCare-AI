@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import BackendWarmup from "@/components/BackendWarmup";
 
@@ -7,19 +7,19 @@ import BackendWarmup from "@/components/BackendWarmup";
 // so the first API/WS call skips DNS + TCP + TLS setup.
 const backendOrigin = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-const inter = Inter({
+// Geist over Inter. Inter is the face every generated dashboard defaults to;
+// Geist is drawn for the same job with more shape in the letterforms, and it
+// holds up better at the heavy display weights this dark theme needs.
+const geistSans = Geist({
   subsets: ["latin"],
   variable: "--font-sans",
   display: "swap",
 });
 
-// The console's second register. Everything the pipeline produced —
-// labels, ticket IDs, counts, latencies, status codes — is set in mono
-// so it reads as machine output next to Inter's human prose. Only the
-// three weights actually used are loaded.
-const jetbrainsMono = JetBrains_Mono({
+// Numbers only: counts, IDs, timestamps, latencies. Not labels — see the
+// font note in globals.css.
+const geistMono = Geist_Mono({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
   variable: "--font-mono",
   display: "swap",
 });
@@ -47,7 +47,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {/* React 19 hoists resource links into <head> */}
         {backendOrigin && (
           <>

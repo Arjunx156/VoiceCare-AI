@@ -1,4 +1,5 @@
 export { Badge, PriorityBadge, SentimentBadge, StatusBadge } from "./Badge";
+export { Brandmark } from "./Brandmark";
 export { Button } from "./Button";
 export { EmptyState } from "./EmptyState";
 export { LanguageLabel } from "./LanguageLabel";

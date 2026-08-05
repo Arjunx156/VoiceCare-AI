@@ -265,8 +265,8 @@ export default function DashboardPage() {
           <h2 className="section-title">Escalation queue</h2>
           {escalations.length > 0 && (
             <span
-              className="eyebrow rule-tail"
-              style={{ color: "var(--text-secondary)" }}
+              className="rule-tail"
+              style={{ fontSize: 13, color: "var(--text-muted)" }}
             >
               {escalations.length} waiting on you
             </span>
@@ -288,7 +288,7 @@ export default function DashboardPage() {
                   display: "flex",
                   alignItems: "center",
                   gap: 16,
-                  padding: "13px 26px",
+                  padding: "11px 26px",
                   textDecoration: "none",
                   borderBottom:
                     i < Math.min(escalations.length, 6) - 1
@@ -297,14 +297,16 @@ export default function DashboardPage() {
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <span className="eyebrow" style={{ marginBottom: 4 }}>
-                    {ticket.ticket_type || "support"}
-                  </span>
-                  <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {ticket.user_name}
+                  <p style={{ display: "flex", alignItems: "baseline", gap: 8, whiteSpace: "nowrap", overflow: "hidden" }}>
+                    <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--text-primary)" }}>
+                      {ticket.user_name}
+                    </span>
+                    <span style={{ fontSize: 12, color: "var(--text-faint)", textTransform: "lowercase" }}>
+                      {ticket.ticket_type || "support"}
+                    </span>
                   </p>
                   {ticket.summary && (
-                    <p style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>
+                    <p style={{ fontSize: 12.5, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 3 }}>
                       {ticket.summary}
                     </p>
                   )}
