@@ -270,6 +270,33 @@ async def health_check():
         logger.error("health_check_chroma_failed", error=str(exc))
         checks["chroma"] = "error"
 
+    # Gemini — reported from the last real call rather than probed, so a health
+    # ping never spends generation quota. A model withdrawn by Google 404s on
+    # every call while still appearing in models.list(), and the pipeline
+    # swallows that by design to keep answering the customer; without this the
+    # only symptom is that every reply turns apologetic.
+    try:
+        from app.services.gemini_service import get_gemini_service
+
+        llm = get_gemini_service().status()
+        if not llm["configured"]:
+            checks["gemini"] = "error (no api key)"
+        elif llm["consecutive_failures"] >= 3:
+            logger.error(
+                "health_check_gemini_failing",
+                model=llm["model"],
+                failures=llm["consecutive_failures"],
+                error=llm["last_error"],
+            )
+            checks["gemini"] = f"error ({llm['model']}: {llm['consecutive_failures']} failures)"
+        elif llm["last_success_at"] is None:
+            checks["gemini"] = f"ok ({llm['model']}, untested)"
+        else:
+            checks["gemini"] = f"ok ({llm['model']})"
+    except Exception as exc:
+        logger.error("health_check_gemini_failed", error=str(exc))
+        checks["gemini"] = "error"
+
     overall = "healthy" if all(v == "ok" or v.startswith("ok") for v in checks.values()) else "degraded"
     return {
         "status": overall,

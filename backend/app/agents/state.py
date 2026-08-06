@@ -69,6 +69,10 @@ class PipelineState(BaseModel):
     refund_data: Optional[dict] = None
     payment_data: Optional[dict] = None
     lookup_successful: bool = False
+    # True when the caller named an order we could not match. Distinct from
+    # "no order id was given at all", which is not an error — the resolution
+    # agent has to be able to tell those apart to answer honestly.
+    order_not_found: bool = False
 
     # Stage 4: Policy RAG
     policy_context: Optional[str] = None

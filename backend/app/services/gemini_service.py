@@ -5,6 +5,7 @@ Includes retry with exponential backoff and structured output.
 """
 
 import json
+import time
 import structlog
 from typing import Optional
 from tenacity import (
@@ -21,26 +22,46 @@ from app.core.config import get_settings
 logger = structlog.get_logger()
 settings = get_settings()
 
-# Per-call output ceilings. These are blast-radius guardrails, not a speedup —
-# a well-behaved model stops at its stop token regardless. Call 3 stays generous
-# because it emits BOTH the native-script reply and its English translation, and
-# Devanagari/Tamil cost 3-4x more tokens per character; a truncated response
-# fails JSON parsing and falls through to the apologetic fallback, which is far
-# worse for the customer than a few hundred extra milliseconds.
+# On every thinking-capable Gemini model (2.5 and 3.x alike) thinking tokens are
+# drawn from max_output_tokens — they are
+# spent BEFORE the first character of JSON is written. So the two numbers are
+# not independent: the ceiling must cover the reasoning AND the whole payload.
 #
-# A small thinking budget is now enabled (see _THINKING_BUDGET). On gemini-2.5-*
-# thinking tokens are drawn from max_output_tokens, so the ceilings must be high
-# enough to accommodate both the reasoning overhead and the full JSON output.
-_MAX_TOKENS_INTENT = 768
-_MAX_TOKENS_RESOLUTION = 1280
-_MAX_TOKENS_RESPONSE = 2048
+# Every ceiling below is therefore *derived* from a thinking budget plus an
+# explicit reserve for the JSON itself, so the invariant
+# `max_output_tokens > thinking_budget` cannot silently drift again. It drifted
+# once: intent ran with a 768 ceiling against a 1024 budget, which left nothing
+# for output — every intent call came back truncated, fell through to the
+# fallback dict, and returned extracted_order_id=None. That is what made agent 3
+# skip the DB entirely and report 0 ms even when the customer spoke an order
+# number.
+#
+# The ceilings are blast-radius guardrails, not a speed dial — a well-behaved
+# model stops at its stop token regardless, and an unused ceiling costs nothing.
+# Call 3's reserve is the largest because it emits BOTH the native-script reply
+# and its English translation, and Devanagari/Tamil cost 3-4x more tokens per
+# character.
 
-# A modest thinking budget lets the model reason before emitting JSON, which
-# meaningfully improves resolution quality — especially for multi-factor queries
-# (e.g. damaged product + refund eligibility + policy lookup). Previously set to
-# 0 when the token caps were too tight and thinking consumed the entire budget;
-# now safe to re-enable because the caps above leave ample room for output.
-_THINKING_BUDGET = 1024
+# Reasoning allowance per call. Resolution gets the most: it is the one call
+# that must weigh order state, policy text, and sentiment against each other
+# (e.g. damaged product + refund eligibility + return window).
+_THINKING_BUDGET_INTENT = 512
+_THINKING_BUDGET_RESOLUTION = 1024
+_THINKING_BUDGET_RESPONSE = 512
+
+# Room for the JSON payload itself, on top of the reasoning above.
+_OUTPUT_RESERVE_INTENT = 1024
+_OUTPUT_RESERVE_RESOLUTION = 2048
+_OUTPUT_RESERVE_RESPONSE = 3072
+
+_MAX_TOKENS_INTENT = _THINKING_BUDGET_INTENT + _OUTPUT_RESERVE_INTENT
+_MAX_TOKENS_RESOLUTION = _THINKING_BUDGET_RESOLUTION + _OUTPUT_RESERVE_RESOLUTION
+_MAX_TOKENS_RESPONSE = _THINKING_BUDGET_RESPONSE + _OUTPUT_RESERVE_RESPONSE
+
+# Per-attempt wall clock. Generous on purpose: a call that reasons before
+# answering legitimately takes longer than one that does not, and a timeout here
+# costs the customer a canned apology — far worse than a few extra seconds.
+_REQUEST_TIMEOUT_MS = 25_000
 
 # Cap on a single history turn's text inside a prompt.
 _MAX_HISTORY_CHARS_PER_TURN = 300
@@ -63,9 +84,28 @@ def _is_gemini_retryable(exc: Exception) -> bool:
 
 
 class GeminiService:
-    """Service for interacting with Google Gemini 2.5 Flash-Lite."""
+    """Service for interacting with Google Gemini."""
 
-    MODEL = "gemini-2.5-flash"
+    MODEL = settings.gemini_model
+
+    # Outcome of the most recent call, so /health can report an LLM that is
+    # failing without spending generation quota to probe it. Class-level
+    # defaults, not just __init__, because a 404 here degrades every reply to a
+    # canned apology and nothing else in the system notices — the pipeline
+    # catches the exception by design and answers the customer anyway.
+    _last_error: Optional[str] = None
+    _last_success_at: Optional[float] = None
+    _consecutive_failures: int = 0
+
+    def status(self) -> dict:
+        """Snapshot of LLM reachability for the health endpoint."""
+        return {
+            "model": self.MODEL,
+            "configured": bool(settings.gemini_api_key),
+            "last_success_at": self._last_success_at,
+            "consecutive_failures": self._consecutive_failures,
+            "last_error": self._last_error,
+        }
 
     def __init__(self):
         # google-genai, not the retired google-generativeai package: the latter
@@ -73,11 +113,11 @@ class GeminiService:
         # be applied and every call silently ran with thinking enabled.
         self.client = genai.Client(api_key=settings.gemini_api_key)
 
-    # 3 attempts with exponential backoff. Now that the Groq LLM fallback has
-    # been removed, an extra retry is cheap insurance against transient 5xx
-    # errors from the Gemini API (~12s timeout each).
+    # 2 attempts, not 3: the per-attempt timeout is now 25s (up from 12s) to give
+    # a reasoning call room to finish, so the retry count comes down to keep the
+    # worst-case dead air on the customer's critical path bounded at ~52s.
     @retry(
-        stop=stop_after_attempt(3),
+        stop=stop_after_attempt(2),
         wait=wait_exponential(multiplier=1, min=1, max=8),
         retry=retry_if_exception(_is_gemini_retryable),
         before_sleep=lambda retry_state: logger.warning(
@@ -87,10 +127,27 @@ class GeminiService:
         ),
     )
     async def _call_gemini(
-        self, prompt: str, system_instruction: str = "", max_output_tokens: int = 2048
+        self,
+        prompt: str,
+        system_instruction: str = "",
+        max_output_tokens: int = 2048,
+        thinking_budget: int = 0,
     ) -> str:
         """Make a Gemini API call with retry logic."""
         try:
+            # Last line of defence for the invariant the module constants
+            # encode: thinking is spent out of max_output_tokens, so a budget
+            # that crowds out the payload truncates every response. Clamp rather
+            # than raise — a slightly shallower reasoning pass still answers the
+            # customer; a truncated one never does.
+            if thinking_budget >= max_output_tokens:
+                logger.warning(
+                    "gemini_thinking_budget_clamped",
+                    requested=thinking_budget,
+                    max_output_tokens=max_output_tokens,
+                )
+                thinking_budget = max_output_tokens // 4
+
             config = genai_types.GenerateContentConfig(
                 temperature=0.3,
                 max_output_tokens=max_output_tokens,
@@ -98,9 +155,9 @@ class GeminiService:
                 # Thinking tokens are drawn from max_output_tokens, so leaving
                 # this unset burns the whole budget before any JSON is written.
                 thinking_config=genai_types.ThinkingConfig(
-                    thinking_budget=_THINKING_BUDGET
+                    thinking_budget=thinking_budget
                 ),
-                http_options=genai_types.HttpOptions(timeout=12_000),
+                http_options=genai_types.HttpOptions(timeout=_REQUEST_TIMEOUT_MS),
             )
 
             # client.aio, NOT the sync client: the sync method blocks the uvicorn
@@ -120,11 +177,18 @@ class GeminiService:
                 logger.warning(
                     "gemini_response_truncated",
                     max_output_tokens=max_output_tokens,
+                    thinking_budget=thinking_budget,
                     usage=str(getattr(response, "usage_metadata", None)),
                 )
+
+            GeminiService._last_success_at = time.time()
+            GeminiService._last_error = None
+            GeminiService._consecutive_failures = 0
             return response.text
         except Exception as e:
-            logger.error("gemini_call_failed", error=str(e))
+            GeminiService._last_error = f"{type(e).__name__}: {str(e)[:200]}"
+            GeminiService._consecutive_failures += 1
+            logger.error("gemini_call_failed", model=self.MODEL, error=str(e))
             raise
 
     @staticmethod
@@ -147,7 +211,7 @@ class GeminiService:
 
     def _parse_json(self, text: str) -> dict:
         """Safely parse JSON from Gemini, stripping markdown if present."""
-        text = text.strip()
+        text = (text or "").strip()
         if text.startswith("```json"):
             text = text[7:]
         if text.startswith("```"):
@@ -155,6 +219,26 @@ class GeminiService:
         if text.endswith("```"):
             text = text[:-3]
         text = text.strip()
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+        # Decode just the first JSON value and ignore whatever follows. Models
+        # do sometimes append a second object or a stray line after the answer,
+        # and json.loads rejects the whole payload for it ("Extra data") — which
+        # threw away a complete, usable resolution. Leading prose is skipped the
+        # same way.
+        start = text.find("{")
+        if start != -1:
+            try:
+                value, _ = json.JSONDecoder().raw_decode(text[start:])
+                if isinstance(value, dict):
+                    logger.warning("gemini_json_recovered", chars=len(text))
+                    return value
+            except json.JSONDecodeError:
+                pass
+
         try:
             return json.loads(text)
         except json.JSONDecodeError:
@@ -187,7 +271,7 @@ Return a JSON object with exactly these fields:
     "priority": "<one of: Low, Medium, High, Critical>",
     "summary_english": "<brief English summary of the customer's issue>",
     "requires_order_lookup": <true/false>,
-    "extracted_order_id": "<order ID if mentioned, null otherwise>",
+    "extracted_order_id": "<order number if mentioned, null otherwise>",
     "extracted_phone": "<phone number if mentioned, null otherwise>",
     "extracted_name": "<customer name if mentioned, null otherwise>"
 }}
@@ -196,10 +280,27 @@ Rules:
 - If the customer sounds frustrated, set sentiment to Angry or Very Angry
 - If the issue involves money (refund, payment) or damaged/wrong product, set priority to High
 - If the customer mentions urgency or repeated complaints, set priority to Critical
-- Always provide a concise summary_english regardless of input language"""
+- Always provide a concise summary_english regardless of input language
+
+Extracting extracted_order_id — read this carefully, the order lookup depends on it:
+- Order numbers look like "ORD-7K3F": the literal prefix ORD, a hyphen, then 4
+  characters from A-Z and 2-9 (never the letters O, I, L or the digits 0, 1).
+- The query is a speech transcript, so the number arrives spelled out, spaced,
+  or mis-cased: "order I D O R D dash seven K three F", "ord 7k3f", "ORD 7K 3F".
+  Reassemble it and return the canonical form "ORD-7K3F" — uppercase, one hyphen.
+- If the customer gives only the 4-character body ("my order is 7K3F"), return
+  it with the prefix added: "ORD-7K3F".
+- If they read out a long UUID, return it verbatim.
+- Never invent, complete, or guess an order number. If none was spoken, return null.
+- A tracking number, ticket number (TKT-...), or customer code (CUST-...) is NOT
+  an order number — return null for extracted_order_id in those cases."""
 
         try:
-            result = await self._call_gemini(prompt, max_output_tokens=_MAX_TOKENS_INTENT)
+            result = await self._call_gemini(
+                prompt,
+                max_output_tokens=_MAX_TOKENS_INTENT,
+                thinking_budget=_THINKING_BUDGET_INTENT,
+            )
             return self._parse_json(result)
         except Exception as e:
             logger.error("analyze_intent_fallback", error=str(e))
@@ -215,6 +316,51 @@ Rules:
                 "extracted_name": None
             }
 
+    @staticmethod
+    def _account_context(
+        order_data: Optional[dict],
+        shipment_data: Optional[dict],
+        return_data: Optional[dict],
+        refund_data: Optional[dict],
+        payment_data: Optional[dict],
+        order_not_found: bool,
+        order_reference: Optional[str],
+    ) -> str:
+        """Everything agent 3 pulled out of Postgres, as prompt context.
+
+        Agent 3 loads shipment, return, refund and payment rows on every
+        verified lookup, but only `order_data` used to reach this call — so the
+        model decided "where is my refund" without ever seeing the refund row and
+        answered from the policy text alone. All of it goes in now.
+        """
+        sections = []
+        for label, payload in (
+            ("Order", order_data),
+            ("Shipment / tracking", shipment_data),
+            ("Return request", return_data),
+            ("Refund", refund_data),
+            ("Payments", payment_data),
+        ):
+            if payload:
+                body = json.dumps(payload, separators=(",", ":"), default=str)
+                sections.append(f"{label}: {body}")
+
+        if not sections:
+            if order_not_found and order_reference:
+                return (
+                    f'The customer referred to order "{order_reference}", but no such '
+                    "order exists on this account. Do not guess at its contents — ask "
+                    "them to re-read the order number, or offer to look it up another way."
+                )
+            return "No account or order data available for this customer."
+
+        if order_not_found and order_reference:
+            sections.append(
+                f'Note: the order number the customer gave ("{order_reference}") did '
+                "not match this account; the data above is what we do hold."
+            )
+        return "Customer account data retrieved from our systems:\n" + "\n".join(sections)
+
     async def generate_resolution(
         self,
         query: str,
@@ -223,14 +369,26 @@ Rules:
         policy_context: str,
         sentiment: str,
         conversation_history: list = None,
+        shipment_data: Optional[dict] = None,
+        return_data: Optional[dict] = None,
+        refund_data: Optional[dict] = None,
+        payment_data: Optional[dict] = None,
+        order_not_found: bool = False,
+        order_reference: Optional[str] = None,
     ) -> dict:
         """
         LLM Call 2: Determine the resolution based on order data + policy.
         This is where policy-groundedness matters most.
         """
-        order_context = "No order data available."
-        if order_data:
-            order_context = f"Order details:\n{json.dumps(order_data, separators=(',', ':'), default=str)}"
+        order_context = self._account_context(
+            order_data,
+            shipment_data,
+            return_data,
+            refund_data,
+            payment_data,
+            order_not_found,
+            order_reference,
+        )
 
         history_context = ""
         if conversation_history:
@@ -259,14 +417,26 @@ Return a JSON object with exactly these fields:
 }}
 
 Rules:
-- Base your decision on the provided policy if relevant.
+- Ground the decision in the account data above FIRST, then the policy. The
+  order status, shipment status, return status and refund status are facts —
+  never contradict them, and never state a fact that is not in that block.
+- Answer the question the customer actually asked. If they asked where their
+  order is, the resolution must turn on the shipment status and expected
+  delivery date; if they asked about a refund, on the refund status and amount.
+- If the data needed to answer is simply absent, say so in resolution_summary
+  and choose an action that gets it (ask for the order number, or Track).
 - If no specific policy covers this case, use standard e-commerce best practices (e.g., apologize, inform, track).
 - Set confidence_score high (0.8+) if you can reasonably address the query, even without strict policy.
+  Set it below 0.4 only when you genuinely cannot tell what the customer needs.
 - ONLY set recommended_action to "Escalate" and requires_human_review to true if the issue is highly sensitive, involves fraud, or strictly requires a human manager.
 - When referring to the order, use the short "order_number" (e.g. ORD-7K3F). NEVER use the long internal "order_id" UUID."""
 
         try:
-            result = await self._call_gemini(prompt, max_output_tokens=_MAX_TOKENS_RESOLUTION)
+            result = await self._call_gemini(
+                prompt,
+                max_output_tokens=_MAX_TOKENS_RESOLUTION,
+                thinking_budget=_THINKING_BUDGET_RESOLUTION,
+            )
             return self._parse_json(result)
         except Exception as e:
             logger.error("generate_resolution_fallback", error=str(e))
@@ -327,7 +497,11 @@ Rules:
 - No filler, no repetition, no restating the question back. Every sentence must add information."""
 
         try:
-            result = await self._call_gemini(prompt, max_output_tokens=_MAX_TOKENS_RESPONSE)
+            result = await self._call_gemini(
+                prompt,
+                max_output_tokens=_MAX_TOKENS_RESPONSE,
+                thinking_budget=_THINKING_BUDGET_RESPONSE,
+            )
             return self._parse_json(result)
         except Exception as e:
             logger.error("generate_response_fallback", error=str(e))

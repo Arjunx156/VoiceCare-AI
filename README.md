@@ -94,7 +94,7 @@ Agents 3 and 4 run concurrently (neither depends on the other), and the reply is
 - **WS Reconnection** — 3× retry with 1s / 2s / 4s backoff on dropped connections
 
 ### AI Pipeline
-- Gemini 2.5 Flash — intent classification, resolution generation, response synthesis
+- Gemini (`gemini-3.1-flash-lite` by default) — intent classification, resolution generation, response synthesis
 - Policy RAG — top-3 Chroma results for every query; 1-hour result cache
 - Deterministic escalation — 6 hard rules, no LLM in the decision
 - Groq Whisper fallback if Bhashini STT is unavailable
@@ -126,7 +126,7 @@ Agents 3 and 4 run concurrently (neither depends on the other), and the reply is
 | Charts | Recharts |
 | Backend | FastAPI, Python 3.12, uvicorn |
 | AI Orchestration | LangGraph 0.4 (sequential 9-agent pipeline) |
-| LLM | Google Gemini 2.5 Flash |
+| LLM | Google Gemini (`GEMINI_MODEL`, default `gemini-3.1-flash-lite`) |
 | STT / TTS | Bhashini API (primary) · Groq Whisper (STT fallback) |
 | Vector Store | Chroma (embedded, persistent to disk) |
 | Database | PostgreSQL (Neon) via SQLAlchemy Async + asyncpg |

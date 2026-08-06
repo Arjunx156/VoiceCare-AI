@@ -47,6 +47,17 @@ class Settings(BaseSettings):
 
     # ---- Gemini ----
     gemini_api_key: str = ""
+    # Settable so a retired model can be swapped without a deploy. Google
+    # withdraws older models from new API keys while still listing them, and the
+    # call then fails with a 404 that looks exactly like an outage: all three
+    # LLM calls fall through to their canned fallbacks, so every reply becomes
+    # "technical difficulties" and every ticket auto-escalates. That is what
+    # gemini-2.5-flash did here.
+    # gemini-3.1-flash-lite measured 5/5 clean JSON at ~1.8s per call on this
+    # key, against 3/5 for gemini-3.5-flash (503s, 429s and malformed JSON) and
+    # ~18s for gemini-3.6-flash. All three pipeline prompts ask for a fixed JSON
+    # shape from a short context, which is what the lite tier is good at.
+    gemini_model: str = "gemini-3.1-flash-lite"
 
     # ---- Bhashini ----
     bhashini_user_id: str = ""
